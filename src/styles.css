@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+@import "leaflet.markercluster/dist/MarkerCluster.css";
+@import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+
+@theme {
+  /* Paleta celeste/azul, en linea con el panel actual (ver capturas de referencia) */
+  --color-brand-50: #e3f2fd;
+  --color-brand-100: #bbdefb;
+  --color-brand-200: #90caf9;
+  --color-brand-300: #64b5f6;
+  --color-brand-400: #42a5f5;
+  --color-brand-500: #2196f3;
+  --color-brand-600: #1e88e5;
+  --color-brand-700: #1976d2;
+  --color-brand-800: #0d47a1;
+
+  --color-sidebar: #2b3648;
+  --color-sidebar-hover: #38455a;
+
+  --font-sans: "Segoe UI", Roboto, ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f4f6f9;
+  color: #1f2937;
+}
+
+/*
+ * Modo oscuro (mejora 70): en vez de reescribir "dark:" en cada plantilla del panel
+ * (decenas de componentes, todos con clases Tailwind planas como bg-white/text-gray-700),
+ * se sobreescriben acá las clases de gris/blanco más usadas cuando <html> tiene .dark.
+ * El selector "html.dark X" tiene más especificidad que los estilos con ViewEncapsulation
+ * de cada componente (ej. ".input[_ngcontent-xxx]"), así que gana sin necesitar !important.
+ */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+html.dark .bg-white,
+html.dark .bg-gray-50,
+html.dark .bg-gray-100 {
+  background-color: #1e293b;
+}
+
+html.dark .bg-gray-200,
+html.dark .bg-gray-300 {
+  background-color: #334155;
+}
+
+html.dark main.bg-gray-100 {
+  background-color: #0f172a;
+}
+
+html.dark .text-gray-800,
+html.dark .text-gray-700,
+html.dark .text-gray-600 {
+  color: #e2e8f0;
+}
+
+html.dark .text-gray-500,
+html.dark .text-gray-400,
+html.dark .text-gray-300 {
+  color: #94a3b8;
+}
+
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300 {
+  border-color: #334155;
+}
+
+html.dark input.input,
+html.dark select.input,
+html.dark textarea.input,
+html.dark input[type='text'],
+html.dark input[type='search'],
+html.dark input[type='number'],
+html.dark input[type='date'],
+html.dark input[type='time'],
+html.dark input[type='password'],
+html.dark select,
+html.dark textarea {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+html.dark ::placeholder {
+  color: #64748b;
+}
