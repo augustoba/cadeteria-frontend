@@ -59,6 +59,10 @@ export const routes: Routes = [
         path: 'cadetes/:id',
         loadComponent: () => import('./features/cadetes/cadete-form.component').then((m) => m.CadeteFormComponent),
       },
+      {
+        path: 'cadetes/:id/ficha',
+        loadComponent: () => import('./features/cadetes/cadete-ficha.component').then((m) => m.CadeteFichaComponent),
+      },
       { path: 'zonas', loadComponent: () => import('./features/zonas/zonas.component').then((m) => m.ZonasComponent) },
       {
         path: 'zonas/nueva',

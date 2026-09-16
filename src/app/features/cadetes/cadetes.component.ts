@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { CadeteService } from '../../core/services/cadete.service';
 import { IncidenciaService } from '../../core/services/incidencia.service';
 import { ToastService } from '../../core/services/toast.service';
-import { AvisoGeneral, Cadete } from '../../core/models/cadete.model';
+import { AvisoGeneral, Cadete, CadeteEstadoLog } from '../../core/models/cadete.model';
 import { PrioridadIncidencia } from '../../core/models/incidencia.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
@@ -154,6 +154,7 @@ const ESTADO_CLASES: Record<string, string> = {
                     <button type="button" class="btn-mini bg-amber-600 hover:bg-amber-700" (click)="abrirIncidenciaCadete(c)">
                       🚨 Incidencia
                     </button>
+                    <a [routerLink]="['/cadetes', c.id, 'ficha']" class="btn-mini bg-gray-600 hover:bg-gray-700">📊 Ficha</a>
                     <a [routerLink]="['/cadetes', c.id]" class="btn-mini bg-brand-600 hover:bg-brand-700">Editar</a>
                   </td>
                 </tr>
@@ -290,6 +291,35 @@ const ESTADO_CLASES: Record<string, string> = {
       </div>
     }
 
+    @if (cadeteParaAlta(); as c) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cerrarAlta()">
+        <div class="bg-white rounded shadow-lg w-full max-w-sm" (click)="$event.stopPropagation()">
+          <div class="bg-emerald-600 text-white px-4 py-3 rounded-t flex items-center justify-between">
+            <h2 class="font-semibold">Reactivar — {{ c.nombre }} {{ c.apellido }}</h2>
+            <button type="button" class="text-white/80 hover:text-white text-lg leading-none" (click)="cerrarAlta()">✕</button>
+          </div>
+          <div class="p-4 flex flex-col gap-3">
+            @if (ultimaBajaModal(); as b) {
+              <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
+                ⚠ Atención: este cadete fue dado de baja
+                @if (b.cambiadoEn) {
+                  el {{ b.cambiadoEn | date: 'short' }}
+                }
+                por: <strong>{{ b.motivo || 'sin motivo cargado' }}</strong>.
+              </div>
+            } @else {
+              <p class="text-sm text-gray-600">No hay un motivo de baja registrado para este cadete.</p>
+            }
+            <p class="text-sm text-gray-600">Va a poder volver a ingresar a la app y recibir pedidos.</p>
+          </div>
+          <div class="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
+            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cerrarAlta()">Cancelar</button>
+            <button type="button" class="btn bg-emerald-600 hover:bg-emerald-700" (click)="confirmarAlta()">✔ Reactivar</button>
+          </div>
+        </div>
+      </div>
+    }
+
     @if (cadeteParaIncidencia(); as c) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cerrarIncidenciaCadete()">
         <div class="bg-white rounded shadow-lg w-full max-w-sm" (click)="$event.stopPropagation()">
@@ -378,6 +408,9 @@ export class CadetesComponent implements OnInit {
 
   readonly cadeteParaBaja = signal<Cadete | null>(null);
   motivoBajaModal = '';
+
+  readonly cadeteParaAlta = signal<Cadete | null>(null);
+  readonly ultimaBajaModal = signal<CadeteEstadoLog | null>(null);
 
   readonly cadeteParaIncidencia = signal<Cadete | null>(null);
   tituloIncidenciaCadeteModal = '';
@@ -469,7 +502,11 @@ export class CadetesComponent implements OnInit {
 
   toggleActivo(c: Cadete): void {
     if (!c.activo) {
-      this.cadetes.setActivo(c.id, true, null);
+      this.ultimaBajaModal.set(null);
+      this.cadeteParaAlta.set(c);
+      this.cadetes.historialEstado(c.id).subscribe((historial) => {
+        this.ultimaBajaModal.set(historial.find((h) => !h.activo) ?? null);
+      });
       return;
     }
     this.motivoBajaModal = '';
@@ -478,6 +515,17 @@ export class CadetesComponent implements OnInit {
 
   cerrarBaja(): void {
     this.cadeteParaBaja.set(null);
+  }
+
+  cerrarAlta(): void {
+    this.cadeteParaAlta.set(null);
+  }
+
+  confirmarAlta(): void {
+    const c = this.cadeteParaAlta();
+    if (!c) return;
+    this.cadeteParaAlta.set(null);
+    this.cadetes.setActivo(c.id, true, null);
   }
 
   confirmarBaja(): void {

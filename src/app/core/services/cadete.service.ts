@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { apiUrl } from '../config/site-config';
-import { AvisoGeneral, Cadete, CadeteEstadoLog, CadeteInput, HabilitarPagoSemanalInput, MovimientoCredito } from '../models/cadete.model';
+import { AvisoGeneral, Cadete, CadeteEstadoLog, CadeteFicha, CadeteInput, HabilitarPagoSemanalInput, MovimientoCredito } from '../models/cadete.model';
 import { CollectionStore } from '../state/collection-store';
 
 @Injectable({ providedIn: 'root' })
@@ -24,6 +24,18 @@ export class CadeteService {
 
   get(id: string) {
     return this.http.get<Cadete>(apiUrl(`/admin/cadetes/${id}`));
+  }
+
+  /**
+   * Panorama completo del cadete: estadísticas del rango [desde, hasta] (yyyy-MM-dd,
+   * ambos opcionales — sin ninguno trae todo el historial), incidencias e historial de
+   * altas/bajas (estos dos últimos siempre son de todo el historial).
+   */
+  ficha(id: string, desde?: string, hasta?: string) {
+    let params: Record<string, string> = {};
+    if (desde) params['desde'] = desde;
+    if (hasta) params['hasta'] = hasta;
+    return this.http.get<CadeteFicha>(apiUrl(`/admin/cadetes/${id}/ficha`), { params });
   }
 
   crear(input: CadeteInput, onSuccess?: () => void): void {

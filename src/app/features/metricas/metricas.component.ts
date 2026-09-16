@@ -5,6 +5,8 @@ import { MetricasService } from '../../core/services/metricas.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { CadeteMetrica, PorHora, Rechazo, ResumenDia, ZonaMetrica } from '../../core/models/metricas.model';
 import { PedidosPorHoraChartComponent } from './pedidos-por-hora-chart.component';
+import { EstadosPieChartComponent } from './estados-pie-chart.component';
+import { ZonasBarChartComponent } from './zonas-bar-chart.component';
 
 type CriterioRanking = 'calificacion' | 'finalizados' | 'km' | 'facturacion';
 
@@ -37,7 +39,7 @@ interface Delta {
 
 @Component({
   selector: 'app-metricas',
-  imports: [FormsModule, DecimalPipe, DatePipe, PedidosPorHoraChartComponent],
+  imports: [FormsModule, DecimalPipe, DatePipe, PedidosPorHoraChartComponent, EstadosPieChartComponent, ZonasBarChartComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="bg-brand-600 text-white px-4 py-3 rounded-t flex items-center justify-between flex-wrap gap-2 print:hidden">
@@ -114,8 +116,20 @@ interface Delta {
             </section>
           }
 
+          @if (resumen(); as r) {
+            <section class="border border-gray-200 rounded p-3">
+              <h2 class="font-semibold text-gray-700 mb-2">Distribución de pedidos por estado</h2>
+              <app-estados-pie-chart [resumen]="r" />
+            </section>
+          }
+
           <section>
-            <h2 class="font-semibold text-gray-700 mb-2">Pedidos por hora del día</h2>
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <h2 class="font-semibold text-gray-700">Pedidos por hora del día</h2>
+              @if (horaPico(); as hp) {
+                <span class="text-xs text-gray-500">🕐 Hora pico: <strong class="text-gray-700">{{ hp.hora }}:00</strong> ({{ hp.cantidad }} pedidos)</span>
+              }
+            </div>
             <app-pedidos-por-hora-chart [datos]="porHora()" />
           </section>
 
@@ -229,7 +243,15 @@ interface Delta {
           </section>
 
           <section>
-            <h2 class="font-semibold text-gray-700 mb-2">Por zona</h2>
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+              <h2 class="font-semibold text-gray-700">Por zona</h2>
+              @if (zonaTop(); as zt) {
+                <span class="text-xs text-gray-500">📍 Zona con más pedidos: <strong class="text-gray-700">{{ zt.zonaNombre }}</strong> ({{ zt.cantidadPedidos }})</span>
+              }
+            </div>
+            <div class="mb-4">
+              <app-zonas-bar-chart [datos]="zonas()" />
+            </div>
             <div class="overflow-x-auto">
               <table class="w-full text-sm border-collapse">
                 <thead>
@@ -475,5 +497,19 @@ export class MetricasComponent implements OnInit {
     const r = this.resumen();
     const a = this.resumenAnterior();
     return r && a ? this.delta(r.finalizados, a.finalizados) : null;
+  }
+
+  horaPico(): { hora: number; cantidad: number } | null {
+    const datos = this.porHora();
+    if (datos.length === 0) return null;
+    const top = datos.reduce((max, d) => (d.cantidad > max.cantidad ? d : max), datos[0]);
+    return top.cantidad > 0 ? top : null;
+  }
+
+  zonaTop(): ZonaMetrica | null {
+    const datos = this.zonas();
+    if (datos.length === 0) return null;
+    const top = datos.reduce((max, z) => (z.cantidadPedidos > max.cantidadPedidos ? z : max), datos[0]);
+    return top.cantidadPedidos > 0 ? top : null;
   }
 }

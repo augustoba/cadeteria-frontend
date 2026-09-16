@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs';
@@ -18,6 +18,15 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-end gap-2 px-4 py-3 border-b border-gray-200">
+        <button
+          type="button"
+          class="btn bg-indigo-600 hover:bg-indigo-700"
+          [disabled]="pedidos.saving() || !origenPicked"
+          title="Guarda este pedido y deja cargado el mismo origen para pedir otro destino (mismo cliente que pide varios envíos separados)"
+          (click)="guardar(true, true)"
+        >
+          ➕ Agregar otro pedido (mismo origen)
+        </button>
         <button
           type="button"
           class="btn bg-emerald-600 hover:bg-emerald-700"
@@ -111,7 +120,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Dirección destino</span>
               @for (k of [formKey()]; track k) {
-                <app-address-picker (addressPicked)="onDestinoPicked($event)" />
+                <app-address-picker #destinoPickerRef (addressPicked)="onDestinoPicked($event)" />
               }
             </div>
           </div>
@@ -268,6 +277,7 @@ export class NuevoPedidoComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly guardadoAviso = signal<string | null>(null);
   readonly formKey = signal(0);
+  private readonly destinoPickerRef = viewChild<AddressPickerComponent>('destinoPickerRef');
 
   /** Mejora 77 — franja horaria de atención configurable, solo avisa, no bloquea la carga. */
   readonly fueraDeHorario = computed(() => {
@@ -429,7 +439,7 @@ export class NuevoPedidoComponent implements OnInit {
       });
   }
 
-  guardar(seguirCargando: boolean): void {
+  guardar(seguirCargando: boolean, mismoOrigen = false): void {
     this.error.set(null);
     this.guardadoAviso.set(null);
 
@@ -494,12 +504,35 @@ export class NuevoPedidoComponent implements OnInit {
     };
 
     this.pedidos.crear(input, () => {
-      if (seguirCargando) {
-        this.resetearFormulario();
-      } else {
+      if (!seguirCargando) {
         this.router.navigateByUrl('/');
+      } else if (mismoOrigen) {
+        this.resetearFormularioMismoOrigen();
+      } else {
+        this.resetearFormulario();
       }
     });
+  }
+
+  /**
+   * Para un cliente que hace varios envíos separados desde el mismo lugar (no paradas de
+   * un solo viaje, sino pedidos independientes): deja el origen tal cual está cargado y
+   * solo limpia lo que cambia de un pedido a otro (destino, precio, zona, etc.).
+   */
+  private resetearFormularioMismoOrigen(): void {
+    this.guardadoAviso.set('✅ Pedido cargado. Buscá el destino del próximo — el origen queda igual.');
+    this.programado = false;
+    this.fecha = '';
+    this.hora = '';
+    this.destinoPicked = null;
+    this.paradas.set([]);
+    this.zonaId = null;
+    this.tipoVehiculoRequeridoId = null;
+    this.precio = null;
+    this.precioSugeridoInfo = null;
+    this.montoDeclarado = null;
+    this.detalle = '';
+    this.destinoPickerRef()?.setValue(null);
   }
 
   /** Ronda de auditoría UX — evita perder la zona/tipo de vehículo elegidos cuando se cargan varios pedidos seguidos del mismo lado. */

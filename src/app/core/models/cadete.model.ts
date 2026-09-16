@@ -1,4 +1,6 @@
 import { Lookup } from './lookup.model';
+import { CadeteMetrica } from './metricas.model';
+import { Incidencia } from './incidencia.model';
 
 export interface Cadete {
   id: string;
@@ -103,6 +105,14 @@ export interface CadeteInput {
   turnoFin: string | null;
   modalidadPago: 'SEMANAL' | 'PORCENTAJE';
   notasInternas: string | null;
+}
+
+/** Panorama completo de un cadete (estadísticas de todo su historial, no de un rango). */
+export interface CadeteFicha {
+  cadete: Cadete;
+  estadisticas: CadeteMetrica;
+  incidencias: Incidencia[];
+  historialEstado: CadeteEstadoLog[];
 }
 
 export interface HabilitarPagoSemanalInput {
