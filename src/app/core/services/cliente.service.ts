@@ -1,7 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { apiUrl } from '../config/site-config';
-import { Cliente, ClienteAviso, ClienteFicha, ClienteInput } from '../models/cliente.model';
+import { Cliente, ClienteAviso, ClienteFicha, ClienteInput, ClientesPagina } from '../models/cliente.model';
+
+const TAMANO_PAGINA = 20;
 
 @Injectable({ providedIn: 'root' })
 export class ClienteService {
@@ -14,17 +16,39 @@ export class ClienteService {
   private readonly savingSignal = signal(false);
   readonly saving = this.savingSignal.asReadonly();
 
-  buscar(q?: string): void {
+  private readonly totalSignal = signal(0);
+  readonly total = this.totalSignal.asReadonly();
+  private readonly paginaSignal = signal(0);
+  readonly pagina = this.paginaSignal.asReadonly();
+  private readonly totalPaginasSignal = signal(1);
+  readonly totalPaginas = this.totalPaginasSignal.asReadonly();
+
+  private ultimaBusqueda = '';
+
+  /**
+   * Paginado de verdad (mejora 2026-09-16) — antes traía todo el listado de una. `pagina`
+   * es 0-based, igual que el `Pageable` del backend. Una búsqueda nueva siempre vuelve a
+   * la página 0; cambiar de página mantiene la última búsqueda.
+   */
+  buscar(q?: string, pagina = 0): void {
+    if (q !== undefined) this.ultimaBusqueda = q;
     this.loadingSignal.set(true);
-    let params = new HttpParams();
-    if (q) params = params.set('q', q);
-    this.http.get<Cliente[]>(apiUrl('/admin/clientes'), { params }).subscribe({
-      next: (clientes) => {
-        this.clientesSignal.set(clientes);
+    let params = new HttpParams().set('pagina', pagina).set('tamano', TAMANO_PAGINA);
+    if (this.ultimaBusqueda) params = params.set('q', this.ultimaBusqueda);
+    this.http.get<ClientesPagina>(apiUrl('/admin/clientes'), { params }).subscribe({
+      next: (r) => {
+        this.clientesSignal.set(r.items);
+        this.totalSignal.set(r.total);
+        this.paginaSignal.set(r.pagina);
+        this.totalPaginasSignal.set(r.totalPaginas);
         this.loadingSignal.set(false);
       },
       error: () => this.loadingSignal.set(false),
     });
+  }
+
+  irAPagina(pagina: number): void {
+    this.buscar(undefined, pagina);
   }
 
   ficha(telefono: string) {

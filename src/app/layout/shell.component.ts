@@ -13,6 +13,8 @@ interface NavItem {
   label: string;
   path: string;
   icon: string;
+  /** true = solo visible para el rol DUENO (roles de admin, mejora 2026-09-16). */
+  soloDueno?: boolean;
 }
 
 const NAV: NavItem[] = [
@@ -22,11 +24,12 @@ const NAV: NavItem[] = [
   { label: 'Zonas', path: '/zonas', icon: '📍' },
   { label: 'Clientes', path: '/clientes', icon: '👤' },
   { label: 'Pedidos web', path: '/solicitudes-pedido', icon: '📩' },
-  { label: 'Pagos', path: '/pagos', icon: '💵' },
+  { label: 'Pagos', path: '/pagos', icon: '💵', soloDueno: true },
   { label: 'Chat', path: '/chat', icon: '💬' },
   { label: 'Incidencias', path: '/incidencias', icon: '🎫' },
-  { label: 'Métricas', path: '/metricas', icon: '📊' },
-  { label: 'Configuración', path: '/configuracion', icon: '⚙️' },
+  { label: 'Métricas', path: '/metricas', icon: '📊', soloDueno: true },
+  { label: 'Configuración', path: '/configuracion', icon: '⚙️', soloDueno: true },
+  { label: 'Usuarios', path: '/usuarios', icon: '👥', soloDueno: true },
 ];
 
 interface AlertaAdminWs {
@@ -186,7 +189,7 @@ interface AlertaSesion {
           [class.translate-x-0]="mobileOpen()"
           [class.md:w-16]="collapsed()"
         >
-          @for (item of nav; track item.path) {
+          @for (item of nav(); track item.path) {
             <a
               [routerLink]="item.path"
               routerLinkActive="bg-sidebar-hover text-white"
@@ -237,7 +240,7 @@ export class ShellComponent implements OnInit {
   readonly chat = inject(ChatService);
   readonly theme = inject(ThemeService);
 
-  readonly nav = NAV;
+  readonly nav = computed(() => (this.auth.esDueno() ? NAV : NAV.filter((n) => !n.soloDueno)));
   readonly collapsed = signal(false);
   readonly mobileOpen = signal(false);
   readonly sidebarIconOnly = computed(() => this.collapsed() && !this.mobileOpen());

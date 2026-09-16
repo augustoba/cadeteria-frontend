@@ -37,8 +37,17 @@ export class AuthService {
   readonly username = computed(() => {
     const t = this.tokenSignal();
     if (!t || t.expiresAt <= Date.now()) return '';
-    return decodeSub(t.token);
+    return decodePayload(t.token).sub ?? '';
   });
+
+  /** "DUENO" u "OPERADOR" — ver [[roles de admin]]. Solo para mostrar/ocultar UI; la autorización real la hace el backend contra la base, no este claim. */
+  readonly rol = computed(() => {
+    const t = this.tokenSignal();
+    if (!t || t.expiresAt <= Date.now()) return 'DUENO';
+    return decodePayload(t.token).rol ?? 'DUENO';
+  });
+
+  readonly esDueno = computed(() => this.rol() === 'DUENO');
 
   token(): string | null {
     const t = this.tokenSignal();
@@ -86,11 +95,10 @@ export class AuthService {
   }
 }
 
-function decodeSub(jwt: string): string {
+function decodePayload(jwt: string): { sub?: string; rol?: string } {
   try {
-    const payload = JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return typeof payload.sub === 'string' ? payload.sub : '';
+    return JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
   } catch {
-    return '';
+    return {};
   }
 }

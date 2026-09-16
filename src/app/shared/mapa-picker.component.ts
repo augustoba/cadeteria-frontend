@@ -26,6 +26,13 @@ const HANDLE_ICON = L.divIcon({
   iconAnchor: [7, 7],
 });
 
+const VERTICE_ICON = L.divIcon({
+  className: '',
+  html: '<div style="width:16px;height:16px;border-radius:50%;background:#7c3aed;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.5);cursor:move"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
 /** Distancia entre dos puntos en metros (fórmula de haversine). */
 function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
@@ -89,7 +96,7 @@ export class MapaPickerComponent implements AfterViewInit, OnChanges, OnDestroy 
   private arrastrandoManija = false;
   private vertices: Array<{ lat: number; lng: number }> = [];
   private capaPoligono: L.Polygon | L.Polyline | null = null;
-  private marcadoresVertices: L.CircleMarker[] = [];
+  private marcadoresVertices: L.Marker[] = [];
   private esquinaRectangulo: { lat: number; lng: number } | null = null;
 
   ngAfterViewInit(): void {
@@ -181,6 +188,13 @@ export class MapaPickerComponent implements AfterViewInit, OnChanges, OnDestroy 
     this.poligonoChange.emit([]);
   }
 
+  /**
+   * Dibuja el polígono/rectángulo desde cero, con un marcador **arrastrable** por
+   * vértice — antes quedaban fijos apenas se trazaba la forma (rectángulo de 2 clicks o
+   * polígono libre) y la única forma de corregirla era "Deshacer" (solo mientras se
+   * dibuja) o borrar todo. Ahora cada esquina se puede arrastrar para agrandar/achicar
+   * después de trazada, y doble-click sobre un vértice lo saca.
+   */
   private dibujarPoligono(): void {
     if (!this.map) return;
     this.capaPoligono?.remove();
@@ -196,11 +210,29 @@ export class MapaPickerComponent implements AfterViewInit, OnChanges, OnDestroy 
         ? L.polygon(latLngs, { color: '#7c3aed', weight: 2, fillColor: '#7c3aed', fillOpacity: 0.15 }).addTo(this.map)
         : L.polyline(latLngs, { color: '#7c3aed', weight: 2, dashArray: '6 4' }).addTo(this.map);
 
-    this.marcadoresVertices = this.vertices.map((v) =>
-      L.circleMarker([v.lat, v.lng], { radius: 5, color: '#7c3aed', fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(
-        this.map!,
-      ),
-    );
+    this.marcadoresVertices = this.vertices.map((v, i) => {
+      const m = L.marker([v.lat, v.lng], { icon: VERTICE_ICON, draggable: true }).addTo(this.map!);
+      m.on('drag', () => {
+        const p = m.getLatLng();
+        this.vertices[i] = { lat: p.lat, lng: p.lng };
+        this.actualizarCapaPoligono();
+      });
+      m.on('dragend', () => this.poligonoChange.emit([...this.vertices]));
+      m.on('dblclick', (ev: L.LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(ev);
+        this.vertices.splice(i, 1);
+        this.dibujarPoligono();
+        this.poligonoChange.emit([...this.vertices]);
+      });
+      return m;
+    });
+  }
+
+  /** Actualiza solo la forma (polígono/línea) mientras se arrastra un vértice, sin recrear los marcadores. */
+  private actualizarCapaPoligono(): void {
+    if (!this.map || !this.capaPoligono) return;
+    const latLngs = this.vertices.map((v) => [v.lat, v.lng] as [number, number]);
+    this.capaPoligono.setLatLngs(latLngs);
   }
 
   private setMarker(lat: number, lng: number): void {

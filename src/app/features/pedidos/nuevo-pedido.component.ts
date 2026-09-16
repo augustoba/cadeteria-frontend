@@ -7,6 +7,7 @@ import { ConfiguracionService } from '../../core/services/configuracion.service'
 import { ZonaService } from '../../core/services/zona.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { ClienteService } from '../../core/services/cliente.service';
+import { CotizacionService } from '../../core/services/cotizacion.service';
 import { ParadaInput, PedidoInput } from '../../core/models/pedido.model';
 import { ClienteAviso } from '../../core/models/cliente.model';
 import { AddressPickerComponent, PickedAddress } from '../../shared/address-picker.component';
@@ -103,14 +104,14 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Dirección origen</span>
               @for (k of [formKey()]; track k) {
-                <app-address-picker (addressPicked)="origenPicked = $event" />
+                <app-address-picker (addressPicked)="onOrigenPicked($event)" />
               }
             </div>
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Dirección destino</span>
               @for (k of [formKey()]; track k) {
-                <app-address-picker (addressPicked)="destinoPicked = $event" />
+                <app-address-picker (addressPicked)="onDestinoPicked($event)" />
               }
             </div>
           </div>
@@ -173,7 +174,18 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Dinero</span>
-              <input type="number" min="0" step="0.01" class="input" [(ngModel)]="precio" name="precio" />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="input"
+                [ngModel]="precio"
+                (ngModelChange)="precio = $event; precioSugeridoInfo = null"
+                name="precio"
+              />
+              @if (precioSugeridoInfo) {
+                <span class="text-xs text-emerald-600">💰 {{ precioSugeridoInfo }} — lo podés cambiar.</span>
+              }
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Valor trámite</span>
@@ -228,6 +240,7 @@ export class NuevoPedidoComponent implements OnInit {
   private readonly config = inject(ConfiguracionService);
   readonly pedidos = inject(PedidoService);
   private readonly clientes = inject(ClienteService);
+  private readonly cotizacion = inject(CotizacionService);
   private readonly router = inject(Router);
 
   clienteNombre = '';
@@ -248,6 +261,7 @@ export class NuevoPedidoComponent implements OnInit {
   zonaId: string | null = null;
   tipoVehiculoRequeridoId: string | null = null;
   precio: number | null = null;
+  precioSugeridoInfo: string | null = null;
   montoDeclarado: number | null = null;
   detalle = '';
 
@@ -376,7 +390,43 @@ export class NuevoPedidoComponent implements OnInit {
     const zona = this.zonas.zonas().find((z) => z.id === zonaId);
     if (zona?.tarifaSugerida != null) {
       this.precio = zona.tarifaSugerida;
+      this.precioSugeridoInfo = `Sugerido por zona (${zona.nombre})`;
     }
+  }
+
+  onOrigenPicked(p: PickedAddress | null): void {
+    this.origenPicked = p;
+    this.sugerirPrecio();
+  }
+
+  onDestinoPicked(p: PickedAddress | null): void {
+    this.destinoPicked = p;
+    this.sugerirPrecio();
+  }
+
+  /**
+   * Cotización automática por GPS (mejora 2026-09-16): con origen y destino ya elegidos,
+   * pide una sugerencia de precio — por Zona (la más cara entre la del origen y la del
+   * destino, para no cobrar de menos en un viaje que sale del centro hacia una zona más
+   * lejana) o por distancia real si ninguna de las dos zonas tiene precio cargado. Hace
+   * falta el destino también: con solo el origen no se sabe si el viaje se queda adentro
+   * de esa zona o cruza a una más cara. Nunca pisa un precio ya cargado a mano ni bloquea
+   * nada si no hay sugerencia (ej. "precio por km" en 0).
+   */
+  private sugerirPrecio(): void {
+    if (!this.origenPicked || !this.destinoPicked || this.precio != null) return;
+    this.cotizacion
+      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng)
+      .subscribe((c) => {
+        if (this.precio != null || c.precioSugerido == null) return;
+        this.precio = c.precioSugerido;
+        if (c.metodo === 'ZONA' && c.zonaId) {
+          if (!this.zonaId) this.zonaId = c.zonaId;
+          this.precioSugeridoInfo = `Sugerido por zona (${c.zonaNombre})`;
+        } else {
+          this.precioSugeridoInfo = `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
+        }
+      });
   }
 
   guardar(seguirCargando: boolean): void {
@@ -466,6 +516,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.destinoPicked = null;
     this.paradas.set([]);
     this.precio = null;
+    this.precioSugeridoInfo = null;
     this.montoDeclarado = null;
     this.detalle = '';
     this.formKey.update((k) => k + 1);

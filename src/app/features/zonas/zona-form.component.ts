@@ -53,9 +53,9 @@ import { MapaPickerComponent } from '../../shared/mapa-picker.component';
             <span class="text-sm font-medium text-gray-700">
               {{
                 modoRectangulo
-                  ? 'Marcá una esquina y después la opuesta'
+                  ? 'Marcá una esquina y después la opuesta — después podés arrastrar cualquier esquina (círculo violeta) para agrandar/achicar'
                   : modoPoligono
-                    ? 'Dibujá el contorno real de la zona: cada click agrega un vértice'
+                    ? 'Dibujá el contorno: cada click agrega un vértice — arrastrá un vértice ya puesto para ajustarlo, doble-click sobre uno para sacarlo'
                     : 'Marcá el centro y arrastrá el punto naranja para ajustar el radio'
               }}
             </span>

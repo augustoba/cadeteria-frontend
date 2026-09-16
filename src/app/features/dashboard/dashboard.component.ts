@@ -16,8 +16,11 @@ import { CadetesLibresComponent } from './cadetes-libres.component';
 import { KanbanPedidosComponent } from './kanban-pedidos.component';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
 
+/** "finalizados" ya no pasa por `PedidoService.cargar()`/`TipoListaPedidos` — tiene su propio estado paginado, ver `cargarFinalizadosPagina()`. */
+type TipoTab = TipoListaPedidos | 'finalizados';
+
 interface Tab {
-  tipo: TipoListaPedidos;
+  tipo: TipoTab;
   label: string;
 }
 
@@ -28,6 +31,9 @@ const TABS: Tab[] = [
 ];
 
 const ESTADOS_EN_CURSO = new Set(['EN_CURSO']);
+/** Estados que "ocupan" a un cadete aunque siga LIBRE (ya se puso libre, pero le queda algo sin
+ * entregar) — mismo criterio que ESTADOS_OCUPAN_CADETE del backend (PedidoService). */
+const ESTADOS_OCUPAN_CADETE = new Set(['PENDIENTE', 'EN_CURSO']);
 
 /** Mejora 105 — recordar pestaña/vista del dashboard entre sesiones (no sobrevive a un cambio de usuario, es solo del navegador). */
 const STORAGE_TAB = 'dashboard.activeTab';
@@ -182,7 +188,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
               <select
                 class="input"
                 [ngModel]="finalizadosTipoFiltro()"
-                (ngModelChange)="finalizadosTipoFiltro.set($event)"
+                (ngModelChange)="onCambiarFiltroFinalizados('tipo', $event)"
                 name="finalizadosTipoFiltro"
               >
                 <option value="todos">Todos</option>
@@ -190,8 +196,49 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 <option value="CANCELADO">Cancelado</option>
               </select>
             </label>
+            <div class="flex gap-1 ml-auto">
+              @for (r of ['hoy', 'semana', 'todo']; track r) {
+                <button
+                  type="button"
+                  class="btn-mini"
+                  [class]="finalizadosRango() === r ? 'bg-brand-600 hover:bg-brand-700' : 'bg-gray-400 hover:bg-gray-500'"
+                  (click)="onCambiarRangoFinalizados(r)"
+                >
+                  {{ r === 'hoy' ? 'Hoy' : r === 'semana' ? 'Esta semana' : 'Todo' }}
+                </button>
+              }
+            </div>
           </div>
-          <app-tabla-pedidos [pedidos]="finalizadosFiltrados()" [mostrarAcciones]="false" (accion)="onAccion($event)" />
+          @if (finalizadosCargando()) {
+            <p class="text-xs text-gray-400 py-4 text-center">Cargando…</p>
+          } @else {
+            <app-tabla-pedidos [pedidos]="finalizadosData().items" [paginadoExterno]="true" [mostrarAcciones]="false" (accion)="onAccion($event)" />
+            @if (finalizadosData().total > 0) {
+              <div class="flex items-center justify-between px-1 py-2 text-xs text-gray-500">
+                <span>
+                  {{ finalizadosData().total }} pedido(s) — página {{ finalizadosPaginaActual() + 1 }} de {{ finalizadosData().totalPaginas }}
+                </span>
+                <div class="flex gap-1">
+                  <button
+                    type="button"
+                    class="btn-mini bg-gray-400 hover:bg-gray-500"
+                    [disabled]="finalizadosPaginaActual() <= 0"
+                    (click)="irAPaginaFinalizados(finalizadosPaginaActual() - 1)"
+                  >
+                    ‹ Anterior
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-mini bg-gray-400 hover:bg-gray-500"
+                    [disabled]="finalizadosPaginaActual() + 1 >= finalizadosData().totalPaginas"
+                    (click)="irAPaginaFinalizados(finalizadosPaginaActual() + 1)"
+                  >
+                    Siguiente ›
+                  </button>
+                </div>
+              </div>
+            }
+          }
         } @else {
           <app-tabla-pedidos [pedidos]="pedidosFiltrados()" [mostrarAcciones]="false" (accion)="onAccion($event)" />
         }
@@ -523,6 +570,18 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                       }
                     </span>
                     <span class="ml-auto text-gray-800">{{ p.asignadoEn | date: 'short' }}</span>
+                  </div>
+                }
+                @if (p.vistoEn) {
+                  <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
+                    <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span class="text-gray-500">
+                      👁 Visto
+                      @if (!p.aceptadoEn && p.estado.id === 'PENDIENTE') {
+                        <span class="text-amber-600">— todavía no lo aceptó</span>
+                      }
+                    </span>
+                    <span class="ml-auto text-gray-800">{{ p.vistoEn | date: 'short' }}</span>
                   </div>
                 }
                 @if (p.aceptadoEn) {
@@ -862,7 +921,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private desuscribirPedidos: (() => void) | null = null;
 
   readonly tabs = TABS;
-  readonly activeTab = signal<TipoListaPedidos>(
+  readonly activeTab = signal<TipoTab>(
     leerGuardado(STORAGE_TAB, ['activos', 'programados', 'finalizados'], 'activos'),
   );
   readonly pendientesAbierto = signal(true);
@@ -901,14 +960,71 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.cadetesSvc.cadetes().filter((c) => `${c.nombre} ${c.apellido}`.toLowerCase().includes(q)).slice(0, 8);
   });
   readonly finalizadosTipoFiltro = signal<'todos' | 'FINALIZADO' | 'CANCELADO'>('todos');
-  readonly finalizadosFiltrados = computed(() => {
-    let lista = this.pedidosFiltrados();
-    const cadeteId = this.finalizadosCadeteFiltro();
-    if (cadeteId) lista = lista.filter((p) => p.cadeteAsignado?.id === cadeteId);
-    const tipo = this.finalizadosTipoFiltro();
-    if (tipo !== 'todos') lista = lista.filter((p) => p.estado.id === tipo);
-    return lista;
+
+  /**
+   * "Pedidos finalizados" paginado en el backend (mejora 2026-09-16) — antes filtraba
+   * en el navegador sobre TODO el historial ya cargado (`pedidosFiltrados()`, que a su vez
+   * dependía de `PedidoService.pedidos`, la lista completa sin acotar). Ahora vive en su
+   * propio estado, independiente del store compartido de activos/programados.
+   */
+  readonly finalizadosRango = signal<'hoy' | 'semana' | 'todo'>('hoy');
+  readonly finalizadosPaginaActual = signal(0);
+  readonly finalizadosCargando = signal(false);
+  readonly finalizadosData = signal<{ items: Pedido[]; total: number; totalPaginas: number }>({
+    items: [],
+    total: 0,
+    totalPaginas: 1,
   });
+
+  private rangoFechasFinalizados(): { desde: string | null; hasta: string | null } {
+    const rango = this.finalizadosRango();
+    if (rango === 'todo') return { desde: null, hasta: null };
+    const desde = new Date();
+    if (rango === 'hoy') {
+      desde.setHours(0, 0, 0, 0);
+    } else {
+      desde.setDate(desde.getDate() - 7);
+    }
+    return { desde: desde.toISOString(), hasta: null };
+  }
+
+  cargarFinalizadosPagina(): void {
+    this.finalizadosCargando.set(true);
+    const { desde, hasta } = this.rangoFechasFinalizados();
+    this.pedidos
+      .finalizadosPagina({
+        desde,
+        hasta,
+        cadeteId: this.finalizadosCadeteFiltro(),
+        tipoEstado: this.finalizadosTipoFiltro() === 'todos' ? null : this.finalizadosTipoFiltro(),
+        pagina: this.finalizadosPaginaActual(),
+        tamano: 15,
+      })
+      .subscribe({
+        next: (r) => {
+          this.finalizadosData.set(r);
+          this.finalizadosCargando.set(false);
+        },
+        error: () => this.finalizadosCargando.set(false),
+      });
+  }
+
+  irAPaginaFinalizados(pagina: number): void {
+    this.finalizadosPaginaActual.set(pagina);
+    this.cargarFinalizadosPagina();
+  }
+
+  onCambiarRangoFinalizados(rango: string): void {
+    this.finalizadosRango.set(rango as 'hoy' | 'semana' | 'todo');
+    this.finalizadosPaginaActual.set(0);
+    this.cargarFinalizadosPagina();
+  }
+
+  onCambiarFiltroFinalizados(_tipo: 'tipo', valor: 'todos' | 'FINALIZADO' | 'CANCELADO'): void {
+    this.finalizadosTipoFiltro.set(valor);
+    this.finalizadosPaginaActual.set(0);
+    this.cargarFinalizadosPagina();
+  }
 
   readonly pedidoAFinalizar = signal<Pedido | null>(null);
   receptorNombreModal = '';
@@ -932,8 +1048,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.ordenCadetes() === 'alfabetico') {
       return lista.sort((a, b) => `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`));
     }
-    // "Orden de turno": el que quedó libre primero, primero — mismo criterio FIFO que usa el sistema para sugerir.
-    return lista.sort((a, b) => new Date(a.ordenColaEspera).getTime() - new Date(b.ordenColaEspera).getTime());
+    // "Orden de turno": primero los libres sin nada pendiente, después los libres que ya tienen
+    // uno o más viajes sin entregar encima — dentro de cada grupo, el que quedó libre primero,
+    // primero. Mismo criterio FIFO que usa el sistema para sugerir (PedidoService.buscarCandidato).
+    const conPendientes = new Set(
+      this.pedidos
+        .pedidos()
+        .filter((p) => ESTADOS_OCUPAN_CADETE.has(p.estado.id) && p.cadeteAsignado)
+        .map((p) => p.cadeteAsignado!.id)
+    );
+    return lista.sort((a, b) => {
+      const aOcupado = conPendientes.has(a.id) ? 1 : 0;
+      const bOcupado = conPendientes.has(b.id) ? 1 : 0;
+      if (aOcupado !== bOcupado) return aOcupado - bOcupado;
+      return new Date(a.ordenColaEspera).getTime() - new Date(b.ordenColaEspera).getTime();
+    });
   });
   cadeteIdSeleccionado: string | null = null;
 
@@ -968,9 +1097,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cadetesSvc.ensureLoaded();
-    this.pedidos.cargar(this.activeTab());
+    const tabInicial = this.activeTab();
+    if (tabInicial === 'finalizados') {
+      this.cargarFinalizadosPagina();
+    } else {
+      this.pedidos.cargar(tabInicial);
+    }
     this.desuscribirPedidos = this.realtime.subscribe('/topic/admin/pedidos', () => {
-      this.pedidos.reload();
+      if (this.activeTab() === 'finalizados') {
+        this.cargarFinalizadosPagina();
+      } else {
+        this.pedidos.reload();
+      }
     });
     /** Búsqueda global desde el header (ronda 10, punto 107) — llega como ?buscar=. */
     const q = this.route.snapshot.queryParamMap.get('buscar');
@@ -985,15 +1123,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.finalizadosCadeteFiltro.set(id);
     this.finalizadosCadeteTexto.set(nombreCompleto);
     this.finalizadosBuscandoCadete.set(false);
+    this.finalizadosPaginaActual.set(0);
+    this.cargarFinalizadosPagina();
   }
 
   limpiarFiltroCadeteFinalizados(): void {
     this.finalizadosCadeteFiltro.set(null);
     this.finalizadosCadeteTexto.set('');
     this.finalizadosBuscandoCadete.set(false);
+    this.finalizadosPaginaActual.set(0);
+    this.cargarFinalizadosPagina();
   }
 
-  selectTab(tipo: TipoListaPedidos): void {
+  selectTab(tipo: TipoTab): void {
     if (tipo === this.activeTab()) return;
     this.activeTab.set(tipo);
     try {
@@ -1001,7 +1143,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } catch {
       // no crítico
     }
-    this.pedidos.cargar(tipo);
+    if (tipo === 'finalizados') {
+      this.finalizadosPaginaActual.set(0);
+      this.cargarFinalizadosPagina();
+    } else {
+      this.pedidos.cargar(tipo);
+    }
   }
 
   setVista(v: 'lista' | 'kanban'): void {

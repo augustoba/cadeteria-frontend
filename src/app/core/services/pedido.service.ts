@@ -1,12 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { catchError, map, of } from 'rxjs';
 import { apiUrl } from '../config/site-config';
-import { Comentario, Pedido, PedidoInput, PrecioLog, PuntoTrayecto } from '../models/pedido.model';
+import { Comentario, PaginaPedidos, Pedido, PedidoInput, PrecioLog, PuntoTrayecto } from '../models/pedido.model';
 import { Cadete } from '../models/cadete.model';
 import { CollectionStore } from '../state/collection-store';
 
-export type TipoListaPedidos = 'activos' | 'programados' | 'finalizados';
+/** "finalizados" ya no pasa por acá — tiene su propio endpoint paginado, ver `finalizadosPagina()`. */
+export type TipoListaPedidos = 'activos' | 'programados';
 
 @Injectable({ providedIn: 'root' })
 export class PedidoService {
@@ -24,6 +25,28 @@ export class PedidoService {
 
   cargar(tipo: TipoListaPedidos): void {
     this.store.setQuery({ tipo });
+  }
+
+  /**
+   * "Pedidos finalizados" paginado en la base (mejora 2026-09-16) — antes se traía TODO
+   * el historial finalizado/cancelado de la cadetería de una y se recortaba de a 15 en el
+   * navegador; con volumen real (100+ viajes/día) eso iba a envejecer mal. `desde`/`hasta`
+   * en ISO-8601 — sin ninguno de los dos, el backend no acota por fecha (rango "Todo").
+   */
+  finalizadosPagina(opciones: {
+    desde?: string | null;
+    hasta?: string | null;
+    cadeteId?: string | null;
+    tipoEstado?: string | null;
+    pagina: number;
+    tamano: number;
+  }) {
+    let params = new HttpParams().set('pagina', opciones.pagina).set('tamano', opciones.tamano);
+    if (opciones.desde) params = params.set('desde', opciones.desde);
+    if (opciones.hasta) params = params.set('hasta', opciones.hasta);
+    if (opciones.cadeteId) params = params.set('cadeteId', opciones.cadeteId);
+    if (opciones.tipoEstado) params = params.set('tipoEstado', opciones.tipoEstado);
+    return this.http.get<PaginaPedidos>(apiUrl('/admin/pedidos/finalizados-pagina'), { params });
   }
 
   reload(): void {

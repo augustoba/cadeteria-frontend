@@ -1,5 +1,5 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, signal } from '@angular/core';
-import { Pedido, tiempoTranscurrido } from '../../core/models/pedido.model';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal } from '@angular/core';
+import { Pedido } from '../../core/models/pedido.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 
 type Accion =
@@ -43,8 +43,8 @@ export function claseEstadoPedido(estadoId: string): string {
             <th class="py-2 pr-3 font-medium">Destino</th>
             <th class="py-2 pr-3 font-medium">Dinero</th>
             <th class="py-2 pr-3 font-medium">Cadete</th>
-            <th class="py-2 pr-3 font-medium">Tiempo de espera</th>
             <th class="py-2 pr-3 font-medium">Horarios</th>
+            <th class="py-2 pr-3 font-medium text-center" title="El cadete abrió el detalle del viaje">Visto</th>
             <th class="py-2 pr-3 font-medium">Estado</th>
             <th class="py-2 pr-3 font-medium"></th>
           </tr>
@@ -79,18 +79,21 @@ export function claseEstadoPedido(estadoId: string): string {
                   —
                 }
               </td>
-              <td class="py-2 pr-3 whitespace-nowrap font-mono text-xs">
-                {{ tiempo(p) }}
-              </td>
               <td class="py-2 pr-3 whitespace-nowrap text-xs text-gray-500 leading-tight">
+                <div>Creado {{ hora(p.creadoEn) }}</div>
                 @if (p.aceptadoEn) {
                   <div>Aceptado {{ hora(p.aceptadoEn) }}</div>
                 }
                 @if (p.retiradoEn) {
-                  <div>Retirado {{ hora(p.retiradoEn) }}</div>
+                  <div>Recibido {{ hora(p.retiradoEn) }}</div>
                 }
                 @if (p.finalizadoEn) {
                   <div>Entregado {{ hora(p.finalizadoEn) }}</div>
+                }
+              </td>
+              <td class="py-2 pr-3 whitespace-nowrap text-center">
+                @if (p.estado.id === 'PENDIENTE' && p.vistoEn) {
+                  <span class="text-sky-500 text-base" [title]="'Visto ' + hora(p.vistoEn)">✓✓</span>
                 }
               </td>
               <td class="py-2 pr-3 whitespace-nowrap">
@@ -155,7 +158,7 @@ export function claseEstadoPedido(estadoId: string): string {
         </tbody>
       </table>
 
-      @if (pedidos.length > tamanoPagina) {
+      @if (!paginadoExterno && pedidos.length > tamanoPagina) {
         <div class="flex items-center justify-between px-1 py-2 text-xs text-gray-500">
           <span>Página {{ pagina() }} de {{ totalPaginas }} ({{ pedidos.length }} pedidos)</span>
           <div class="flex gap-1">
@@ -197,30 +200,19 @@ export function claseEstadoPedido(estadoId: string): string {
     `,
   ],
 })
-export class TablaPedidosComponent implements OnInit, OnChanges, OnDestroy {
+export class TablaPedidosComponent implements OnChanges {
   @Input() pedidos: Pedido[] = [];
   @Input() mostrarAcciones = false;
+  /**
+   * true cuando quien usa este componente ya le manda solo la página actual (ej.
+   * "Pedidos finalizados" del dashboard, paginado en el backend desde 2026-09-16) — en
+   * ese caso no hay que volver a recortar acá ni mostrar un segundo paginador.
+   */
+  @Input() paginadoExterno = false;
   @Output() accion = new EventEmitter<{ accion: Accion; pedido: Pedido }>();
 
   readonly tamanoPagina = TAMANO_PAGINA;
   readonly pagina = signal(1);
-
-  private intervalId?: ReturnType<typeof setInterval>;
-  /** "Tiempo de espera" se recalcula contra este signal en vez de contra Date.now()
-   * directamente — así el valor queda fijo dentro de un mismo ciclo de change detection
-   * (evita el NG0100 que tirábamos antes con un simple contador, el cual además podía
-   * abortar la actualización de vista de un click que cayera en el mismo instante). */
-  private readonly ahora = signal(Date.now());
-
-  ngOnInit(): void {
-    this.intervalId = setInterval(() => {
-      this.ahora.set(Date.now());
-    }, 1000);
-  }
-
-  ngOnDestroy(): void {
-    if (this.intervalId) clearInterval(this.intervalId);
-  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['pedidos']) this.pagina.set(1);
@@ -231,16 +223,13 @@ export class TablaPedidosComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   get pedidosPagina(): Pedido[] {
+    if (this.paginadoExterno) return this.pedidos;
     const inicio = (this.pagina() - 1) * TAMANO_PAGINA;
     return this.pedidos.slice(inicio, inicio + TAMANO_PAGINA);
   }
 
   irAPagina(n: number): void {
     this.pagina.set(Math.min(Math.max(1, n), this.totalPaginas));
-  }
-
-  tiempo(p: Pedido): string {
-    return tiempoTranscurrido(p.creadoEn, p.finalizadoEn ?? p.canceladoEn ?? undefined, this.ahora());
   }
 
   hora(iso: string): string {

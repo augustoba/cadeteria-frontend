@@ -44,3 +44,11 @@ export interface ClienteAviso {
   notasProblematico: string | null;
   tarifaEspecial: number | null;
 }
+
+/** Listado paginado (mejora 2026-09-16) — antes `/admin/clientes` devolvía un array plano sin paginar. */
+export interface ClientesPagina {
+  items: Cliente[];
+  total: number;
+  pagina: number;
+  totalPaginas: number;
+}

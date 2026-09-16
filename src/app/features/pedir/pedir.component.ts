@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SolicitudPedidoPublicoService } from '../../core/services/solicitud-pedido-publico.service';
 import { SolicitudPedidoInput } from '../../core/models/solicitud-pedido.model';
+import { CotizacionService } from '../../core/services/cotizacion.service';
 import { AddressPickerComponent, PickedAddress } from '../../shared/address-picker.component';
 
 /**
@@ -34,13 +35,22 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de origen</span>
-              <app-address-picker (addressPicked)="origenPicked = $event" />
+              <app-address-picker (addressPicked)="onOrigenPicked($event)" />
             </div>
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de destino</span>
-              <app-address-picker (addressPicked)="destinoPicked = $event" />
+              <app-address-picker (addressPicked)="onDestinoPicked($event)" />
             </div>
+
+            @if (cotizando()) {
+              <p class="text-xs text-gray-400">Calculando un estimado…</p>
+            } @else if (precioEstimado() != null) {
+              <div class="rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-3 py-2">
+                💰 Estimado: <strong>$ {{ precioEstimado() }}</strong>
+                <span class="text-xs block text-emerald-700/80 mt-0.5">Puede variar — te lo confirmamos antes de salir.</span>
+              </div>
+            }
 
             <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="llevaDinero" name="llevaDinero" />
@@ -100,6 +110,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 })
 export class PedirComponent {
   private readonly svc = inject(SolicitudPedidoPublicoService);
+  private readonly cotizacion = inject(CotizacionService);
 
   origenPicked: PickedAddress | null = null;
   destinoPicked: PickedAddress | null = null;
@@ -113,6 +124,39 @@ export class PedirComponent {
   readonly enviando = signal(false);
   readonly enviado = signal(false);
   readonly error = signal<string | null>(null);
+  readonly cotizando = signal(false);
+  readonly precioEstimado = signal<number | null>(null);
+
+  onOrigenPicked(p: PickedAddress | null): void {
+    this.origenPicked = p;
+    this.actualizarEstimado();
+  }
+
+  onDestinoPicked(p: PickedAddress | null): void {
+    this.destinoPicked = p;
+    this.actualizarEstimado();
+  }
+
+  /** Solo un estimado para el cliente (mejora 2026-09-16) — no crea ni ata nada, la solicitud igual queda pendiente de revisión del admin. */
+  private actualizarEstimado(): void {
+    if (!this.origenPicked || !this.destinoPicked) {
+      this.precioEstimado.set(null);
+      return;
+    }
+    this.cotizando.set(true);
+    this.cotizacion
+      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng)
+      .subscribe({
+        next: (c) => {
+          this.cotizando.set(false);
+          this.precioEstimado.set(c.precioSugerido);
+        },
+        error: () => {
+          this.cotizando.set(false);
+          this.precioEstimado.set(null);
+        },
+      });
+  }
 
   enviar(): void {
     this.error.set(null);

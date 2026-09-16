@@ -74,6 +74,29 @@ import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.componen
               }
             </tbody>
           </table>
+          @if (clientes.total() > 0) {
+            <div class="flex items-center justify-between pt-3 text-xs text-gray-500">
+              <span>{{ clientes.total() }} cliente(s) — página {{ clientes.pagina() + 1 }} de {{ clientes.totalPaginas() }}</span>
+              <div class="flex gap-1.5">
+                <button
+                  type="button"
+                  class="btn-mini bg-gray-500 hover:bg-gray-600"
+                  [disabled]="clientes.pagina() <= 0"
+                  (click)="clientes.irAPagina(clientes.pagina() - 1)"
+                >
+                  ← Anterior
+                </button>
+                <button
+                  type="button"
+                  class="btn-mini bg-gray-500 hover:bg-gray-600"
+                  [disabled]="clientes.pagina() + 1 >= clientes.totalPaginas()"
+                  (click)="clientes.irAPagina(clientes.pagina() + 1)"
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </div>
+          }
         }
       </div>
     </div>
@@ -93,6 +116,9 @@ import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.componen
         padding: 0.4rem 0.75rem;
         border-radius: 0.3rem;
         display: inline-block;
+      }
+      .btn-mini:disabled {
+        opacity: 0.5;
       }
     `,
   ],

@@ -99,6 +99,14 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
             Apagado (default): la firma es opcional, además de la foto y el nombre que ya se piden siempre.
             Prendido: no deja finalizar sin ella.
           </p>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" [(ngModel)]="checklistDocumentacionObligatorio" name="checklistDocumentacionObligatorio" />
+            <span class="text-sm text-gray-700">Exigir carnet + tarjeta verde + foto del vehículo cargados para poder activarse</span>
+          </label>
+          <p class="text-xs text-gray-400 -mt-2">
+            Apagado (default): un cadete se puede activar aunque le falte cargar documentación. Prendido: si le
+            falta algo, la app le avisa qué le falta y no lo deja pasar de "Desconectado" a "Libre".
+          </p>
         </section>
 
         <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
@@ -151,6 +159,14 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
           <p class="text-xs text-gray-400 -mt-2">
             Se muestra en el header de la página pública de seguimiento (el link que le llega al cliente por SMS).
           </p>
+          <label class="flex flex-col gap-1 max-w-xs">
+            <span class="text-sm font-medium text-gray-700">Teléfono de soporte para cadetes</span>
+            <input class="input" [(ngModel)]="telefonoSoporte" name="telefonoSoporte" placeholder="Ej: 3814000000" />
+          </label>
+          <p class="text-xs text-gray-400 -mt-2">
+            Se muestra en la pantalla de Ayuda de la app del cadete, con un botón para llamar directo. Vacío = esa
+            pantalla no muestra botón de llamar.
+          </p>
         </section>
 
         <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
@@ -174,6 +190,30 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
           <p class="text-xs text-gray-400 -mt-2">
             No bloquea la carga, solo muestra un aviso en Nuevo Pedido — para que el admin lo tenga en cuenta si
             corresponde un recargo o no conviene aceptarlo.
+          </p>
+        </section>
+
+        <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tarifas — cotización automática</h2>
+          <p class="text-xs text-gray-400">
+            Cuando se carga un pedido nuevo (desde el panel o desde "/pedir"), el sistema sugiere un precio solo:
+            si el origen cae dentro de una Zona con "precio sugerido" cargado, usa ese precio fijo; si no, calcula
+            distancia real origen→destino y cobra la base más el valor del km. Siempre es editable, nunca obliga.
+          </p>
+          <div class="grid sm:grid-cols-2 gap-4 max-w-sm">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Precio base del viaje ($)</span>
+              <input type="number" min="0" step="1" class="input" [(ngModel)]="precioBaseViaje" name="precioBaseViaje" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Precio por km ($)</span>
+              <input type="number" min="0" step="1" class="input" [(ngModel)]="precioPorKm" name="precioPorKm" />
+            </label>
+          </div>
+          <p class="text-xs text-gray-400 -mt-2">
+            Dejá "Precio por km" en 0 para desactivar la cotización por distancia (solo va a sugerir precio cuando
+            el origen caiga dentro de una Zona con precio cargado). El precio sugerido por Zona siempre tiene
+            prioridad sobre el cálculo por distancia — configurá el precio de cada Zona desde "Zonas".
           </p>
         </section>
 
@@ -367,7 +407,11 @@ export class ConfiguracionComponent implements OnInit {
   cloudinaryUploadPreset = '';
   versionMinimaApp: number | null = null;
   firmaReceptorObligatoria = false;
+  checklistDocumentacionObligatorio = false;
+  telefonoSoporte = '';
   metaMensualFacturacion: number | null = null;
+  precioBaseViaje: number | null = null;
+  precioPorKm: number | null = null;
   maxIntentosLogin: number | null = null;
   bloqueoLoginMin: number | null = null;
   pagoSemanalMonto: number | null = null;
@@ -402,7 +446,11 @@ export class ConfiguracionComponent implements OnInit {
       this.cloudinaryUploadPreset = v['cloudinary_upload_preset'] ?? '';
       this.versionMinimaApp = Number(v['version_minima_app'] ?? 1);
       this.firmaReceptorObligatoria = (v['firma_receptor_obligatoria'] ?? 'false') === 'true';
+      this.checklistDocumentacionObligatorio = (v['checklist_documentacion_obligatorio'] ?? 'false') === 'true';
+      this.telefonoSoporte = v['telefono_soporte'] ?? '';
       this.metaMensualFacturacion = Number(v['meta_mensual_facturacion'] ?? 0);
+      this.precioBaseViaje = Number(v['precio_base_viaje'] ?? 0);
+      this.precioPorKm = Number(v['precio_por_km'] ?? 0);
       this.maxIntentosLogin = Number(v['max_intentos_login'] ?? 5);
       this.bloqueoLoginMin = Number(v['bloqueo_login_min'] ?? 15);
       this.pagoSemanalMonto = Number(v['pago_semanal_monto'] ?? 5000);
@@ -464,7 +512,11 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('cloudinary_upload_preset', this.cloudinaryUploadPreset);
     agregarSiCambio('version_minima_app', String(this.versionMinimaApp ?? ''));
     agregarSiCambio('firma_receptor_obligatoria', String(this.firmaReceptorObligatoria));
+    agregarSiCambio('checklist_documentacion_obligatorio', String(this.checklistDocumentacionObligatorio));
+    agregarSiCambio('telefono_soporte', this.telefonoSoporte);
     agregarSiCambio('meta_mensual_facturacion', String(this.metaMensualFacturacion ?? 0));
+    agregarSiCambio('precio_base_viaje', String(this.precioBaseViaje ?? 0));
+    agregarSiCambio('precio_por_km', String(this.precioPorKm ?? 0));
     agregarSiCambio('max_intentos_login', String(this.maxIntentosLogin ?? ''));
     agregarSiCambio('bloqueo_login_min', String(this.bloqueoLoginMin ?? ''));
     agregarSiCambio('pago_semanal_monto', String(this.pagoSemanalMonto ?? ''));

@@ -30,6 +30,8 @@ export interface Pedido {
   fechaProgramada: string | null;
   creadoEn: string;
   asignadoEn: string | null;
+  /** Cuándo el cadete abrió la pantalla del viaje por primera vez estando la oferta PENDIENTE — null si todavía no la abrió. */
+  vistoEn: string | null;
   aceptadoEn: string | null;
   retiradoEn: string | null;
   finalizadoEn: string | null;
@@ -88,6 +90,14 @@ export interface PrecioLog {
   precioNuevo: number;
   cambiadoPorUsername: string;
   cambiadoEn: string;
+}
+
+/** "Pedidos finalizados" paginado (mejora 2026-09-16) — antes `?tipo=finalizados` traía el historial completo sin paginar. */
+export interface PaginaPedidos {
+  items: Pedido[];
+  total: number;
+  pagina: number;
+  totalPaginas: number;
 }
 
 export interface PedidoInput {

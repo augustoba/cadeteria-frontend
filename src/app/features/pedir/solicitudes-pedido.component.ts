@@ -6,6 +6,7 @@ import { SolicitudPedidoService } from '../../core/services/solicitud-pedido.ser
 import { ZonaService } from '../../core/services/zona.service';
 import { LookupService } from '../../core/services/lookup.service';
 import { ToastService } from '../../core/services/toast.service';
+import { CotizacionService } from '../../core/services/cotizacion.service';
 import { SolicitudPedido } from '../../core/models/solicitud-pedido.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
@@ -96,7 +97,17 @@ const ESTADO_CLASES: Record<string, string> = {
                     </label>
                     <label class="flex flex-col gap-1">
                       <span class="text-xs font-medium text-gray-700">Precio</span>
-                      <input type="number" min="0" step="1" class="input" [(ngModel)]="precioModal[s.id]" [name]="'precio-' + s.id" />
+                      <div class="flex gap-1">
+                        <input type="number" min="0" step="1" class="input flex-1" [(ngModel)]="precioModal[s.id]" [name]="'precio-' + s.id" />
+                        <button
+                          type="button"
+                          class="btn-mini bg-violet-600 hover:bg-violet-700"
+                          title="Sugerir precio por zona/distancia GPS"
+                          (click)="sugerirPrecio(s)"
+                        >
+                          💰
+                        </button>
+                      </div>
                     </label>
                     <label class="flex flex-col gap-1">
                       <span class="text-xs font-medium text-gray-700">Valor trámite</span>
@@ -193,6 +204,7 @@ export class SolicitudesPedidoComponent implements OnInit {
   readonly zonas = inject(ZonaService);
   readonly lookups = inject(LookupService);
   private readonly toast = inject(ToastService);
+  private readonly cotizacion = inject(CotizacionService);
 
   readonly ESTADO_CLASES = ESTADO_CLASES;
   readonly filtroActual = signal<string | null>('PENDIENTE');
@@ -252,6 +264,23 @@ export class SolicitudesPedidoComponent implements OnInit {
         this.filtrar(this.filtroActual());
       },
     );
+  }
+
+  /** Sugerencia de precio por GPS (mejora 2026-09-16) — por zona si el origen cae en una con precio cargado, si no por distancia real. */
+  sugerirPrecio(s: SolicitudPedido): void {
+    this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng).subscribe((c) => {
+      if (c.precioSugerido == null) {
+        this.toast.error('No hay zona con precio cargado ni "precio por km" configurado — cargalo a mano.');
+        return;
+      }
+      this.precioModal[s.id] = c.precioSugerido;
+      if (c.metodo === 'ZONA' && c.zonaId && !this.zonaSeleccionada[s.id]) {
+        this.zonaSeleccionada[s.id] = c.zonaId;
+      }
+      this.toast.success(
+        c.metodo === 'ZONA' ? `Sugerido por zona (${c.zonaNombre}).` : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`,
+      );
+    });
   }
 
   cotizar(s: SolicitudPedido): void {
