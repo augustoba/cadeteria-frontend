@@ -2,8 +2,13 @@ import { Component, EventEmitter, OnInit, Output, computed, effect, inject, sign
 import { CadeteService } from '../../core/services/cadete.service';
 import { GeocodingService } from '../../core/services/geocoding.service';
 import { MetricasService } from '../../core/services/metricas.service';
+import { PedidoService } from '../../core/services/pedido.service';
 import { Cadete } from '../../core/models/cadete.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
+
+/** Estados que "ocupan" a un cadete aunque siga LIBRE — mismo criterio que ESTADOS_OCUPAN_CADETE
+ * del backend (PedidoService.buscarCandidato). */
+const ESTADOS_OCUPAN_CADETE = new Set(['PENDIENTE', 'EN_CURSO']);
 
 /** Metros mínimos de movimiento para volver a resolver la dirección — evita pegarle a
  * Nominatim en cada micro-jitter del GPS (respeta el límite de ~1 req/seg). */
@@ -64,6 +69,7 @@ function hoyIso(): string {
                 <th class="py-2 pr-3 font-medium">Vehículo</th>
                 <th class="py-2 pr-3 font-medium" title="Modelo de cobro">Cobro</th>
                 <th class="py-2 pr-3 font-medium">Ubicación aproximada</th>
+                <th class="py-2 pr-3 font-medium" title="Viajes aceptados/en curso todavía sin finalizar">Sin finalizar</th>
                 <th class="py-2 pr-3 font-medium">Pedidos hoy</th>
                 <th class="py-2 pr-3 font-medium"></th>
               </tr>
@@ -83,6 +89,14 @@ function hoyIso(): string {
                     {{ c.modalidadPago === 'SEMANAL' ? '💵' : '%' }}
                   </td>
                   <td class="py-2 pr-3">{{ direccionDe(c) }}</td>
+                  <td class="py-2 pr-3 whitespace-nowrap">
+                    <span
+                      class="px-2 py-0.5 rounded text-xs font-medium"
+                      [class]="pendientesDe(c.id) > 0 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'"
+                    >
+                      {{ pendientesDe(c.id) }}
+                    </span>
+                  </td>
                   <td class="py-2 pr-3 whitespace-nowrap">
                     <span
                       class="px-2 py-0.5 rounded text-xs font-medium"
@@ -142,10 +156,37 @@ export class CadetesLibresComponent implements OnInit {
   private readonly cadetesSvc = inject(CadeteService);
   private readonly geocoding = inject(GeocodingService);
   private readonly metricasSvc = inject(MetricasService);
+  private readonly pedidosSvc = inject(PedidoService);
 
-  readonly libres = computed(() =>
-    this.cadetesSvc.cadetes().filter((c) => c.activo && c.estado.id === 'LIBRE' && c.lat != null && c.lng != null)
-  );
+  /** Cuántos viajes aceptados/en curso (sin finalizar) tiene cada cadete ahora mismo — mismo
+   * criterio que ESTADOS_OCUPAN_CADETE del backend. */
+  readonly pendientesPorCadete = computed(() => {
+    const mapa = new Map<string, number>();
+    for (const p of this.pedidosSvc.pedidos()) {
+      if (!ESTADOS_OCUPAN_CADETE.has(p.estado.id) || !p.cadeteAsignado) continue;
+      mapa.set(p.cadeteAsignado.id, (mapa.get(p.cadeteAsignado.id) ?? 0) + 1);
+    }
+    return mapa;
+  });
+
+  pendientesDe(cadeteId: string): number {
+    return this.pendientesPorCadete().get(cadeteId) ?? 0;
+  }
+
+  readonly libres = computed(() => {
+    const pendientes = this.pendientesPorCadete();
+    return this.cadetesSvc
+      .cadetes()
+      .filter((c) => c.activo && c.estado.id === 'LIBRE' && c.lat != null && c.lng != null)
+      // Primero los libres sin nada pendiente, después los que ya tienen uno o más viajes sin
+      // entregar encima — dentro de cada grupo, el que quedó libre primero, primero (FIFO).
+      .sort((a, b) => {
+        const aOcupado = (pendientes.get(a.id) ?? 0) > 0 ? 1 : 0;
+        const bOcupado = (pendientes.get(b.id) ?? 0) > 0 ? 1 : 0;
+        if (aOcupado !== bOcupado) return aOcupado - bOcupado;
+        return new Date(a.ordenColaEspera).getTime() - new Date(b.ordenColaEspera).getTime();
+      });
+  });
   readonly abierto = signal(true);
 
   /** Filtro por modelo de cobro (pedido del dueño) — para balancear carga entre cadetes semanales y por %. */
