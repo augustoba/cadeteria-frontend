@@ -29,7 +29,7 @@ import { PedidoService } from '../../core/services/pedido.service';
               <th>Destino</th>
               <th>Cliente</th>
               <th>Teléfono</th>
-              <th>Dinero</th>
+              <th>Valor trámite</th>
               <th>Firma de recibido</th>
             </tr>
           </thead>

@@ -96,7 +96,7 @@ const ESTADO_CLASES: Record<string, string> = {
                       </select>
                     </label>
                     <label class="flex flex-col gap-1">
-                      <span class="text-xs font-medium text-gray-700">Precio</span>
+                      <span class="text-xs font-medium text-gray-700">Valor trámite</span>
                       <div class="flex gap-1">
                         <input type="number" min="0" step="1" class="input flex-1" [(ngModel)]="precioModal[s.id]" [name]="'precio-' + s.id" />
                         <button
@@ -110,7 +110,7 @@ const ESTADO_CLASES: Record<string, string> = {
                       </div>
                     </label>
                     <label class="flex flex-col gap-1">
-                      <span class="text-xs font-medium text-gray-700">Valor trámite</span>
+                      <span class="text-xs font-medium text-gray-700">Dinero</span>
                       <input type="number" min="0" step="1" class="input" [(ngModel)]="montoModal[s.id]" [name]="'monto-' + s.id" />
                     </label>
                   </div>
@@ -268,7 +268,7 @@ export class SolicitudesPedidoComponent implements OnInit {
 
   /** Sugerencia de precio por GPS (mejora 2026-09-16) — por zona si el origen cae en una con precio cargado, si no por distancia real. */
   sugerirPrecio(s: SolicitudPedido): void {
-    this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng).subscribe((c) => {
+    this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng, this.montoModal[s.id]).subscribe((c) => {
       if (c.precioSugerido == null) {
         this.toast.error('No hay zona con precio cargado ni "precio por km" configurado — cargalo a mano.');
         return;

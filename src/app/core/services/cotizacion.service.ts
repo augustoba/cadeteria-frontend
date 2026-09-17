@@ -20,10 +20,19 @@ export interface Cotizacion {
 export class CotizacionService {
   private readonly http = inject(HttpClient);
 
-  cotizar(origenLat: number, origenLng: number, destinoLat?: number | null, destinoLng?: number | null) {
+  cotizar(
+    origenLat: number,
+    origenLng: number,
+    destinoLat?: number | null,
+    destinoLng?: number | null,
+    montoDeclarado?: number | null,
+  ) {
     let params = new HttpParams().set('origenLat', origenLat).set('origenLng', origenLng);
     if (destinoLat != null && destinoLng != null) {
       params = params.set('destinoLat', destinoLat).set('destinoLng', destinoLng);
+    }
+    if (montoDeclarado != null) {
+      params = params.set('montoDeclarado', montoDeclarado);
     }
     return this.http.get<Cotizacion>(apiUrl('/publico/cotizar'), { params });
   }

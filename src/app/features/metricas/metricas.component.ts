@@ -110,8 +110,8 @@ interface Delta {
                 <div class="tarjeta"><div class="valor text-gray-500">{{ r.sinAsignar }}</div><div class="etiqueta">Sin asignar</div></div>
                 <div class="tarjeta"><div class="valor text-amber-500">{{ r.pendientes }}</div><div class="etiqueta">Pendientes</div></div>
                 <div class="tarjeta"><div class="valor text-brand-600">{{ r.enCurso }}</div><div class="etiqueta">En curso</div></div>
-                <div class="tarjeta"><div class="valor text-emerald-700">$ {{ dineroCobrado() | number: '1.0-0' }}</div><div class="etiqueta">Dinero de trámites</div></div>
-                <div class="tarjeta"><div class="valor text-gray-700">$ {{ dineroTransportado() | number: '1.0-0' }}</div><div class="etiqueta">Costos de viaje</div></div>
+                <div class="tarjeta"><div class="valor text-emerald-700">$ {{ dineroCobrado() | number: '1.0-0' }}</div><div class="etiqueta">Valor de trámites</div></div>
+                <div class="tarjeta"><div class="valor text-gray-700">$ {{ dineroTransportado() | number: '1.0-0' }}</div><div class="etiqueta">Dinero transportado</div></div>
               </div>
             </section>
           }

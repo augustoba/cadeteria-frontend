@@ -182,7 +182,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               </select>
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Dinero</span>
+              <span class="text-sm font-medium text-gray-700">Valor trámite</span>
               <input
                 type="number"
                 min="0"
@@ -197,8 +197,16 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               }
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Valor trámite</span>
-              <input type="number" min="0" step="0.01" class="input" [(ngModel)]="montoDeclarado" name="montoDeclarado" />
+              <span class="text-sm font-medium text-gray-700">Dinero</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="input"
+                [ngModel]="montoDeclarado"
+                (ngModelChange)="onMontoDeclaradoChange($event)"
+                name="montoDeclarado"
+              />
             </label>
           </div>
 
@@ -418,17 +426,20 @@ export class NuevoPedidoComponent implements OnInit {
    * Cotización automática por GPS (mejora 2026-09-16): con origen y destino ya elegidos,
    * pide una sugerencia de precio — por Zona (la más cara entre la del origen y la del
    * destino, para no cobrar de menos en un viaje que sale del centro hacia una zona más
-   * lejana) o por distancia real si ninguna de las dos zonas tiene precio cargado. Hace
-   * falta el destino también: con solo el origen no se sabe si el viaje se queda adentro
-   * de esa zona o cruza a una más cara. Nunca pisa un precio ya cargado a mano ni bloquea
-   * nada si no hay sugerencia (ej. "precio por km" en 0).
+   * lejana) o por distancia real si ninguna de las dos zonas tiene precio cargado, más el
+   * recargo por dinero declarado si corresponde. Hace falta el destino también: con solo
+   * el origen no se sabe si el viaje se queda adentro de esa zona o cruza a una más cara.
+   * Nunca pisa un precio ya editado a mano — pero si el precio actual vino de una
+   * sugerencia anterior (`precioSugeridoInfo` todavía cargado), se puede volver a calcular,
+   * por ejemplo cuando el admin recién completa "Dinero" después de elegir las direcciones.
    */
   private sugerirPrecio(): void {
-    if (!this.origenPicked || !this.destinoPicked || this.precio != null) return;
+    if (!this.origenPicked || !this.destinoPicked) return;
+    if (this.precio != null && this.precioSugeridoInfo == null) return;
     this.cotizacion
-      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng)
+      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng, this.montoDeclarado)
       .subscribe((c) => {
-        if (this.precio != null || c.precioSugerido == null) return;
+        if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
         if (c.metodo === 'ZONA' && c.zonaId) {
           if (!this.zonaId) this.zonaId = c.zonaId;
@@ -437,6 +448,12 @@ export class NuevoPedidoComponent implements OnInit {
           this.precioSugeridoInfo = `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
         }
       });
+  }
+
+  /** Si ya hay origen/destino y el precio sigue siendo el sugerido (no lo tocaron a mano), recalcula al cambiar el dinero declarado. */
+  onMontoDeclaradoChange(valor: number | null): void {
+    this.montoDeclarado = valor;
+    this.sugerirPrecio();
   }
 
   guardar(seguirCargando: boolean, mismoOrigen = false): void {

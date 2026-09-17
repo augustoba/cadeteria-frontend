@@ -53,13 +53,21 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             }
 
             <label class="flex items-center gap-2">
-              <input type="checkbox" [(ngModel)]="llevaDinero" name="llevaDinero" />
+              <input type="checkbox" [ngModel]="llevaDinero" (ngModelChange)="onLlevaDineroChange($event)" name="llevaDinero" />
               <span class="text-sm text-gray-700">¿Lleva dinero?</span>
             </label>
             @if (llevaDinero) {
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">¿Cuánto?</span>
-                <input type="number" min="0" step="1" class="input" [(ngModel)]="montoDeclarado" name="montoDeclarado" />
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  class="input"
+                  [ngModel]="montoDeclarado"
+                  (ngModelChange)="onMontoDeclaradoChange($event)"
+                  name="montoDeclarado"
+                />
               </label>
             }
 
@@ -137,6 +145,16 @@ export class PedirComponent {
     this.actualizarEstimado();
   }
 
+  onLlevaDineroChange(valor: boolean): void {
+    this.llevaDinero = valor;
+    this.actualizarEstimado();
+  }
+
+  onMontoDeclaradoChange(valor: number | null): void {
+    this.montoDeclarado = valor;
+    this.actualizarEstimado();
+  }
+
   /** Solo un estimado para el cliente (mejora 2026-09-16) — no crea ni ata nada, la solicitud igual queda pendiente de revisión del admin. */
   private actualizarEstimado(): void {
     if (!this.origenPicked || !this.destinoPicked) {
@@ -144,8 +162,9 @@ export class PedirComponent {
       return;
     }
     this.cotizando.set(true);
+    const montoDeclarado = this.llevaDinero ? this.montoDeclarado : null;
     this.cotizacion
-      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng)
+      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng, montoDeclarado)
       .subscribe({
         next: (c) => {
           this.cotizando.set(false);
