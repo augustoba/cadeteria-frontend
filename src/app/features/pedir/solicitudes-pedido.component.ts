@@ -96,7 +96,7 @@ const ESTADO_CLASES: Record<string, string> = {
                       </select>
                     </label>
                     <label class="flex flex-col gap-1">
-                      <span class="text-xs font-medium text-gray-700">Precio</span>
+                      <span class="text-xs font-medium text-gray-700">Valor trámite</span>
                       <div class="flex gap-1">
                         <input type="number" min="0" step="1" class="input flex-1" [(ngModel)]="precioModal[s.id]" [name]="'precio-' + s.id" />
                         <button
@@ -110,7 +110,7 @@ const ESTADO_CLASES: Record<string, string> = {
                       </div>
                     </label>
                     <label class="flex flex-col gap-1">
-                      <span class="text-xs font-medium text-gray-700">Dinero transportado</span>
+                      <span class="text-xs font-medium text-gray-700">Dinero</span>
                       <input type="number" min="0" step="1" class="input" [(ngModel)]="montoModal[s.id]" [name]="'monto-' + s.id" />
                     </label>
                   </div>
@@ -277,8 +277,9 @@ export class SolicitudesPedidoComponent implements OnInit {
       if (c.metodo === 'ZONA' && c.zonaId && !this.zonaSeleccionada[s.id]) {
         this.zonaSeleccionada[s.id] = c.zonaId;
       }
-      const base = c.metodo === 'ZONA' ? `Sugerido por zona (${c.zonaNombre}).` : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`;
-      this.toast.success(c.recargoPorDinero ? `${base} + $${c.recargoPorDinero} por dinero transportado.` : base);
+      this.toast.success(
+        c.metodo === 'ZONA' ? `Sugerido por zona (${c.zonaNombre}).` : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`,
+      );
     });
   }
 

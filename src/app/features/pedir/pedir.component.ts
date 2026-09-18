@@ -62,7 +62,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             }
 
             <label class="flex items-center gap-2">
-              <input type="checkbox" [ngModel]="llevaDinero" (ngModelChange)="llevaDinero = $event; actualizarEstimado()" name="llevaDinero" />
+              <input type="checkbox" [ngModel]="llevaDinero" (ngModelChange)="onLlevaDineroChange($event)" name="llevaDinero" />
               <span class="text-sm text-gray-700">¿Lleva dinero?</span>
             </label>
             @if (llevaDinero) {
@@ -273,27 +273,26 @@ export class PedirComponent {
     this.actualizarEstimado();
   }
 
+  onLlevaDineroChange(valor: boolean): void {
+    this.llevaDinero = valor;
+    this.actualizarEstimado();
+  }
+
   /**
    * Solo un estimado para el cliente (mejora 2026-09-16) — no crea ni ata nada, la
    * solicitud igual queda pendiente de revisión del admin. Se recalcula también al
-   * tocar "¿Lleva dinero?"/el monto (mejora: recargo por dinero transportado), no solo
-   * al elegir origen/destino — si no, el estimado quedaría desactualizado porque esos
-   * campos aparecen después en el formulario.
+   * tocar "¿Lleva dinero?"/el monto, no solo al elegir origen/destino — si no, el
+   * estimado quedaría desactualizado porque esos campos aparecen después en el formulario.
    */
-  actualizarEstimado(): void {
+  private actualizarEstimado(): void {
     if (!this.origenPicked || !this.destinoPicked) {
       this.precioEstimado.set(null);
       return;
     }
     this.cotizando.set(true);
+    const montoDeclarado = this.llevaDinero ? this.montoDeclarado : null;
     this.cotizacion
-      .cotizar(
-        this.origenPicked.lat,
-        this.origenPicked.lng,
-        this.destinoPicked.lat,
-        this.destinoPicked.lng,
-        this.llevaDinero ? this.montoDeclarado : null,
-      )
+      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng, montoDeclarado)
       .subscribe({
         next: (c) => {
           this.cotizando.set(false);

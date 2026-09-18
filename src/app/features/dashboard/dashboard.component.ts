@@ -500,10 +500,10 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
             </section>
 
             <section class="bg-white rounded-lg border border-gray-200 p-3">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Dinero</h3>
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Importes</h3>
               <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
                 <div>
-                  <div class="text-xs text-gray-400">Precio</div>
+                  <div class="text-xs text-gray-400">Valor trámite</div>
                   @if (editandoPrecio()) {
                     <div class="flex items-center gap-1">
                       <input type="number" min="0" step="0.01" class="input !py-1 !text-sm w-24" [(ngModel)]="precioEditado" name="precioEditado" />
@@ -520,7 +520,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   }
                 </div>
                 <div>
-                  <div class="text-xs text-gray-400">Dinero transportado</div>
+                  <div class="text-xs text-gray-400">Dinero</div>
                   <div class="font-medium text-gray-800">$ {{ p.montoDeclarado }}</div>
                 </div>
               </div>

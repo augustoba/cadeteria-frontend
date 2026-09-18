@@ -43,7 +43,7 @@ export function claseEstadoPedido(estadoId: string): string {
             <th class="py-2 pr-3 font-medium">Cliente</th>
             <th class="py-2 pr-3 font-medium">Origen</th>
             <th class="py-2 pr-3 font-medium">Destino</th>
-            <th class="py-2 pr-3 font-medium">Dinero</th>
+            <th class="py-2 pr-3 font-medium">Valor trámite</th>
             <th class="py-2 pr-3 font-medium">Cadete</th>
             <th class="py-2 pr-3 font-medium">Horarios</th>
             <th class="py-2 pr-3 font-medium text-center" title="El cadete abrió el detalle del viaje">Visto</th>

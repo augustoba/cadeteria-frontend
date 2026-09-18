@@ -182,7 +182,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               </select>
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Precio del viaje</span>
+              <span class="text-sm font-medium text-gray-700">Valor trámite</span>
               <input
                 type="number"
                 min="0"
@@ -195,22 +195,18 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               @if (precioSugeridoInfo) {
                 <span class="text-xs text-emerald-600">💰 {{ precioSugeridoInfo }} — lo podés cambiar.</span>
               }
-              <div class="flex items-center gap-1 mt-1">
-                <span class="text-xs text-gray-500">Cotizar por:</span>
-                <select class="input text-xs py-1" [ngModel]="metodoCotizacion" (ngModelChange)="cambiarMetodoCotizacion($event)" name="metodoCotizacion">
-                  <option value="AUTO">Auto (zona, si no por km)</option>
-                  <option value="ZONA">Por zona</option>
-                  <option value="DISTANCIA">Por km</option>
-                </select>
-                <button type="button" class="btn-mini bg-gray-400 hover:bg-gray-500" title="Recalcular con el monto/método actual" (click)="cambiarMetodoCotizacion(metodoCotizacion)">
-                  🔄
-                </button>
-              </div>
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Dinero transportado</span>
-              <input type="number" min="0" step="0.01" class="input" [(ngModel)]="montoDeclarado" name="montoDeclarado" />
-              <span class="text-xs text-gray-400">Solo para avisarle al cadete que este viaje lleva plata/valores — no es el precio del viaje.</span>
+              <span class="text-sm font-medium text-gray-700">Dinero</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="input"
+                [ngModel]="montoDeclarado"
+                (ngModelChange)="onMontoDeclaradoChange($event)"
+                name="montoDeclarado"
+              />
             </label>
           </div>
 
@@ -283,7 +279,6 @@ export class NuevoPedidoComponent implements OnInit {
   tipoVehiculoRequeridoId: string | null = null;
   precio: number | null = null;
   precioSugeridoInfo: string | null = null;
-  metodoCotizacion: 'AUTO' | 'ZONA' | 'DISTANCIA' = 'AUTO';
   montoDeclarado: number | null = null;
   detalle = '';
 
@@ -431,41 +426,20 @@ export class NuevoPedidoComponent implements OnInit {
    * Cotización automática por GPS (mejora 2026-09-16): con origen y destino ya elegidos,
    * pide una sugerencia de precio — por Zona (la más cara entre la del origen y la del
    * destino, para no cobrar de menos en un viaje que sale del centro hacia una zona más
-   * lejana) o por distancia real si ninguna de las dos zonas tiene precio cargado. Hace
-   * falta el destino también: con solo el origen no se sabe si el viaje se queda adentro
-   * de esa zona o cruza a una más cara. Nunca pisa un precio ya cargado a mano ni bloquea
-   * nada si no hay sugerencia (ej. "precio por km" en 0).
+   * lejana) o por distancia real si ninguna de las dos zonas tiene precio cargado, más el
+   * recargo por dinero declarado si corresponde. Hace falta el destino también: con solo
+   * el origen no se sabe si el viaje se queda adentro de esa zona o cruza a una más cara.
+   * Nunca pisa un precio ya editado a mano — pero si el precio actual vino de una
+   * sugerencia anterior (`precioSugeridoInfo` todavía cargado), se puede volver a calcular,
+   * por ejemplo cuando el admin recién completa "Dinero" después de elegir las direcciones.
    */
   private sugerirPrecio(): void {
-    if (!this.origenPicked || !this.destinoPicked || this.precio != null) return;
-    this.pedirCotizacion(false);
-  }
-
-  /**
-   * Selector "Cotizar por" (mejora: elegir zona/km a mano en vez del automático) — a
-   * diferencia de sugerirPrecio(), esto SÍ pisa un precio ya cargado, porque es una
-   * acción explícita del admin (incluye el botón "recalcular", útil también para que el
-   * recargo por dinero transportado se aplique si se tipeó el monto después de cotizar).
-   */
-  cambiarMetodoCotizacion(metodo: 'AUTO' | 'ZONA' | 'DISTANCIA'): void {
-    this.metodoCotizacion = metodo;
     if (!this.origenPicked || !this.destinoPicked) return;
-    this.pedirCotizacion(true);
-  }
-
-  private pedirCotizacion(forzar: boolean): void {
-    const metodo = this.metodoCotizacion === 'AUTO' ? null : this.metodoCotizacion;
+    if (this.precio != null && this.precioSugeridoInfo == null) return;
     this.cotizacion
-      .cotizar(
-        this.origenPicked!.lat,
-        this.origenPicked!.lng,
-        this.destinoPicked!.lat,
-        this.destinoPicked!.lng,
-        this.montoDeclarado,
-        metodo,
-      )
+      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng, this.montoDeclarado)
       .subscribe((c) => {
-        if ((!forzar && this.precio != null) || c.precioSugerido == null) return;
+        if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
         if (c.metodo === 'ZONA' && c.zonaId) {
           if (!this.zonaId) this.zonaId = c.zonaId;
@@ -473,10 +447,13 @@ export class NuevoPedidoComponent implements OnInit {
         } else {
           this.precioSugeridoInfo = `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
         }
-        if (c.recargoPorDinero) {
-          this.precioSugeridoInfo += ` + $${c.recargoPorDinero} por dinero transportado`;
-        }
       });
+  }
+
+  /** Si ya hay origen/destino y el precio sigue siendo el sugerido (no lo tocaron a mano), recalcula al cambiar el dinero declarado. */
+  onMontoDeclaradoChange(valor: number | null): void {
+    this.montoDeclarado = valor;
+    this.sugerirPrecio();
   }
 
   guardar(seguirCargando: boolean, mismoOrigen = false): void {
@@ -570,7 +547,6 @@ export class NuevoPedidoComponent implements OnInit {
     this.tipoVehiculoRequeridoId = null;
     this.precio = null;
     this.precioSugeridoInfo = null;
-    this.metodoCotizacion = 'AUTO';
     this.montoDeclarado = null;
     this.detalle = '';
     this.destinoPickerRef()?.setValue(null);
@@ -591,7 +567,6 @@ export class NuevoPedidoComponent implements OnInit {
     this.paradas.set([]);
     this.precio = null;
     this.precioSugeridoInfo = null;
-    this.metodoCotizacion = 'AUTO';
     this.montoDeclarado = null;
     this.detalle = '';
     this.formKey.update((k) => k + 1);
