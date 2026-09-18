@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { SolicitudPedidoPublicoService } from '../../core/services/solicitud-pedido-publico.service';
 import { SolicitudPedidoInput } from '../../core/models/solicitud-pedido.model';
 import { CotizacionService } from '../../core/services/cotizacion.service';
+import { VerificacionTelefonoService } from '../../core/services/verificacion-telefono.service';
 import { AddressPickerComponent, PickedAddress } from '../../shared/address-picker.component';
 
 /**
@@ -21,7 +22,15 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
           <p class="text-white/80 text-xs mt-0.5">Completá los datos y te confirmamos en breve.</p>
         </div>
 
-        @if (enviado()) {
+        @if (disponible() === null) {
+          <p class="text-gray-400 text-sm py-6 text-center">Cargando…</p>
+        } @else if (!disponible()) {
+          <div class="p-6 flex flex-col items-center gap-3 text-center">
+            <span class="text-4xl">⏸</span>
+            <p class="text-gray-700 font-medium">No estamos tomando pedidos en este momento.</p>
+            <p class="text-sm text-gray-500">{{ mensajeNoDisponible() }}</p>
+          </div>
+        } @else if (enviado()) {
           <div class="p-6 flex flex-col items-center gap-3 text-center">
             <span class="text-4xl">✅</span>
             <p class="text-gray-700 font-medium">¡Listo! Recibimos tu pedido.</p>
@@ -35,12 +44,12 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de origen</span>
-              <app-address-picker (addressPicked)="onOrigenPicked($event)" />
+              <app-address-picker [modoPublico]="true" (addressPicked)="onOrigenPicked($event)" />
             </div>
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de destino</span>
-              <app-address-picker (addressPicked)="onDestinoPicked($event)" />
+              <app-address-picker [modoPublico]="true" (addressPicked)="onDestinoPicked($event)" />
             </div>
 
             @if (cotizando()) {
@@ -53,13 +62,21 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             }
 
             <label class="flex items-center gap-2">
-              <input type="checkbox" [(ngModel)]="llevaDinero" name="llevaDinero" />
+              <input type="checkbox" [ngModel]="llevaDinero" (ngModelChange)="llevaDinero = $event; actualizarEstimado()" name="llevaDinero" />
               <span class="text-sm text-gray-700">¿Lleva dinero?</span>
             </label>
             @if (llevaDinero) {
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">¿Cuánto?</span>
-                <input type="number" min="0" step="1" class="input" [(ngModel)]="montoDeclarado" name="montoDeclarado" />
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  class="input"
+                  [ngModel]="montoDeclarado"
+                  (ngModelChange)="onMontoDeclaradoChange($event)"
+                  name="montoDeclarado"
+                />
               </label>
             }
 
@@ -75,9 +92,55 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Teléfono de esa persona</span>
-                <input class="input" [(ngModel)]="clienteTelefono" name="clienteTelefono" placeholder="Teléfono" />
+                <input
+                  class="input"
+                  [ngModel]="clienteTelefono"
+                  (ngModelChange)="onTelefonoChange($event)"
+                  name="clienteTelefono"
+                  placeholder="Teléfono"
+                  [disabled]="verificandoCodigo()"
+                />
               </label>
             </div>
+
+            @if (!telefonoVerificado()) {
+              <div class="rounded bg-gray-50 border border-gray-200 px-3 py-2 flex flex-col gap-2">
+                @if (!codigoEnviado()) {
+                  <p class="text-xs text-gray-500">Antes de enviar el pedido, confirmamos que ese teléfono es real.</p>
+                  <button
+                    type="button"
+                    class="self-start bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-xs font-medium px-3 py-1.5 rounded"
+                    [disabled]="!clienteTelefono.trim() || enviandoCodigo()"
+                    (click)="enviarCodigo()"
+                  >
+                    {{ enviandoCodigo() ? 'Enviando…' : '📲 Enviar código por SMS' }}
+                  </button>
+                } @else {
+                  <p class="text-xs text-gray-500">Te mandamos un código por SMS a {{ clienteTelefono }} — vence en 10 minutos.</p>
+                  <div class="flex gap-2">
+                    <input class="input flex-1" [(ngModel)]="codigoInput" name="codigoInput" placeholder="Código de 6 dígitos" maxlength="6" />
+                    <button
+                      type="button"
+                      class="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-xs font-medium px-3 py-1.5 rounded"
+                      [disabled]="verificandoCodigo()"
+                      (click)="verificarCodigo()"
+                    >
+                      {{ verificandoCodigo() ? 'Verificando…' : 'Verificar' }}
+                    </button>
+                  </div>
+                  <button type="button" class="text-xs text-brand-600 hover:underline self-start" (click)="enviarCodigo()">
+                    Reenviar código
+                  </button>
+                }
+                @if (errorVerificacion()) {
+                  <p class="text-xs text-red-600">{{ errorVerificacion() }}</p>
+                }
+              </div>
+            } @else {
+              <div class="rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-2">
+                ✅ Teléfono verificado
+              </div>
+            }
 
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Detalle (opcional)</span>
@@ -87,7 +150,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <button
               type="button"
               class="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-3 rounded"
-              [disabled]="enviando()"
+              [disabled]="enviando() || !telefonoVerificado()"
               (click)="enviar()"
             >
               {{ enviando() ? 'Enviando…' : 'Pedir envío' }}
@@ -111,21 +174,94 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 export class PedirComponent {
   private readonly svc = inject(SolicitudPedidoPublicoService);
   private readonly cotizacion = inject(CotizacionService);
+  private readonly verificacionTelefono = inject(VerificacionTelefonoService);
+
+  /** null = todavía no se sabe (cargando). */
+  readonly disponible = signal<boolean | null>(null);
+  readonly mensajeNoDisponible = signal<string>('Volvé a intentar más tarde.');
+
+  constructor() {
+    this.svc.estado().subscribe({
+      next: (r) => {
+        this.disponible.set(r.disponible);
+        if (r.mensaje) this.mensajeNoDisponible.set(r.mensaje);
+      },
+      error: () => this.disponible.set(true), // si falla la consulta, no le bloqueamos el pedido a nadie por un error nuestro
+    });
+  }
 
   origenPicked: PickedAddress | null = null;
   destinoPicked: PickedAddress | null = null;
   llevaDinero = false;
   montoDeclarado: number | null = null;
+  private debounceMontoDeclarado: ReturnType<typeof setTimeout> | undefined;
+
+  /** Debounce simple — sin esto, cada dígito tipeado en "¿Cuánto?" dispara un pedido de cotización aparte. */
+  onMontoDeclaradoChange(valor: number | null): void {
+    this.montoDeclarado = valor;
+    clearTimeout(this.debounceMontoDeclarado);
+    this.debounceMontoDeclarado = setTimeout(() => this.actualizarEstimado(), 500);
+  }
   retornaAlOrigen = false;
   clienteNombre = '';
   clienteTelefono = '';
   detalle = '';
+  codigoInput = '';
 
   readonly enviando = signal(false);
   readonly enviado = signal(false);
   readonly error = signal<string | null>(null);
   readonly cotizando = signal(false);
   readonly precioEstimado = signal<number | null>(null);
+
+  readonly codigoEnviado = signal(false);
+  readonly enviandoCodigo = signal(false);
+  readonly verificandoCodigo = signal(false);
+  readonly telefonoVerificado = signal(false);
+  readonly errorVerificacion = signal<string | null>(null);
+  private verificacionToken: string | null = null;
+
+  /** Si cambia el teléfono después de haberlo verificado, hay que verificarlo de nuevo. */
+  onTelefonoChange(valor: string): void {
+    this.clienteTelefono = valor;
+    this.telefonoVerificado.set(false);
+    this.codigoEnviado.set(false);
+    this.verificacionToken = null;
+    this.errorVerificacion.set(null);
+  }
+
+  enviarCodigo(): void {
+    if (!this.clienteTelefono.trim()) return;
+    this.errorVerificacion.set(null);
+    this.enviandoCodigo.set(true);
+    this.verificacionTelefono.enviarCodigo(this.clienteTelefono.trim()).subscribe({
+      next: () => {
+        this.enviandoCodigo.set(false);
+        this.codigoEnviado.set(true);
+      },
+      error: (e) => {
+        this.enviandoCodigo.set(false);
+        this.errorVerificacion.set(e?.error?.message ?? 'No se pudo mandar el código — probá de nuevo.');
+      },
+    });
+  }
+
+  verificarCodigo(): void {
+    if (!this.codigoInput.trim()) return;
+    this.errorVerificacion.set(null);
+    this.verificandoCodigo.set(true);
+    this.verificacionTelefono.verificarCodigo(this.clienteTelefono.trim(), this.codigoInput.trim()).subscribe({
+      next: (r) => {
+        this.verificandoCodigo.set(false);
+        this.verificacionToken = r.token;
+        this.telefonoVerificado.set(true);
+      },
+      error: (e) => {
+        this.verificandoCodigo.set(false);
+        this.errorVerificacion.set(e?.error?.message ?? 'Código incorrecto.');
+      },
+    });
+  }
 
   onOrigenPicked(p: PickedAddress | null): void {
     this.origenPicked = p;
@@ -137,15 +273,27 @@ export class PedirComponent {
     this.actualizarEstimado();
   }
 
-  /** Solo un estimado para el cliente (mejora 2026-09-16) — no crea ni ata nada, la solicitud igual queda pendiente de revisión del admin. */
-  private actualizarEstimado(): void {
+  /**
+   * Solo un estimado para el cliente (mejora 2026-09-16) — no crea ni ata nada, la
+   * solicitud igual queda pendiente de revisión del admin. Se recalcula también al
+   * tocar "¿Lleva dinero?"/el monto (mejora: recargo por dinero transportado), no solo
+   * al elegir origen/destino — si no, el estimado quedaría desactualizado porque esos
+   * campos aparecen después en el formulario.
+   */
+  actualizarEstimado(): void {
     if (!this.origenPicked || !this.destinoPicked) {
       this.precioEstimado.set(null);
       return;
     }
     this.cotizando.set(true);
     this.cotizacion
-      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng)
+      .cotizar(
+        this.origenPicked.lat,
+        this.origenPicked.lng,
+        this.destinoPicked.lat,
+        this.destinoPicked.lng,
+        this.llevaDinero ? this.montoDeclarado : null,
+      )
       .subscribe({
         next: (c) => {
           this.cotizando.set(false);
@@ -172,6 +320,10 @@ export class PedirComponent {
       this.error.set('Completá por quién pregunta el cadete y el teléfono.');
       return;
     }
+    if (!this.telefonoVerificado() || !this.verificacionToken) {
+      this.error.set('Verificá el teléfono antes de enviar el pedido.');
+      return;
+    }
 
     const input: SolicitudPedidoInput = {
       origenDireccion: this.origenPicked.address,
@@ -186,6 +338,7 @@ export class PedirComponent {
       clienteNombre: this.clienteNombre.trim(),
       clienteTelefono: this.clienteTelefono.trim(),
       detalle: this.detalle.trim() || null,
+      verificacionToken: this.verificacionToken,
     };
 
     this.enviando.set(true);

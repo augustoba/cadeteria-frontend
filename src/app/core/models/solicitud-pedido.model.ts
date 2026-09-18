@@ -38,6 +38,8 @@ export interface SolicitudPedidoInput {
   clienteNombre: string;
   clienteTelefono: string;
   detalle: string | null;
+  /** Token de VerificacionTelefonoService.verificarCodigo (mejora 2026-09-17) — confirma que el teléfono es real. */
+  verificacionToken: string;
 }
 
 export interface RevisarSolicitudInput {

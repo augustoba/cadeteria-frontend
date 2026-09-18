@@ -10,14 +10,17 @@ export const authGuard: CanActivateFn = () => {
 };
 
 /**
- * Rutas de plata/config sensible (Configuración, Métricas, Pagos, Usuarios) — solo rol
- * DUENO (roles de admin, mejora 2026-09-16). El backend ya rechaza estas llamadas para un
- * OPERADOR (`hasRole("ADMIN_DUENO")` en SecurityConfig); este guard es solo para no
- * mostrarle una pantalla rota si entra a la URL a mano.
+ * Rutas sensibles (Configuración, Métricas, Pagos, Usuarios, WhatsApp, Roles) — cada una
+ * exige su propio permiso (roles configurables, mejora 2026-09-16 — antes era un único
+ * bit "DUENO" fijo). El backend ya rechaza estas llamadas sin el permiso correspondiente
+ * (`hasAuthority("PERM_x")` en SecurityConfig); este guard es solo para no mostrarle una
+ * pantalla rota si entra a la URL a mano.
  */
-export const duenoGuard: CanActivateFn = () => {
-  const auth = inject(AuthService);
-  const router = inject(Router);
-  if (!auth.isAuthenticated()) return router.createUrlTree(['/login']);
-  return auth.esDueno() ? true : router.createUrlTree(['/']);
-};
+export function permisoGuard(permiso: string): CanActivateFn {
+  return () => {
+    const auth = inject(AuthService);
+    const router = inject(Router);
+    if (!auth.isAuthenticated()) return router.createUrlTree(['/login']);
+    return auth.tienePermiso(permiso) ? true : router.createUrlTree(['/']);
+  };
+}

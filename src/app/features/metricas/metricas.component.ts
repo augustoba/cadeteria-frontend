@@ -189,6 +189,7 @@ interface Delta {
                     <th class="py-2 pr-3 font-medium">Horas online</th>
                     <th class="py-2 pr-3 font-medium">Aceptados</th>
                     <th class="py-2 pr-3 font-medium">Rechazados</th>
+                    <th class="py-2 pr-3 font-medium" title="Promedio entre que se le ofertó y que aceptó/rechazó">Resp. (seg)</th>
                     <th class="py-2 pr-3 font-medium">No aceptó a tiempo</th>
                     <th class="py-2 pr-3 font-medium">Finalizados</th>
                     <th class="py-2 pr-3 font-medium">$ transportado</th>
@@ -197,21 +198,22 @@ interface Delta {
                     <th class="py-2 pr-3 font-medium">Viajes/hora</th>
                     <th class="py-2 pr-3 font-medium">$/hora</th>
                     <th class="py-2 pr-3 font-medium">Calificación</th>
+                    <th class="py-2 pr-3 font-medium">Riesgo</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (c of cadetesOrdenados(); track c.cadeteId) {
-                    <tr class="border-b border-gray-100" [class.bg-red-50]="bajoDesempeno(c)">
+                    <tr class="border-b border-gray-100" [class.bg-red-50]="enRiesgo(c)">
                       <td class="py-2 pr-3 whitespace-nowrap">
-                        @if (bajoDesempeno(c)) {
-                          <span title="Muchos rechazos/no-aceptados en el rango">⚠️</span>
-                        }
                         {{ c.nombre }} {{ c.apellido }}
                       </td>
                       <td class="py-2 pr-3 whitespace-nowrap">{{ c.tipoVehiculo.nombre }}</td>
                       <td class="py-2 pr-3 whitespace-nowrap">{{ c.horasOnline | number: '1.1-1' }}</td>
                       <td class="py-2 pr-3 whitespace-nowrap">{{ c.viajesAceptados }}</td>
                       <td class="py-2 pr-3 whitespace-nowrap">{{ c.viajesRechazados }}</td>
+                      <td class="py-2 pr-3 whitespace-nowrap">
+                        {{ c.promedioSegundosRespuesta != null ? (c.promedioSegundosRespuesta | number: '1.0-0') : '—' }}
+                      </td>
                       <td class="py-2 pr-3 whitespace-nowrap">{{ c.viajesNoAceptados }}</td>
                       <td class="py-2 pr-3 whitespace-nowrap">{{ c.viajesFinalizados }}</td>
                       <td class="py-2 pr-3 whitespace-nowrap">$ {{ c.montoTransportadoTotal | number: '1.0-0' }}</td>
@@ -227,10 +229,17 @@ interface Delta {
                           <span class="text-xs text-gray-400">—</span>
                         }
                       </td>
+                      <td class="py-2 pr-3 whitespace-nowrap">
+                        @if (enRiesgo(c)) {
+                          <span class="text-red-600" [title]="motivoRiesgo(c)">⚠️ {{ motivoRiesgo(c) }}</span>
+                        } @else {
+                          <span class="text-xs text-gray-400">—</span>
+                        }
+                      </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="13" class="py-6 text-center text-gray-400">Sin datos en este rango.</td>
+                      <td colspan="15" class="py-6 text-center text-gray-400">Sin datos en este rango.</td>
                     </tr>
                   }
                 </tbody>
@@ -448,6 +457,18 @@ export class MetricasComponent implements OnInit {
 
   bajoDesempeno(c: CadeteMetrica): boolean {
     return c.viajesRechazados + c.viajesNoAceptados >= this.umbralBajoDesempeno();
+  }
+
+  /** Score de riesgo (mejora 2026-09-17): bajo desempeño en el rango, o incidencias abiertas ahora mismo. */
+  enRiesgo(c: CadeteMetrica): boolean {
+    return this.bajoDesempeno(c) || c.incidenciasAbiertas > 0;
+  }
+
+  motivoRiesgo(c: CadeteMetrica): string {
+    const motivos: string[] = [];
+    if (this.bajoDesempeno(c)) motivos.push('muchos rechazos/no-aceptados en el rango');
+    if (c.incidenciasAbiertas > 0) motivos.push(`${c.incidenciasAbiertas} incidencia(s) abierta(s)`);
+    return motivos.join(' · ');
   }
 
   valorRankingNumerico(c: CadeteMetrica, criterio: CriterioRanking): number {

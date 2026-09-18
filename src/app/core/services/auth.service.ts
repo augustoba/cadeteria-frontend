@@ -40,14 +40,24 @@ export class AuthService {
     return decodePayload(t.token).sub ?? '';
   });
 
-  /** "DUENO" u "OPERADOR" — ver [[roles de admin]]. Solo para mostrar/ocultar UI; la autorización real la hace el backend contra la base, no este claim. */
+  /** Id del rol (roles configurables, mejora 2026-09-16) — solo para mostrar/ocultar UI; la autorización real la hace el backend contra la base, no este claim. */
   readonly rol = computed(() => {
     const t = this.tokenSignal();
-    if (!t || t.expiresAt <= Date.now()) return 'DUENO';
-    return decodePayload(t.token).rol ?? 'DUENO';
+    if (!t || t.expiresAt <= Date.now()) return 'admin';
+    return decodePayload(t.token).rol ?? 'admin';
   });
 
-  readonly esDueno = computed(() => this.rol() === 'DUENO');
+  /** Set de permisos del rol actual, decodificado del JWT — ver RolService (backend) para el catálogo. */
+  readonly permisos = computed(() => {
+    const t = this.tokenSignal();
+    if (!t || t.expiresAt <= Date.now()) return new Set<string>();
+    const csv = decodePayload(t.token).permisos ?? '';
+    return new Set(csv.split(',').filter((p) => p));
+  });
+
+  tienePermiso(permiso: string): boolean {
+    return this.permisos().has(permiso);
+  }
 
   token(): string | null {
     const t = this.tokenSignal();
@@ -95,7 +105,7 @@ export class AuthService {
   }
 }
 
-function decodePayload(jwt: string): { sub?: string; rol?: string } {
+function decodePayload(jwt: string): { sub?: string; rol?: string; permisos?: string } {
   try {
     return JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
   } catch {

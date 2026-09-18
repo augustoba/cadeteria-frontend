@@ -4,7 +4,7 @@ import { apiUrl } from '../config/site-config';
 import { AdminUsuario, CrearAdminInput, CrearAdminResponse } from '../models/admin-usuario.model';
 import { CollectionStore } from '../state/collection-store';
 
-/** ABM de usuarios del panel (roles DUENO/OPERADOR) — solo llega a usarse si `AuthService.esDueno()`, el backend igual lo exige (`hasRole("ADMIN_DUENO")`). */
+/** ABM de usuarios del panel (roles configurables, mejora 2026-09-16) — solo llega a usarse con permiso "usuarios", el backend igual lo exige (`hasAuthority("PERM_usuarios")`). */
 @Injectable({ providedIn: 'root' })
 export class AdminUsuarioService {
   private readonly http = inject(HttpClient);
@@ -26,7 +26,7 @@ export class AdminUsuarioService {
     return this.http.post<CrearAdminResponse>(apiUrl('/admin/usuarios'), input);
   }
 
-  cambiarRol(id: string, rol: 'DUENO' | 'OPERADOR') {
+  cambiarRol(id: string, rol: string) {
     return this.http.patch<AdminUsuario>(apiUrl(`/admin/usuarios/${id}/rol`), { rol });
   }
 

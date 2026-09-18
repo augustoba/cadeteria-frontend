@@ -8,6 +8,8 @@ export interface Salud {
   pushConfigurado: boolean;
   emailConfigurado: boolean;
   webPushConfigurado: boolean;
+  geocodingOk: boolean;
+  whatsappGatewayConectado: boolean;
   smsFallidosPendientes: number;
   pedidosActivos: number;
   ultimoPedidoCreadoEn: string | null;

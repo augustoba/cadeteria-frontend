@@ -51,6 +51,9 @@ export interface Cadete {
   creditoDisponible: number;
   /** Notas libres del admin sobre este cadete (ronda 10, punto 103). */
   notasInternas: string | null;
+  /** Última versión de APK con la que se logueó — null si nunca lo reportó (mejora 2026-09-17). */
+  ultimaVersionApp: number | null;
+  ultimaVersionAppEn: string | null;
 }
 
 export interface CadeteEstadoLog {

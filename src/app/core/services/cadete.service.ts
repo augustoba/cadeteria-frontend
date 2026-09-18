@@ -98,6 +98,11 @@ export class CadeteService {
     this.store.mutate(this.http.patch(apiUrl(`/admin/cadetes/${id}/modalidad-pago`), { modalidadPago }), onSuccess);
   }
 
+  /** El admin le reenvía una contraseña temporal nueva — para cuando la original venció sin que entrara (10 min). */
+  reenviarPassword(id: string) {
+    return this.http.post<{ passwordTemporal: string }>(apiUrl(`/admin/cadetes/${id}/reenviar-password`), {});
+  }
+
   nombreDe(id: string): string {
     const c = this.cadetes().find((x) => x.id === id);
     return c ? `${c.nombre} ${c.apellido}` : 'un cadete';

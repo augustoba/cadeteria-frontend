@@ -77,7 +77,8 @@ function destinoPunto(lat: number, lng: number, distanciaM: number, bearingDeg: 
 export class MapaPickerComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() lat: number | null = null;
   @Input() lng: number | null = null;
-  @Input() centro: { lat: number; lng: number } = { lat: -34.6037, lng: -58.3816 };
+  /** Centro por default: Plaza Independencia, San Miguel de Tucumán — la ciudad donde opera la cadetería. */
+  @Input() centro: { lat: number; lng: number } = { lat: -26.8083, lng: -65.2176 };
   @Input() radioM: number | null = null;
   @Input() modoPoligono = false;
   /** Rectángulo: primer click marca una esquina, segundo click la esquina opuesta (ronda 10, punto 95). */
@@ -217,7 +218,10 @@ export class MapaPickerComponent implements AfterViewInit, OnChanges, OnDestroy 
         this.vertices[i] = { lat: p.lat, lng: p.lng };
         this.actualizarCapaPoligono();
       });
-      m.on('dragend', () => this.poligonoChange.emit([...this.vertices]));
+      m.on('dragend', () => {
+        this.poligonoChange.emit([...this.vertices]);
+        this.actualizarCentroDesdeVertices();
+      });
       m.on('dblclick', (ev: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(ev);
         this.vertices.splice(i, 1);
@@ -226,6 +230,12 @@ export class MapaPickerComponent implements AfterViewInit, OnChanges, OnDestroy 
       });
       return m;
     });
+
+    // Con la figura ya cerrada (rectángulo o polígono ≥3 vértices), el centro se calcula
+    // solo — en modoRectangulo/modoPoligono el mapa nunca deja pasar un click "en blanco"
+    // para marcarlo a mano (siempre lo toma como un vértice/esquina nuevo), así que pedirle
+    // ese paso aparte era un callejón sin salida (bug reportado: "no puedo marcar encima").
+    this.actualizarCentroDesdeVertices();
   }
 
   /** Actualiza solo la forma (polígono/línea) mientras se arrastra un vértice, sin recrear los marcadores. */
@@ -233,6 +243,15 @@ export class MapaPickerComponent implements AfterViewInit, OnChanges, OnDestroy 
     if (!this.map || !this.capaPoligono) return;
     const latLngs = this.vertices.map((v) => [v.lat, v.lng] as [number, number]);
     this.capaPoligono.setLatLngs(latLngs);
+  }
+
+  /** Centro = promedio de los vértices (centroide exacto para un rectángulo, buena aproximación para un polígono libre). */
+  private actualizarCentroDesdeVertices(): void {
+    if (this.vertices.length < 3) return;
+    const suma = this.vertices.reduce((acc, v) => ({ lat: acc.lat + v.lat, lng: acc.lng + v.lng }), { lat: 0, lng: 0 });
+    const centro = { lat: suma.lat / this.vertices.length, lng: suma.lng / this.vertices.length };
+    this.setMarker(centro.lat, centro.lng);
+    this.picked.emit(centro);
   }
 
   private setMarker(lat: number, lng: number): void {

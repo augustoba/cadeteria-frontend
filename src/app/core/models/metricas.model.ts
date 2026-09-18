@@ -28,6 +28,10 @@ export interface CadeteMetrica {
   promedioPrecioPorHora: number;
   promedioCalificacion: number | null;
   cantidadCalificaciones: number;
+  /** Incidencias ABIERTAS de este cadete ahora mismo, no del rango elegido (mejora 2026-09-17). */
+  incidenciasAbiertas: number;
+  /** null si no respondió ninguna oferta en el rango (mejora 2026-09-17). */
+  promedioSegundosRespuesta: number | null;
 }
 
 export interface Rechazo {

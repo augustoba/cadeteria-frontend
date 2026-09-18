@@ -520,7 +520,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   }
                 </div>
                 <div>
-                  <div class="text-xs text-gray-400">Valor trámite</div>
+                  <div class="text-xs text-gray-400">Dinero transportado</div>
                   <div class="font-medium text-gray-800">$ {{ p.montoDeclarado }}</div>
                 </div>
               </div>
@@ -1171,7 +1171,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       | 'imprimir'
       | 'detalle'
       | 'incidencia'
-      | 'prioritario';
+      | 'prioritario'
+      | 'buscar-cliente';
     pedido: Pedido;
   }): void {
     const { accion, pedido } = ev;
@@ -1181,6 +1182,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     if (accion === 'prioritario') {
       this.pedidos.setPrioritario(pedido.id, !pedido.prioritario);
+      return;
+    }
+    if (accion === 'buscar-cliente') {
+      this.busqueda.set(pedido.clienteTelefono);
       return;
     }
     if (accion === 'asignar') {

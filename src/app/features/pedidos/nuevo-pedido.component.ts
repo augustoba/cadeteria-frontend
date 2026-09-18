@@ -182,7 +182,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               </select>
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Dinero</span>
+              <span class="text-sm font-medium text-gray-700">Precio del viaje</span>
               <input
                 type="number"
                 min="0"
@@ -195,10 +195,22 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               @if (precioSugeridoInfo) {
                 <span class="text-xs text-emerald-600">💰 {{ precioSugeridoInfo }} — lo podés cambiar.</span>
               }
+              <div class="flex items-center gap-1 mt-1">
+                <span class="text-xs text-gray-500">Cotizar por:</span>
+                <select class="input text-xs py-1" [ngModel]="metodoCotizacion" (ngModelChange)="cambiarMetodoCotizacion($event)" name="metodoCotizacion">
+                  <option value="AUTO">Auto (zona, si no por km)</option>
+                  <option value="ZONA">Por zona</option>
+                  <option value="DISTANCIA">Por km</option>
+                </select>
+                <button type="button" class="btn-mini bg-gray-400 hover:bg-gray-500" title="Recalcular con el monto/método actual" (click)="cambiarMetodoCotizacion(metodoCotizacion)">
+                  🔄
+                </button>
+              </div>
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Valor trámite</span>
+              <span class="text-sm font-medium text-gray-700">Dinero transportado</span>
               <input type="number" min="0" step="0.01" class="input" [(ngModel)]="montoDeclarado" name="montoDeclarado" />
+              <span class="text-xs text-gray-400">Solo para avisarle al cadete que este viaje lleva plata/valores — no es el precio del viaje.</span>
             </label>
           </div>
 
@@ -271,6 +283,7 @@ export class NuevoPedidoComponent implements OnInit {
   tipoVehiculoRequeridoId: string | null = null;
   precio: number | null = null;
   precioSugeridoInfo: string | null = null;
+  metodoCotizacion: 'AUTO' | 'ZONA' | 'DISTANCIA' = 'AUTO';
   montoDeclarado: number | null = null;
   detalle = '';
 
@@ -425,16 +438,43 @@ export class NuevoPedidoComponent implements OnInit {
    */
   private sugerirPrecio(): void {
     if (!this.origenPicked || !this.destinoPicked || this.precio != null) return;
+    this.pedirCotizacion(false);
+  }
+
+  /**
+   * Selector "Cotizar por" (mejora: elegir zona/km a mano en vez del automático) — a
+   * diferencia de sugerirPrecio(), esto SÍ pisa un precio ya cargado, porque es una
+   * acción explícita del admin (incluye el botón "recalcular", útil también para que el
+   * recargo por dinero transportado se aplique si se tipeó el monto después de cotizar).
+   */
+  cambiarMetodoCotizacion(metodo: 'AUTO' | 'ZONA' | 'DISTANCIA'): void {
+    this.metodoCotizacion = metodo;
+    if (!this.origenPicked || !this.destinoPicked) return;
+    this.pedirCotizacion(true);
+  }
+
+  private pedirCotizacion(forzar: boolean): void {
+    const metodo = this.metodoCotizacion === 'AUTO' ? null : this.metodoCotizacion;
     this.cotizacion
-      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng)
+      .cotizar(
+        this.origenPicked!.lat,
+        this.origenPicked!.lng,
+        this.destinoPicked!.lat,
+        this.destinoPicked!.lng,
+        this.montoDeclarado,
+        metodo,
+      )
       .subscribe((c) => {
-        if (this.precio != null || c.precioSugerido == null) return;
+        if ((!forzar && this.precio != null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
         if (c.metodo === 'ZONA' && c.zonaId) {
           if (!this.zonaId) this.zonaId = c.zonaId;
           this.precioSugeridoInfo = `Sugerido por zona (${c.zonaNombre})`;
         } else {
           this.precioSugeridoInfo = `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
+        }
+        if (c.recargoPorDinero) {
+          this.precioSugeridoInfo += ` + $${c.recargoPorDinero} por dinero transportado`;
         }
       });
   }
@@ -530,6 +570,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.tipoVehiculoRequeridoId = null;
     this.precio = null;
     this.precioSugeridoInfo = null;
+    this.metodoCotizacion = 'AUTO';
     this.montoDeclarado = null;
     this.detalle = '';
     this.destinoPickerRef()?.setValue(null);
@@ -550,6 +591,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.paradas.set([]);
     this.precio = null;
     this.precioSugeridoInfo = null;
+    this.metodoCotizacion = 'AUTO';
     this.montoDeclarado = null;
     this.detalle = '';
     this.formKey.update((k) => k + 1);

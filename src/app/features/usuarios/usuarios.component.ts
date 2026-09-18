@@ -1,21 +1,23 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AdminUsuarioService } from '../../core/services/admin-usuario.service';
 import { AuthService } from '../../core/services/auth.service';
+import { RolService } from '../../core/services/rol.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AdminUsuario } from '../../core/models/admin-usuario.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 
 /**
- * ABM de usuarios del panel (roles DUENO/OPERADOR, mejora pedida por el dueño
- * 2026-09-16) — solo la ve/usa un admin con rol DUENO (guard `duenoGuard` en las rutas,
- * el backend lo exige igual). Un OPERADOR no tiene acceso a Configuración, Métricas,
- * Pagos ni acá.
+ * ABM de usuarios del panel (roles configurables, mejora pedida por el dueño 2026-09-16
+ * — antes DUENO/OPERADOR fijo) — solo la ve/usa un admin con permiso "usuarios" (guard
+ * `permisoGuard('usuarios')` en las rutas, el backend lo exige igual). Qué puede hacer
+ * cada rol se define ahora en "Roles".
  */
 @Component({
   selector: 'app-usuarios',
-  imports: [FormsModule, DatePipe, EmptyStateComponent],
+  imports: [FormsModule, DatePipe, RouterLink, EmptyStateComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -26,8 +28,7 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
       </div>
 
       <p class="text-xs text-gray-500 px-4 pt-3">
-        <strong>DUEÑO</strong>: acceso total. <strong>OPERADOR</strong>: todo el día a día (pedidos, cadetes, chat,
-        zonas, clientes, incidencias) pero sin ver ni tocar Configuración, Métricas, Pagos ni esta pantalla.
+        Qué puede hacer cada rol se define en <a routerLink="/roles" class="text-brand-600 hover:underline">Roles</a>.
       </p>
 
       <div class="p-4">
@@ -58,8 +59,9 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
                       (ngModelChange)="cambiarRol(u, $event)"
                       [disabled]="u.username === auth.username()"
                     >
-                      <option value="DUENO">DUEÑO</option>
-                      <option value="OPERADOR">OPERADOR</option>
+                      @for (r of roles.roles(); track r.id) {
+                        <option [value]="r.id">{{ r.nombre }}</option>
+                      }
                     </select>
                   </td>
                   <td class="py-2">
@@ -112,8 +114,9 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Rol</span>
               <select class="input" [(ngModel)]="nuevoRol" name="nuevoRol">
-                <option value="OPERADOR">OPERADOR</option>
-                <option value="DUENO">DUEÑO</option>
+                @for (r of roles.roles(); track r.id) {
+                  <option [value]="r.id">{{ r.nombre }}</option>
+                }
               </select>
             </label>
           </div>
@@ -136,7 +139,8 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
           <div class="p-5 flex flex-col gap-3 text-sm">
             <p class="text-gray-600">
               Pasásela a esta persona por un canal seguro — esta es la única vez que vas a poder verla, después
-              queda solo el hash.
+              queda solo el hash. <strong>Tiene 10 minutos para entrar con esta contraseña</strong> — si se vence
+              sin usarla, volvé a esta pantalla para reenviarle una nueva.
             </p>
             <div class="bg-gray-50 border border-gray-200 rounded p-3 flex flex-col gap-1.5">
               <div><span class="text-xs text-gray-400">Usuario</span><div class="font-mono font-medium text-gray-800">{{ c.username }}</div></div>
@@ -191,6 +195,7 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
 export class UsuariosComponent implements OnInit {
   readonly service = inject(AdminUsuarioService);
   readonly auth = inject(AuthService);
+  readonly roles = inject(RolService);
   private readonly toast = inject(ToastService);
 
   readonly nuevoAbierto = signal(false);
@@ -200,10 +205,11 @@ export class UsuariosComponent implements OnInit {
   readonly copiado = signal(false);
 
   nuevoUsername = '';
-  nuevoRol: 'DUENO' | 'OPERADOR' = 'OPERADOR';
+  nuevoRol = 'operador';
 
   ngOnInit(): void {
     this.service.ensureLoaded();
+    this.roles.ensureLoaded();
   }
 
   crear(): void {
@@ -218,7 +224,7 @@ export class UsuariosComponent implements OnInit {
         this.creando.set(false);
         this.nuevoAbierto.set(false);
         this.nuevoUsername = '';
-        this.nuevoRol = 'OPERADOR';
+        this.nuevoRol = 'operador';
         this.service.reload();
         this.credencialesGeneradas.set({ username: r.admin.username, passwordTemporal: r.passwordTemporal });
       },
@@ -229,10 +235,14 @@ export class UsuariosComponent implements OnInit {
     });
   }
 
-  cambiarRol(u: AdminUsuario, rol: 'DUENO' | 'OPERADOR'): void {
+  nombreRol(id: string): string {
+    return this.roles.roles().find((r) => r.id === id)?.nombre ?? id;
+  }
+
+  cambiarRol(u: AdminUsuario, rol: string): void {
     this.service.cambiarRol(u.id, rol).subscribe({
       next: () => {
-        this.toast.success(`${u.username} ahora es ${rol === 'DUENO' ? 'DUEÑO' : 'OPERADOR'}.`);
+        this.toast.success(`${u.username} ahora es ${this.nombreRol(rol)}.`);
         this.service.reload();
       },
       error: (err) => this.toast.error(err.error?.message ?? 'No se pudo cambiar el rol.'),

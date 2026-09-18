@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, duenoGuard } from './core/guards/auth.guard';
+import { authGuard, permisoGuard } from './core/guards/auth.guard';
 import { ShellComponent } from './layout/shell.component';
 
 /**
@@ -80,9 +80,14 @@ export const routes: Routes = [
       {
         path: 'pagos',
         loadComponent: () => import('./features/pagos/pagos.component').then((m) => m.PagosComponent),
-        canActivate: [duenoGuard],
+        canActivate: [permisoGuard('pagos')],
       },
       { path: 'chat', loadComponent: () => import('./features/chat/chat.component').then((m) => m.ChatComponent) },
+      {
+        path: 'whatsapp',
+        loadComponent: () => import('./features/whatsapp/whatsapp.component').then((m) => m.WhatsappComponent),
+        canActivate: [permisoGuard('whatsapp')],
+      },
       {
         path: 'incidencias',
         loadComponent: () => import('./features/incidencias/incidencias.component').then((m) => m.IncidenciasComponent),
@@ -90,17 +95,22 @@ export const routes: Routes = [
       {
         path: 'configuracion',
         loadComponent: () => import('./features/configuracion/configuracion.component').then((m) => m.ConfiguracionComponent),
-        canActivate: [duenoGuard],
+        canActivate: [permisoGuard('configuracion')],
       },
       {
         path: 'metricas',
         loadComponent: () => import('./features/metricas/metricas.component').then((m) => m.MetricasComponent),
-        canActivate: [duenoGuard],
+        canActivate: [permisoGuard('metricas')],
       },
       {
         path: 'usuarios',
         loadComponent: () => import('./features/usuarios/usuarios.component').then((m) => m.UsuariosComponent),
-        canActivate: [duenoGuard],
+        canActivate: [permisoGuard('usuarios')],
+      },
+      {
+        path: 'roles',
+        loadComponent: () => import('./features/roles/roles.component').then((m) => m.RolesComponent),
+        canActivate: [permisoGuard('roles')],
       },
       { path: '**', redirectTo: '' },
     ],

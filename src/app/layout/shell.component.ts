@@ -13,8 +13,8 @@ interface NavItem {
   label: string;
   path: string;
   icon: string;
-  /** true = solo visible para el rol DUENO (roles de admin, mejora 2026-09-16). */
-  soloDueno?: boolean;
+  /** Si está, el ítem solo aparece si el admin tiene este permiso (roles configurables, mejora 2026-09-16). */
+  permisoRequerido?: string;
 }
 
 const NAV: NavItem[] = [
@@ -24,12 +24,14 @@ const NAV: NavItem[] = [
   { label: 'Zonas', path: '/zonas', icon: '📍' },
   { label: 'Clientes', path: '/clientes', icon: '👤' },
   { label: 'Pedidos web', path: '/solicitudes-pedido', icon: '📩' },
-  { label: 'Pagos', path: '/pagos', icon: '💵', soloDueno: true },
+  { label: 'Pagos', path: '/pagos', icon: '💵', permisoRequerido: 'pagos' },
   { label: 'Chat', path: '/chat', icon: '💬' },
+  { label: 'WhatsApp', path: '/whatsapp', icon: '📲', permisoRequerido: 'whatsapp' },
   { label: 'Incidencias', path: '/incidencias', icon: '🎫' },
-  { label: 'Métricas', path: '/metricas', icon: '📊', soloDueno: true },
-  { label: 'Configuración', path: '/configuracion', icon: '⚙️', soloDueno: true },
-  { label: 'Usuarios', path: '/usuarios', icon: '👥', soloDueno: true },
+  { label: 'Métricas', path: '/metricas', icon: '📊', permisoRequerido: 'metricas' },
+  { label: 'Configuración', path: '/configuracion', icon: '⚙️', permisoRequerido: 'configuracion' },
+  { label: 'Usuarios', path: '/usuarios', icon: '👥', permisoRequerido: 'usuarios' },
+  { label: 'Roles', path: '/roles', icon: '🔑', permisoRequerido: 'roles' },
 ];
 
 interface AlertaAdminWs {
@@ -42,6 +44,9 @@ interface AlertaAdminWs {
   solicitudId?: string;
   clienteNombre?: string;
   origenDireccion?: string;
+  /** Solo para tipo === 'WHATSAPP_CHIP_BANEADO'. */
+  chipId?: string;
+  numero?: string;
 }
 
 interface MensajeChatWs {
@@ -240,7 +245,7 @@ export class ShellComponent implements OnInit {
   readonly chat = inject(ChatService);
   readonly theme = inject(ThemeService);
 
-  readonly nav = computed(() => (this.auth.esDueno() ? NAV : NAV.filter((n) => !n.soloDueno)));
+  readonly nav = computed(() => NAV.filter((n) => !n.permisoRequerido || this.auth.tienePermiso(n.permisoRequerido)));
   readonly collapsed = signal(false);
   readonly mobileOpen = signal(false);
   readonly sidebarIconOnly = computed(() => this.collapsed() && !this.mobileOpen());
@@ -307,6 +312,10 @@ export class ShellComponent implements OnInit {
         this.reproducirBeep();
         const mensaje = `📩 ${alerta.clienteNombre} cargó un pedido desde /pedir (origen: ${alerta.origenDireccion}) — revisalo en "Pedidos web".`;
         this.toast.info(mensaje);
+        this.agregarAlertaSesion(mensaje);
+      } else if (alerta.tipo === 'WHATSAPP_CHIP_BANEADO') {
+        const mensaje = `🚫 El chip de WhatsApp ${alerta.chipId} (${alerta.numero || 'sin número'}) fue baneado — revisalo en "WhatsApp".`;
+        this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       }
     });

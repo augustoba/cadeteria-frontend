@@ -16,6 +16,12 @@ const ESTADO_CLASES: Record<string, string> = {
   DESCONECTADO: 'bg-gray-200 text-gray-600',
 };
 
+type TabCadetes = 'activos' | 'baja';
+const TABS: Array<{ tipo: TabCadetes; label: string }> = [
+  { tipo: 'activos', label: 'Activos' },
+  { tipo: 'baja', label: 'Dados de baja' },
+];
+
 @Component({
   selector: 'app-cadetes',
   imports: [RouterLink, FormsModule, DecimalPipe, DatePipe, EmptyStateComponent, LoadingSkeletonComponent],
@@ -32,7 +38,23 @@ const ESTADO_CLASES: Record<string, string> = {
         </div>
       </div>
 
-      <div class="px-4 py-2 border-b border-gray-200">
+      <div class="border-b border-gray-200 px-4 flex items-center gap-4 text-sm">
+        @for (tab of tabs; track tab.tipo) {
+          <button
+            type="button"
+            class="py-3 border-b-2 -mb-px transition-colors"
+            [class.border-brand-600]="tab.tipo === activeTab()"
+            [class.text-brand-600]="tab.tipo === activeTab()"
+            [class.border-transparent]="tab.tipo !== activeTab()"
+            [class.text-gray-500]="tab.tipo !== activeTab()"
+            (click)="activeTab.set(tab.tipo)"
+          >
+            {{ tab.label }} ({{ contarPorTab(tab.tipo) }})
+          </button>
+        }
+      </div>
+
+      <div class="px-4 py-2 border-b border-gray-200 flex flex-wrap items-center gap-2">
         <input
           type="search"
           class="input w-full sm:w-80"
@@ -41,6 +63,16 @@ const ESTADO_CLASES: Record<string, string> = {
           (ngModelChange)="busqueda.set($event)"
           name="busqueda"
         />
+        @if (activeTab() === 'activos') {
+          <div class="flex gap-1.5 flex-wrap">
+            <button type="button" class="btn-mini" [class]="claseFiltroEstado('')" (click)="filtroEstado.set('')">Todos</button>
+            <button type="button" class="btn-mini" [class]="claseFiltroEstado('LIBRE')" (click)="filtroEstado.set('LIBRE')">Libre</button>
+            <button type="button" class="btn-mini" [class]="claseFiltroEstado('OCUPADO')" (click)="filtroEstado.set('OCUPADO')">Ocupado</button>
+            <button type="button" class="btn-mini" [class]="claseFiltroEstado('DESCONECTADO')" (click)="filtroEstado.set('DESCONECTADO')">
+              Desconectado
+            </button>
+          </div>
+        }
       </div>
 
       <div class="p-4 overflow-x-auto">
@@ -56,11 +88,11 @@ const ESTADO_CLASES: Record<string, string> = {
                 <th class="py-2 pr-3 font-medium">DNI</th>
                 <th class="py-2 pr-3 font-medium">Teléfono</th>
                 <th class="py-2 pr-3 font-medium">Usuario</th>
+                <th class="py-2 pr-3 font-medium" title="Versión de APK con la que se logueó la última vez">App</th>
                 <th class="py-2 pr-3 font-medium">Vehículo</th>
                 <th class="py-2 pr-3 font-medium">Calificación</th>
                 <th class="py-2 pr-3 font-medium">Estado</th>
                 <th class="py-2 pr-3 font-medium">Pago</th>
-                <th class="py-2 pr-3 font-medium">Activo</th>
                 <th class="py-2 pr-3 font-medium"></th>
               </tr>
             </thead>
@@ -71,6 +103,13 @@ const ESTADO_CLASES: Record<string, string> = {
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.dni }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.telefono }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.username }}</td>
+                  <td class="py-2 pr-3 whitespace-nowrap">
+                    @if (c.ultimaVersionApp != null) {
+                      <span [title]="'Último login: ' + (c.ultimaVersionAppEn | date: 'short')">v{{ c.ultimaVersionApp }}</span>
+                    } @else {
+                      <span class="text-xs text-gray-400">—</span>
+                    }
+                  </td>
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.tipoVehiculo.nombre }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">
                     @if (c.calificacionPromedio != null) {
@@ -124,24 +163,6 @@ const ESTADO_CLASES: Record<string, string> = {
                       </div>
                     }
                   </td>
-                  <td class="py-2 pr-3 whitespace-nowrap">
-                    <div class="flex items-center gap-1">
-                      <span
-                        class="px-2 py-0.5 rounded text-xs font-medium"
-                        [class]="c.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'"
-                      >
-                        {{ c.activo ? 'Activo' : 'Inactivo' }}
-                      </span>
-                      <button
-                        type="button"
-                        class="btn-mini"
-                        [class]="c.activo ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'"
-                        (click)="toggleActivo(c)"
-                      >
-                        {{ c.activo ? 'Dar de baja' : 'Reactivar' }}
-                      </button>
-                    </div>
-                  </td>
                   <td class="py-2 pr-3 whitespace-nowrap flex gap-1">
                     @if (c.lat != null && c.lng != null) {
                       <a [routerLink]="['/mapa']" [queryParams]="{ cadeteId: c.id }" class="btn-mini bg-purple-600 hover:bg-purple-700">
@@ -151,6 +172,14 @@ const ESTADO_CLASES: Record<string, string> = {
                     <a [routerLink]="['/hoja-ruta', c.id]" target="_blank" class="btn-mini bg-indigo-600 hover:bg-indigo-700">
                       🖨️ Hoja de ruta
                     </a>
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      [class]="c.activo ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                      (click)="toggleActivo(c)"
+                    >
+                      {{ c.activo ? 'Dar de baja' : 'Reactivar' }}
+                    </button>
                     <button type="button" class="btn-mini bg-amber-600 hover:bg-amber-700" (click)="abrirIncidenciaCadete(c)">
                       🚨 Incidencia
                     </button>
@@ -160,8 +189,12 @@ const ESTADO_CLASES: Record<string, string> = {
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="10">
-                    <app-empty-state icono="🏍️" mensaje="Todavía no hay cadetes cargados." hint="Dalos de alta con el botón de arriba." />
+                  <td colspan="9">
+                    <app-empty-state
+                      icono="🏍️"
+                      [mensaje]="activeTab() === 'baja' ? 'No hay cadetes dados de baja.' : 'No hay cadetes que coincidan con el filtro.'"
+                      [hint]="activeTab() === 'baja' ? '' : 'Dalos de alta con el botón de arriba.'"
+                    />
                   </td>
                 </tr>
               }
@@ -421,18 +454,36 @@ export class CadetesComponent implements OnInit {
   readonly avisosRecientes = signal<AvisoGeneral[]>([]);
   mensajeAviso = '';
 
+  readonly tabs = TABS;
+  readonly activeTab = signal<TabCadetes>('activos');
+  readonly filtroEstado = signal<'' | 'LIBRE' | 'OCUPADO' | 'DESCONECTADO'>('');
+
   readonly busqueda = signal('');
   readonly cadetesFiltrados = computed(() => {
     const q = this.busqueda().trim().toLowerCase();
-    if (!q) return this.cadetes.cadetes();
-    return this.cadetes.cadetes().filter(
-      (c) =>
+    const tab = this.activeTab();
+    const estado = this.filtroEstado();
+    return this.cadetes.cadetes().filter((c) => {
+      if (c.activo !== (tab === 'activos')) return false;
+      if (tab === 'activos' && estado && c.estado.id !== estado) return false;
+      if (!q) return true;
+      return (
         `${c.nombre} ${c.apellido}`.toLowerCase().includes(q) ||
         c.dni.toLowerCase().includes(q) ||
         c.telefono.toLowerCase().includes(q) ||
-        c.username.toLowerCase().includes(q),
-    );
+        c.username.toLowerCase().includes(q)
+      );
+    });
   });
+
+  /** Cuenta por solapa sin aplicar el filtro de estado/búsqueda — para el número al lado de cada solapa. */
+  contarPorTab(tab: TabCadetes): number {
+    return this.cadetes.cadetes().filter((c) => c.activo === (tab === 'activos')).length;
+  }
+
+  claseFiltroEstado(estado: string): string {
+    return this.filtroEstado() === estado ? 'bg-brand-600 hover:bg-brand-700' : 'bg-gray-300 hover:bg-gray-400 text-gray-700';
+  }
 
   ngOnInit(): void {
     this.cadetes.ensureLoaded();

@@ -52,6 +52,23 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
             lógica que el botón "Asignar" del dashboard) sin esperar a que lo confirmes. Apagada (default): asignar
             sigue siendo 100% manual.
           </p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Radio "cerca" para priorizar candidatos (km)</span>
+              <input type="number" min="0" step="0.5" class="input" [(ngModel)]="asignacionRadioKm" name="asignacionRadioKm" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Distancia máxima de viaje para BICI (km)</span>
+              <input type="number" min="0" step="0.5" class="input" [(ngModel)]="distanciaMaximaBiciKm" name="distanciaMaximaBiciKm" placeholder="0 = sin límite" />
+            </label>
+          </div>
+          <p class="text-xs text-gray-400 -mt-2">
+            El orden de oferta ya prioriza libres-sin-viajes sobre libres-con-viajes; dentro de cada grupo, ahora
+            también prioriza a quien está dentro de este radio del origen antes que a quien está más lejos (sin
+            excluir a nadie, solo lo pospone). Si el pedido pide BICI y el viaje (origen→destino) supera la
+            distancia máxima de acá, la asignación automática no se lo ofrece a nadie — 0 = sin límite. Vos podés
+            seguir asignando a mano igual si te parece razonable en un caso puntual.
+          </p>
         </section>
 
         <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
@@ -173,7 +190,7 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
           <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Horario de atención</h2>
           <label class="flex items-center gap-2">
             <input type="checkbox" [(ngModel)]="horarioAtencionActivo" name="horarioAtencionActivo" />
-            <span class="text-sm text-gray-700">Avisar si se carga un pedido fuera de este horario</span>
+            <span class="text-sm text-gray-700">Solo tomar pedidos de "/pedir" dentro de este horario</span>
           </label>
           @if (horarioAtencionActivo) {
             <div class="grid sm:grid-cols-2 gap-4 max-w-sm">
@@ -188,8 +205,25 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
             </div>
           }
           <p class="text-xs text-gray-400 -mt-2">
-            No bloquea la carga, solo muestra un aviso en Nuevo Pedido — para que el admin lo tenga en cuenta si
-            corresponde un recargo o no conviene aceptarlo.
+            Fuera de este horario, la página pública "/pedir" muestra un aviso en vez del formulario — el cliente
+            no puede cargar el pedido. En el panel (Nuevo Pedido) nunca bloquea, solo avisa: vos siempre podés
+            cargar a mano si corresponde.
+          </p>
+
+          <label class="flex items-center gap-2 pt-2 border-t border-gray-100">
+            <input type="checkbox" [(ngModel)]="pedidosPausados" name="pedidosPausados" />
+            <span class="text-sm text-gray-700">Pausar "/pedir" ahora mismo (por ejemplo, falta de cadetes)</span>
+          </label>
+          @if (pedidosPausados) {
+            <label class="flex flex-col gap-1 max-w-sm">
+              <span class="text-sm font-medium text-gray-700">Mensaje para el cliente</span>
+              <textarea class="input" rows="2" [(ngModel)]="pedidosPausadosMensaje" name="pedidosPausadosMensaje"></textarea>
+            </label>
+          }
+          <p class="text-xs text-gray-400 -mt-2">
+            Corta la toma de pedidos nuevos al toque, sin importar el horario configurado arriba — para cuando
+            hay que frenar por falta de cadetes libres o cualquier otro motivo puntual. No afecta el seguimiento
+            de pedidos ya cargados.
           </p>
         </section>
 
@@ -213,7 +247,23 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
           <p class="text-xs text-gray-400 -mt-2">
             Dejá "Precio por km" en 0 para desactivar la cotización por distancia (solo va a sugerir precio cuando
             el origen caiga dentro de una Zona con precio cargado). El precio sugerido por Zona siempre tiene
-            prioridad sobre el cálculo por distancia — configurá el precio de cada Zona desde "Zonas".
+            prioridad sobre el cálculo por distancia — configurá el precio de cada Zona desde "Zonas". Desde el
+            formulario de carga de pedido también se puede forzar "por zona" o "por km" a mano.
+          </p>
+          <div class="grid sm:grid-cols-2 gap-4 max-w-sm">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Recargo por dinero — cada ($)</span>
+              <input type="number" min="0" step="1" class="input" [(ngModel)]="recargoDineroCada" name="recargoDineroCada" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Recargo por dinero — monto ($)</span>
+              <input type="number" min="0" step="1" class="input" [(ngModel)]="recargoDineroMonto" name="recargoDineroMonto" />
+            </label>
+          </div>
+          <p class="text-xs text-gray-400 -mt-2">
+            Si el pedido lleva dinero/valores, se suma al precio sugerido "Monto" por cada "Cada $" declarados
+            (redondeado hacia abajo — con 10000/100, declarar $25000 suma $200). Dejá cualquiera de los dos en 0
+            para desactivar el recargo.
           </p>
         </section>
 
@@ -293,6 +343,14 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
                 <span class="text-gray-700">Web Push en seguimiento {{ s.webPushConfigurado ? '' : '(sin configurar)' }}</span>
               </div>
               <div class="flex items-center gap-2 rounded border border-gray-200 px-3 py-2">
+                <span>{{ s.geocodingOk ? '🟢' : '🔴' }}</span>
+                <span class="text-gray-700">Geocoding (Nominatim) {{ s.geocodingOk ? '' : '(última consulta falló)' }}</span>
+              </div>
+              <div class="flex items-center gap-2 rounded border border-gray-200 px-3 py-2">
+                <span>{{ s.whatsappGatewayConectado ? '🟢' : '🔴' }}</span>
+                <span class="text-gray-700">Gateway de WhatsApp {{ s.whatsappGatewayConectado ? '' : '(desconectado)' }}</span>
+              </div>
+              <div class="flex items-center gap-2 rounded border border-gray-200 px-3 py-2">
                 <span>{{ s.smsFallidosPendientes > 0 ? '🟡' : '🟢' }}</span>
                 <span class="text-gray-700">{{ s.smsFallidosPendientes }} SMS sin poder enviar</span>
               </div>
@@ -335,6 +393,24 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
                 }
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Retención de datos</h2>
+          <p class="text-xs text-gray-400">
+            0 = nunca borrar (comportamiento de siempre). Con un número, un job diario borra los mensajes más
+            viejos que eso. Nunca borra un WhatsApp ligado a un pedido que todavía no terminó, aunque sea viejo.
+          </p>
+          <div class="grid sm:grid-cols-2 gap-4 max-w-sm">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Historial de WhatsApp (días)</span>
+              <input type="number" min="0" step="1" class="input" [(ngModel)]="retencionWhatsappDias" name="retencionWhatsappDias" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Chat interno con cadetes (días)</span>
+              <input type="number" min="0" step="1" class="input" [(ngModel)]="retencionChatDias" name="retencionChatDias" />
+            </label>
           </div>
         </section>
 
@@ -400,6 +476,8 @@ export class ConfiguracionComponent implements OnInit {
   tiempoLimiteAceptacionSeg: number | null = null;
   frecuenciaUbicacionSeg: number | null = null;
   asignacionAutomatica = false;
+  asignacionRadioKm: number | null = null;
+  distanciaMaximaBiciKm: number | null = null;
   alertaDemoraRetiroMin: number | null = null;
   alertaDemoraFinalizacionMin: number | null = null;
   alertaInactividadMin: number | null = null;
@@ -412,6 +490,8 @@ export class ConfiguracionComponent implements OnInit {
   metaMensualFacturacion: number | null = null;
   precioBaseViaje: number | null = null;
   precioPorKm: number | null = null;
+  recargoDineroCada: number | null = null;
+  recargoDineroMonto: number | null = null;
   maxIntentosLogin: number | null = null;
   bloqueoLoginMin: number | null = null;
   pagoSemanalMonto: number | null = null;
@@ -424,6 +504,10 @@ export class ConfiguracionComponent implements OnInit {
   horarioAtencionActivo = false;
   horarioAtencionDesde = '08:00';
   horarioAtencionHasta = '22:00';
+  pedidosPausados = false;
+  pedidosPausadosMensaje = '';
+  retencionWhatsappDias: number | null = null;
+  retencionChatDias: number | null = null;
 
   readonly guardando = signal(false);
   readonly mensaje = signal<string | null>(null);
@@ -439,6 +523,8 @@ export class ConfiguracionComponent implements OnInit {
       this.tiempoLimiteAceptacionSeg = Number(v['tiempo_limite_aceptacion_seg'] ?? 120);
       this.frecuenciaUbicacionSeg = Number(v['frecuencia_ubicacion_seg'] ?? 45);
       this.asignacionAutomatica = (v['asignacion_automatica'] ?? 'false') === 'true';
+      this.asignacionRadioKm = Number(v['asignacion_radio_km'] ?? 5);
+      this.distanciaMaximaBiciKm = Number(v['distancia_maxima_bici_km'] ?? 0);
       this.alertaDemoraRetiroMin = Number(v['alerta_demora_retiro_min'] ?? 30);
       this.alertaDemoraFinalizacionMin = Number(v['alerta_demora_finalizacion_min'] ?? 60);
       this.alertaInactividadMin = Number(v['alerta_inactividad_min'] ?? 20);
@@ -451,6 +537,8 @@ export class ConfiguracionComponent implements OnInit {
       this.metaMensualFacturacion = Number(v['meta_mensual_facturacion'] ?? 0);
       this.precioBaseViaje = Number(v['precio_base_viaje'] ?? 0);
       this.precioPorKm = Number(v['precio_por_km'] ?? 0);
+      this.recargoDineroCada = Number(v['recargo_dinero_cada'] ?? 0);
+      this.recargoDineroMonto = Number(v['recargo_dinero_monto'] ?? 0);
       this.maxIntentosLogin = Number(v['max_intentos_login'] ?? 5);
       this.bloqueoLoginMin = Number(v['bloqueo_login_min'] ?? 15);
       this.pagoSemanalMonto = Number(v['pago_semanal_monto'] ?? 5000);
@@ -463,6 +551,10 @@ export class ConfiguracionComponent implements OnInit {
       this.horarioAtencionActivo = (v['horario_atencion_activo'] ?? 'false') === 'true';
       this.horarioAtencionDesde = v['horario_atencion_desde'] ?? '08:00';
       this.horarioAtencionHasta = v['horario_atencion_hasta'] ?? '22:00';
+      this.pedidosPausados = (v['pedidos_pausados'] ?? 'false') === 'true';
+      this.pedidosPausadosMensaje = v['pedidos_pausados_mensaje'] ?? 'Estamos pausados temporalmente, disculpá las molestias.';
+      this.retencionWhatsappDias = Number(v['retencion_whatsapp_dias'] ?? 0);
+      this.retencionChatDias = Number(v['retencion_chat_dias'] ?? 0);
     });
   }
 
@@ -505,6 +597,8 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('tiempo_limite_aceptacion_seg', String(this.tiempoLimiteAceptacionSeg ?? ''));
     agregarSiCambio('frecuencia_ubicacion_seg', String(this.frecuenciaUbicacionSeg ?? ''));
     agregarSiCambio('asignacion_automatica', String(this.asignacionAutomatica));
+    agregarSiCambio('asignacion_radio_km', String(this.asignacionRadioKm ?? 5));
+    agregarSiCambio('distancia_maxima_bici_km', String(this.distanciaMaximaBiciKm ?? 0));
     agregarSiCambio('alerta_demora_retiro_min', String(this.alertaDemoraRetiroMin ?? ''));
     agregarSiCambio('alerta_demora_finalizacion_min', String(this.alertaDemoraFinalizacionMin ?? ''));
     agregarSiCambio('alerta_inactividad_min', String(this.alertaInactividadMin ?? ''));
@@ -517,6 +611,8 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('meta_mensual_facturacion', String(this.metaMensualFacturacion ?? 0));
     agregarSiCambio('precio_base_viaje', String(this.precioBaseViaje ?? 0));
     agregarSiCambio('precio_por_km', String(this.precioPorKm ?? 0));
+    agregarSiCambio('recargo_dinero_cada', String(this.recargoDineroCada ?? 0));
+    agregarSiCambio('recargo_dinero_monto', String(this.recargoDineroMonto ?? 0));
     agregarSiCambio('max_intentos_login', String(this.maxIntentosLogin ?? ''));
     agregarSiCambio('bloqueo_login_min', String(this.bloqueoLoginMin ?? ''));
     agregarSiCambio('pago_semanal_monto', String(this.pagoSemanalMonto ?? ''));
@@ -529,6 +625,10 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('horario_atencion_activo', String(this.horarioAtencionActivo));
     agregarSiCambio('horario_atencion_desde', this.horarioAtencionDesde);
     agregarSiCambio('horario_atencion_hasta', this.horarioAtencionHasta);
+    agregarSiCambio('pedidos_pausados', String(this.pedidosPausados));
+    agregarSiCambio('pedidos_pausados_mensaje', this.pedidosPausadosMensaje);
+    agregarSiCambio('retencion_whatsapp_dias', String(this.retencionWhatsappDias ?? 0));
+    agregarSiCambio('retencion_chat_dias', String(this.retencionChatDias ?? 0));
 
     if (!cambios.length) {
       this.mensaje.set('No hay cambios para guardar.');

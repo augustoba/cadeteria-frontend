@@ -12,6 +12,11 @@ export class SolicitudPedidoPublicoService {
     return this.http.post<{ id: string }>(apiUrl('/publico/solicitudes-pedido'), input);
   }
 
+  /** Si está pausado o fuera de horario, no muestra el formulario (mejora 2026-09-17). */
+  estado() {
+    return this.http.get<{ disponible: boolean; mensaje: string | null }>(apiUrl('/publico/solicitudes-pedido/estado'));
+  }
+
   verCotizacion(token: string) {
     return this.http.get<ConfirmacionPublica>(apiUrl(`/publico/solicitudes-pedido/confirmar/${token}`));
   }

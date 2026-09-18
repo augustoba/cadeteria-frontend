@@ -12,7 +12,8 @@ type Accion =
   | 'imprimir'
   | 'detalle'
   | 'incidencia'
-  | 'prioritario';
+  | 'prioritario'
+  | 'buscar-cliente';
 
 const TAMANO_PAGINA = 15;
 
@@ -39,6 +40,7 @@ export function claseEstadoPedido(estadoId: string): string {
         <thead>
           <tr class="text-left text-gray-500 border-b border-gray-200">
             <th class="py-2 pr-3 font-medium">Nº</th>
+            <th class="py-2 pr-3 font-medium">Cliente</th>
             <th class="py-2 pr-3 font-medium">Origen</th>
             <th class="py-2 pr-3 font-medium">Destino</th>
             <th class="py-2 pr-3 font-medium">Dinero</th>
@@ -67,6 +69,23 @@ export function claseEstadoPedido(estadoId: string): string {
                   {{ p.prioritario ? '⭐' : '☆' }}
                 </button>
                 {{ p.numero }}
+              </td>
+              <td class="py-2 pr-3 whitespace-nowrap">
+                <button
+                  type="button"
+                  class="text-left hover:underline"
+                  [title]="'Ver todos los pedidos activos de ' + p.clienteNombre"
+                  (click)="accion.emit({ accion: 'buscar-cliente', pedido: p })"
+                >
+                  {{ p.clienteNombre }}
+                </button>
+                @if (contarMismoCliente(p); as n) {
+                  @if (n > 0) {
+                    <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-brand-100 text-brand-700 font-medium" [title]="'Tiene ' + n + ' pedido(s) activo(s) más'">
+                      +{{ n }}
+                    </span>
+                  }
+                }
               </td>
               <td class="py-2 pr-3">{{ p.origenDireccion }}</td>
               <td class="py-2 pr-3">{{ p.destinoDireccion }}</td>
@@ -234,6 +253,11 @@ export class TablaPedidosComponent implements OnChanges {
 
   hora(iso: string): string {
     return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** Cuántos OTROS pedidos de esta misma lista (activos) son del mismo cliente — para agruparlos de un vistazo. */
+  contarMismoCliente(p: Pedido): number {
+    return this.pedidos.filter((x) => x.clienteTelefono === p.clienteTelefono).length - 1;
   }
 
   claseEstado(p: Pedido): string {
