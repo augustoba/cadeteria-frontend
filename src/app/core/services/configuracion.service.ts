@@ -6,6 +6,15 @@ interface ConfiguracionResponse {
   valores: Record<string, string>;
 }
 
+export interface EstadoApiKey {
+  proveedor: string;
+  claveEnmascarada: string;
+  estado: 'OK' | 'AGOTADA';
+  restante: number | null;
+  restanteEstimado: boolean;
+  actualizadoEn: string;
+}
+
 /**
  * Parametros globales editables desde el panel (tiempo limite de aceptacion,
  * frecuencia de ubicacion, credenciales de Cloudinary) — diseno-tecnico.md
@@ -53,5 +62,10 @@ export class ConfiguracionService {
       },
       error: () => onError?.(),
     });
+  }
+
+  /** Semáforo de las API keys de geocoding/rutas (verde/rojo, y cupo restante si el proveedor lo informa). */
+  estadoApiKeys() {
+    return this.http.get<EstadoApiKey[]>(apiUrl('/admin/configuracion/api-keys/estado'));
   }
 }

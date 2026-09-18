@@ -2,7 +2,7 @@ import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ConfiguracionService } from '../../core/services/configuracion.service';
+import { ConfiguracionService, EstadoApiKey } from '../../core/services/configuracion.service';
 import { SeguridadService } from '../../core/services/seguridad.service';
 import { SaludService, Salud } from '../../core/services/salud.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -69,7 +69,16 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
               <span class="text-sm font-medium text-gray-700">Reintentar con cualquiera igual pasados (minutos)</span>
               <input type="number" min="1" step="1" class="input" [(ngModel)]="minutosPedidoUrgenteReintentar" name="minutosUrgente" />
             </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Distancia máxima de viaje para BICI (km)</span>
+              <input type="number" min="0" step="0.5" class="input" [(ngModel)]="distanciaMaximaBiciKm" name="distanciaMaximaBiciKm" placeholder="0 = sin límite" />
+            </label>
           </div>
+          <p class="text-xs text-gray-400 -mt-2">
+            Si el pedido pide BICI y el viaje (origen→destino) supera esta distancia, la asignación automática/sugerida
+            no se lo ofrece a nadie — 0 = sin límite. Vos podés seguir asignando a mano igual si te parece razonable
+            en un caso puntual.
+          </p>
           <p class="text-xs text-gray-400 -mt-2">
             El primer campo limita cuántos viajes sin terminar le puede dar de una la asignación automática/sugerida a
             un mismo cadete, sin importar cuánto soporte él mismo (eso lo define "Máx. viajes simultáneos" en su
@@ -307,23 +316,32 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
         </section>
 
         <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
-          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Rutas — distancia real por calle</h2>
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Rutas y geocoding — cuentas gratuitas</h2>
           <p class="text-xs text-gray-400">
             Para que "Precio por km" cotice con la distancia real (no en línea recta) se prueban, en este orden:
             <strong>OSRM</strong> (gratis, sin API key, siempre disponible), después <strong>GraphHopper</strong> (gratis
             con key propia, 500 consultas/día) y por último <strong>OpenRouteService</strong> (gratis con key propia,
             2500 consultas/día — también se usa para la ruta sugerida al cadete al aceptar un viaje). Si ninguna
-            responde, se sigue usando la línea recta como respaldo. Las keys son gratuitas y propias de cada
-            cadetería, por eso se cargan acá y no vienen precargadas.
+            responde, se sigue usando la línea recta como respaldo. <strong>Geoapify</strong> es la que busca
+            direcciones en "Pedir online" (además de Nominatim, que no necesita key).
+          </p>
+          <p class="text-xs text-gray-400 -mt-2">
+            Podés cargar <strong>más de una cuenta gratuita por proveedor</strong> — una key por línea (o separadas
+            por coma). Apenas una se queda sin cupo del día, se pasa sola a la siguiente sin que tengas que hacer
+            nada; el estado de cada una se ve en la tabla de abajo.
           </p>
           <div class="grid sm:grid-cols-2 gap-4 max-w-xl">
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">GraphHopper — API key</span>
-              <input type="text" class="input" [(ngModel)]="graphhopperKey" name="graphhopperKey" placeholder="Sacala gratis en graphhopper.com" />
+              <span class="text-sm font-medium text-gray-700">Geoapify — API keys (direcciones)</span>
+              <textarea class="input" rows="2" [(ngModel)]="geoapifyKeys" name="geoapifyKeys" placeholder="Sacalas gratis en geoapify.com — una por línea"></textarea>
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">OpenRouteService — API key</span>
-              <input type="text" class="input" [(ngModel)]="openRouteServiceKey" name="openRouteServiceKey" placeholder="Sacala gratis en openrouteservice.org" />
+              <span class="text-sm font-medium text-gray-700">GraphHopper — API keys (distancia)</span>
+              <textarea class="input" rows="2" [(ngModel)]="graphhopperKey" name="graphhopperKey" placeholder="Sacalas gratis en graphhopper.com — una por línea"></textarea>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">OpenRouteService — API keys (distancia)</span>
+              <textarea class="input" rows="2" [(ngModel)]="openRouteServiceKey" name="openRouteServiceKey" placeholder="Sacalas gratis en openrouteservice.org — una por línea"></textarea>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">OpenRouteService — URL (opcional)</span>
@@ -334,6 +352,54 @@ import { AccesoLog } from '../../core/models/acceso-log.model';
             Dejá la URL en blanco para usar la de siempre (https://api.heigit.org/openrouteservice). Solo cambiala si
             en tu cuenta de OpenRouteService figura otro host (revisá el ejemplo de request en su panel de API docs).
           </p>
+
+          <div class="flex flex-col gap-2 mt-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado de las cuentas cargadas</span>
+              <button type="button" class="text-xs text-brand-600 hover:underline" (click)="cargarEstadoApiKeys()">
+                {{ cargandoEstadoApiKeys() ? 'Actualizando…' : '🔄 Actualizar' }}
+              </button>
+            </div>
+            @if (estadoApiKeys().length === 0) {
+              <p class="text-xs text-gray-400">Todavía no hay ninguna key cargada (guardá los cambios de arriba primero).</p>
+            } @else {
+              <table class="text-xs w-full max-w-xl">
+                <thead>
+                  <tr class="text-left text-gray-400">
+                    <th class="font-medium pb-1">Proveedor</th>
+                    <th class="font-medium pb-1">Cuenta</th>
+                    <th class="font-medium pb-1">Estado</th>
+                    <th class="font-medium pb-1">Quedan hoy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (e of estadoApiKeys(); track e.proveedor + e.claveEnmascarada) {
+                    <tr class="border-t border-gray-100">
+                      <td class="py-1">{{ nombreProveedor(e.proveedor) }}</td>
+                      <td class="py-1 font-mono text-gray-600">{{ e.claveEnmascarada }}</td>
+                      <td class="py-1">
+                        <span
+                          class="inline-block w-2 h-2 rounded-full mr-1"
+                          [class.bg-emerald-500]="e.estado === 'OK'"
+                          [class.bg-red-500]="e.estado === 'AGOTADA'"
+                        ></span>
+                        {{ e.estado === 'OK' ? 'Con cupo' : 'Sin cupo — probamos la siguiente' }}
+                      </td>
+                      <td class="py-1">
+                        {{ e.restante == null ? '—' : (e.restanteEstimado ? '~' : '') + e.restante }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              <p class="text-xs text-gray-400">
+                El número con "~" es una estimación nuestra (límite diario conocido del plan gratuito menos las
+                consultas que ya hizo el sistema hoy con esa key) — puede no ser exacto si la usaste también fuera de
+                acá. Sin "~" es el dato real que devuelve el proveedor (hoy solo OpenRouteService lo informa). Una
+                cuenta "Sin cupo" se vuelve a probar sola a las 24hs.
+              </p>
+            }
+          </div>
         </section>
 
         <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
@@ -548,6 +614,7 @@ export class ConfiguracionComponent implements OnInit {
   asignacionAutomaticaMaxViajesCadete: number | null = null;
   maxRechazosPorPedido: number | null = null;
   minutosPedidoUrgenteReintentar: number | null = null;
+  distanciaMaximaBiciKm: number | null = null;
   asignacionPriorizaRankingAceptacion = false;
   alertaDemoraRetiroMin: number | null = null;
   alertaDemoraFinalizacionMin: number | null = null;
@@ -565,9 +632,12 @@ export class ConfiguracionComponent implements OnInit {
   precioPorKm: number | null = null;
   recargoDineroUmbral: number | null = null;
   recargoDineroMonto: number | null = null;
+  geoapifyKeys = '';
   graphhopperKey = '';
   openRouteServiceKey = '';
   openRouteServiceUrl = '';
+  readonly estadoApiKeys = signal<EstadoApiKey[]>([]);
+  readonly cargandoEstadoApiKeys = signal(false);
   maxIntentosLogin: number | null = null;
   bloqueoLoginMin: number | null = null;
   pagoSemanalMonto: number | null = null;
@@ -602,6 +672,7 @@ export class ConfiguracionComponent implements OnInit {
       this.asignacionAutomaticaMaxViajesCadete = Number(v['asignacion_automatica_max_viajes_cadete'] ?? 1);
       this.maxRechazosPorPedido = Number(v['max_rechazos_por_pedido'] ?? 3);
       this.minutosPedidoUrgenteReintentar = Number(v['minutos_pedido_urgente_reintentar'] ?? 30);
+      this.distanciaMaximaBiciKm = Number(v['distancia_maxima_bici_km'] ?? 0);
       this.asignacionPriorizaRankingAceptacion = (v['asignacion_prioriza_ranking_aceptacion'] ?? 'false') === 'true';
       this.alertaDemoraRetiroMin = Number(v['alerta_demora_retiro_min'] ?? 30);
       this.alertaDemoraFinalizacionMin = Number(v['alerta_demora_finalizacion_min'] ?? 60);
@@ -619,6 +690,7 @@ export class ConfiguracionComponent implements OnInit {
       this.precioPorKm = Number(v['precio_por_km'] ?? 0);
       this.recargoDineroUmbral = Number(v['recargo_dinero_transportado_umbral'] ?? 0);
       this.recargoDineroMonto = Number(v['recargo_dinero_transportado_monto'] ?? 0);
+      this.geoapifyKeys = v['geoapify_keys'] ?? '';
       this.graphhopperKey = v['graphhopper_key'] ?? '';
       this.openRouteServiceKey = v['open_route_service_key'] ?? '';
       this.openRouteServiceUrl = v['open_route_service_url'] ?? '';
@@ -645,6 +717,27 @@ export class ConfiguracionComponent implements OnInit {
     this.config.ensureLoaded();
     this.seguridad.accesos().subscribe((a) => this.accesos.set(a));
     this.cargarSalud();
+    this.cargarEstadoApiKeys();
+  }
+
+  cargarEstadoApiKeys(): void {
+    this.cargandoEstadoApiKeys.set(true);
+    this.config.estadoApiKeys().subscribe({
+      next: (r) => {
+        this.cargandoEstadoApiKeys.set(false);
+        this.estadoApiKeys.set(r);
+      },
+      error: () => this.cargandoEstadoApiKeys.set(false),
+    });
+  }
+
+  nombreProveedor(proveedor: string): string {
+    const nombres: Record<string, string> = {
+      geoapify: 'Geoapify (direcciones)',
+      graphhopper: 'GraphHopper (distancia)',
+      openrouteservice: 'OpenRouteService (distancia)',
+    };
+    return nombres[proveedor] ?? proveedor;
   }
 
   cargarSalud(): void {
@@ -683,6 +776,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('asignacion_automatica_max_viajes_cadete', String(this.asignacionAutomaticaMaxViajesCadete ?? ''));
     agregarSiCambio('max_rechazos_por_pedido', String(this.maxRechazosPorPedido ?? ''));
     agregarSiCambio('minutos_pedido_urgente_reintentar', String(this.minutosPedidoUrgenteReintentar ?? ''));
+    agregarSiCambio('distancia_maxima_bici_km', String(this.distanciaMaximaBiciKm ?? 0));
     agregarSiCambio('asignacion_prioriza_ranking_aceptacion', String(this.asignacionPriorizaRankingAceptacion));
     agregarSiCambio('alerta_demora_retiro_min', String(this.alertaDemoraRetiroMin ?? ''));
     agregarSiCambio('alerta_demora_finalizacion_min', String(this.alertaDemoraFinalizacionMin ?? ''));
@@ -700,6 +794,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('precio_por_km', String(this.precioPorKm ?? 0));
     agregarSiCambio('recargo_dinero_transportado_umbral', String(this.recargoDineroUmbral ?? 0));
     agregarSiCambio('recargo_dinero_transportado_monto', String(this.recargoDineroMonto ?? 0));
+    agregarSiCambio('geoapify_keys', this.geoapifyKeys);
     agregarSiCambio('graphhopper_key', this.graphhopperKey);
     agregarSiCambio('open_route_service_key', this.openRouteServiceKey);
     agregarSiCambio('open_route_service_url', this.openRouteServiceUrl);
