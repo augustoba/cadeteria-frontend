@@ -47,6 +47,10 @@ interface AlertaAdminWs {
   /** Solo para tipo === 'WHATSAPP_CHIP_BANEADO'. */
   chipId?: string;
   numero?: string;
+  /** Solo para tipo === 'API_KEY_POOL_AGOTADO' | 'API_KEY_POOL_BAJO'. */
+  proveedor?: string;
+  /** Solo para tipo === 'API_KEY_POOL_BAJO'. */
+  restante?: number;
 }
 
 interface MensajeChatWs {
@@ -317,8 +321,34 @@ export class ShellComponent implements OnInit {
         const mensaje = `🚫 El chip de WhatsApp ${alerta.chipId} (${alerta.numero || 'sin número'}) fue baneado — revisalo en "WhatsApp".`;
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
+      } else if (alerta.tipo === 'API_KEY_POOL_AGOTADO' && alerta.proveedor) {
+        const mensaje =
+          `🚫 Se quedaron sin cupo todas las cuentas cargadas de ${this.nombreProveedor(alerta.proveedor)} — ` +
+          `revisalo en Configuración y agregá una cuenta nueva.`;
+        this.toast.error(mensaje);
+        this.agregarAlertaSesion(mensaje);
+      } else if (alerta.tipo === 'API_KEY_POOL_BAJO' && alerta.proveedor) {
+        const mensaje =
+          `⚠️ A la última cuenta con cupo de ${this.nombreProveedor(alerta.proveedor)} le quedan ${alerta.restante} ` +
+          `consultas — conviene cargar otra cuenta antes de que se corte.`;
+        this.toast.info(mensaje);
+        this.agregarAlertaSesion(mensaje);
+      } else if (alerta.tipo === 'SMS_GATEWAY_CAIDO') {
+        const mensaje = '📵 El gateway de SMS no está respondiendo hace varios envíos seguidos — revisá que el celular/servicio esté funcionando.';
+        this.toast.error(mensaje);
+        this.agregarAlertaSesion(mensaje);
       }
     });
+  }
+
+  /** Mismos nombres que ConfiguracionComponent.nombreProveedor — para que la alerta y la tabla de Configuración digan lo mismo. */
+  private nombreProveedor(proveedor: string): string {
+    const nombres: Record<string, string> = {
+      geoapify: 'Geoapify (direcciones)',
+      graphhopper: 'GraphHopper (distancia)',
+      openrouteservice: 'OpenRouteService (distancia)',
+    };
+    return nombres[proveedor] ?? proveedor;
   }
 
   private agregarAlertaSesion(mensaje: string): void {
