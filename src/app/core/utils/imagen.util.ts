@@ -24,8 +24,15 @@ export function optimizarImagen(url: string | null | undefined, ancho: number): 
   if (barra === -1) return url;
 
   const primero = resto.slice(0, barra);
-  // "v1234567" es la versión del asset. Cualquier otro segmento con "_" o "," ya es una
-  // transformación puesta por otro lado.
+  // URL firmada: el primer segmento es la firma (s--XXXXXXXX--), no la versión. Insertar
+  // delante de la firma la invalida y Cloudinary rechaza la URL — se devuelve tal cual.
+  if (primero.startsWith('s--')) return url;
+
+  // "v1234567" es la versión del asset. La regla de abajo es una heurística, no una
+  // garantía: cualquier otro segmento con "_" o "," se toma como una transformación puesta
+  // por otro lado. Tiene un falso negativo conocido — un public_id con carpeta y sin versión
+  // (p. ej. /image/upload/mi_carpeta/foto.jpg) se saltea porque "mi_carpeta" lleva "_".
+  // Se deja así a propósito, y el port a Kotlin hace lo mismo.
   const esVersion = /^v\d+$/.test(primero);
   if (!esVersion && /[_,]/.test(primero)) return url;
 

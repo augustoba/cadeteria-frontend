@@ -25,6 +25,11 @@ describe('optimizarImagen', () => {
     expect(optimizarImagen(rara, 120)).toBe(rara);
   });
 
+  it('deja igual una URL firmada (insertar delante de la firma la rompería)', () => {
+    const firmada = 'https://res.cloudinary.com/demo/image/upload/s--abc123--/v1234567/foto.jpg';
+    expect(optimizarImagen(firmada, 120)).toBe(firmada);
+  });
+
   it('devuelve null, undefined y vacío tal cual', () => {
     expect(optimizarImagen(null, 120)).toBeNull();
     expect(optimizarImagen(undefined, 120)).toBeUndefined();
