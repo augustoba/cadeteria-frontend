@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { CloudinaryUploadService } from '../core/services/cloudinary-upload.service';
 import { ToastService } from '../core/services/toast.service';
+import { optimizarImagen } from '../core/utils/imagen.util';
 
 /** Widget de subida de una imagen a Cloudinary, para usar con `[(value)]="algo.fotoUrl"`. */
 @Component({
@@ -8,7 +9,7 @@ import { ToastService } from '../core/services/toast.service';
   template: `
     <div class="flex items-center gap-3">
       @if (value) {
-        <img [src]="value" class="w-16 h-16 object-cover rounded border border-gray-200" />
+        <img [src]="optimizar(value, 240)" class="w-16 h-16 object-cover rounded border border-gray-200" />
       } @else {
         <div class="w-16 h-16 rounded border border-dashed border-gray-300 flex items-center justify-center text-gray-300 text-[0.65rem] text-center px-1">
           Sin foto
@@ -35,6 +36,8 @@ export class ImageUploadComponent {
   private readonly toast = inject(ToastService);
 
   readonly subiendo = signal(false);
+  /** Una función no es visible desde el template: se expone como propiedad (la vista previa pide w_240). */
+  readonly optimizar = optimizarImagen;
 
   onFile(ev: Event): void {
     const input = ev.target as HTMLInputElement;

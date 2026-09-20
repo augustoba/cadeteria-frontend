@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SeguimientoService } from '../../core/services/seguimiento.service';
 import { Seguimiento } from '../../core/models/seguimiento.model';
+import { optimizarImagen } from '../../core/utils/imagen.util';
 import { SeguimientoMapaComponent } from './seguimiento-mapa.component';
 
 const ESTADO_TEXTO: Record<string, string> = {
@@ -123,7 +124,7 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
             @if (s.cadete) {
               <div class="border-t border-gray-200 pt-4 flex items-center gap-3">
                 @if (s.cadete.fotoUrl) {
-                  <img [src]="s.cadete.fotoUrl" class="w-16 h-16 rounded-full object-cover border border-gray-200" />
+                  <img [src]="optimizar(s.cadete.fotoUrl, 240)" class="w-16 h-16 rounded-full object-cover border border-gray-200" />
                 } @else {
                   <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-2xl">🏍️</div>
                 }
@@ -163,7 +164,7 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
                 }
                 @if (s.entregaFotoUrl) {
                   @if (mostrarFoto()) {
-                    <img [src]="s.entregaFotoUrl" class="rounded border border-gray-200 max-h-64 object-cover" />
+                    <img [src]="optimizar(s.entregaFotoUrl, 1600)" class="rounded border border-gray-200 max-h-64 object-cover" />
                   } @else {
                     <button
                       type="button"
@@ -259,6 +260,8 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
 
   readonly pasos = PASOS_PROGRESO;
   readonly pasoActualDe = pasoActual;
+  /** Una función no es visible desde el template: se expone como propiedad. */
+  readonly optimizar = optimizarImagen;
 
   readonly estrellas = signal(0);
   comentario = '';

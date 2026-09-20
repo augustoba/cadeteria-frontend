@@ -6,6 +6,7 @@ import { SolicitudCadeteService } from '../../core/services/solicitud-cadete.ser
 import { SolicitudCadete } from '../../core/models/solicitud-cadete.model';
 import { ToastService } from '../../core/services/toast.service';
 import { LightboxService } from '../../core/services/lightbox.service';
+import { optimizarImagen } from '../../core/utils/imagen.util';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
 
@@ -75,16 +76,16 @@ const ESTADO_CLASES: Record<string, string> = {
                 @if (s.fotoUrl || s.fotoVehiculoUrl || s.fotoCarnetUrl || s.fotoTarjetaVerdeUrl) {
                   <div class="flex gap-2 flex-wrap">
                     @if (s.fotoUrl) {
-                      <button type="button" (click)="lightbox.abrir(s.fotoUrl!)"><img [src]="s.fotoUrl" class="w-14 h-14 object-cover rounded border" /></button>
+                      <button type="button" (click)="lightbox.abrir(s.fotoUrl!)"><img [src]="optimizar(s.fotoUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
                     }
                     @if (s.fotoVehiculoUrl) {
-                      <button type="button" (click)="lightbox.abrir(s.fotoVehiculoUrl!)"><img [src]="s.fotoVehiculoUrl" class="w-14 h-14 object-cover rounded border" /></button>
+                      <button type="button" (click)="lightbox.abrir(s.fotoVehiculoUrl!)"><img [src]="optimizar(s.fotoVehiculoUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
                     }
                     @if (s.fotoCarnetUrl) {
-                      <button type="button" (click)="lightbox.abrir(s.fotoCarnetUrl!)"><img [src]="s.fotoCarnetUrl" class="w-14 h-14 object-cover rounded border" /></button>
+                      <button type="button" (click)="lightbox.abrir(s.fotoCarnetUrl!)"><img [src]="optimizar(s.fotoCarnetUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
                     }
                     @if (s.fotoTarjetaVerdeUrl) {
-                      <button type="button" (click)="lightbox.abrir(s.fotoTarjetaVerdeUrl!)"><img [src]="s.fotoTarjetaVerdeUrl" class="w-14 h-14 object-cover rounded border" /></button>
+                      <button type="button" (click)="lightbox.abrir(s.fotoTarjetaVerdeUrl!)"><img [src]="optimizar(s.fotoTarjetaVerdeUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
                     }
                   </div>
                 }
@@ -224,6 +225,8 @@ export class SolicitudesCadeteComponent implements OnInit {
   readonly lightbox = inject(LightboxService);
 
   readonly ESTADO_CLASES = ESTADO_CLASES;
+  /** Una función no es visible desde el template: se expone como propiedad (la miniatura pide w_120). */
+  readonly optimizar = optimizarImagen;
   readonly filtroActual = signal<string | null>('EN_REVISION');
   readonly linkGenerado = signal<string | null>(null);
   usernameEditado: Record<string, string> = {};

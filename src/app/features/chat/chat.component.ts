@@ -7,6 +7,7 @@ import { CloudinaryUploadService } from '../../core/services/cloudinary-upload.s
 import { LightboxService } from '../../core/services/lightbox.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Cadete } from '../../core/models/cadete.model';
+import { optimizarImagen } from '../../core/utils/imagen.util';
 
 @Component({
   selector: 'app-chat',
@@ -56,7 +57,7 @@ import { Cadete } from '../../core/models/cadete.model';
                   >
                     @if (m.imagenUrl) {
                       <button type="button" (click)="lightbox.abrir(m.imagenUrl!)">
-                        <img [src]="m.imagenUrl" class="max-w-full max-h-48 rounded" />
+                        <img [src]="optimizar(m.imagenUrl, 1200)" class="max-w-full max-h-48 rounded" />
                       </button>
                     } @else if (m.audioUrl) {
                       <audio controls [src]="m.audioUrl" class="max-w-full"></audio>
@@ -114,6 +115,8 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   readonly seleccionado = signal<Cadete | null>(null);
   readonly subiendoImagen = signal(false);
+  /** Una función no es visible desde el template: se expone como propiedad (la burbuja pide w_1200). */
+  readonly optimizar = optimizarImagen;
   texto = '';
 
   onImagenElegida(ev: Event): void {
