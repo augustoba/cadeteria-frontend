@@ -34,6 +34,9 @@ const ESTADOS_EN_CURSO = new Set(['EN_CURSO']);
 /** Estados que "ocupan" a un cadete aunque siga LIBRE (ya se puso libre, pero le queda algo sin
  * entregar) — mismo criterio que ESTADOS_OCUPAN_CADETE del backend (PedidoService). */
 const ESTADOS_OCUPAN_CADETE = new Set(['PENDIENTE', 'EN_CURSO']);
+/** Mismo criterio que ESTADOS_ACTIVOS del backend (PedidoService) — para decidir, al aplicar un
+ * patch en memoria por WebSocket, si un pedido pertenece a la pestaña "Pedidos" (activos). */
+const ESTADOS_ACTIVOS = ['SIN_ASIGNAR', 'PENDIENTE', 'EN_CURSO', 'NO_ENTREGADO'];
 
 /** Mejora 105 — recordar pestaña/vista del dashboard entre sesiones (no sobrevive a un cambio de usuario, es solo del navegador). */
 const STORAGE_TAB = 'dashboard.activeTab';
@@ -1103,12 +1106,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else {
       this.pedidos.cargar(tabInicial);
     }
-    this.desuscribirPedidos = this.realtime.subscribe('/topic/admin/pedidos', () => {
-      if (this.activeTab() === 'finalizados') {
+    this.desuscribirPedidos = this.realtime.subscribe('/topic/admin/pedidos', (body) => {
+      const tab = this.activeTab();
+      if (tab === 'finalizados') {
+        // Paginado/filtrado en el backend, no es la lista "activos" cara — se deja como reload.
         this.cargarFinalizadosPagina();
-      } else {
-        this.pedidos.reload();
+        return;
       }
+      const pedido = body as Pedido | null;
+      if (!pedido?.id || !pedido.estado?.id) {
+        // Payload inesperado (no debería pasar, publicarPedido siempre manda el pedido completo) — fallback seguro.
+        this.pedidos.reload();
+        return;
+      }
+      // Evita el refetch completo de `GET /admin/pedidos?tipo=...` ante cada evento (pedido
+      // nuevo, asignación, entrega, cancelación): se aplica un patch incremental con el dato
+      // que ya trae el propio evento — el backend siempre publica el `PedidoResponse` completo.
+      this.pedidos.patch(pedido, (p) =>
+        tab === 'programados' ? p.estado.id === 'PROGRAMADO' : ESTADOS_ACTIVOS.includes(p.estado.id),
+      );
     });
     /** Búsqueda global desde el header (ronda 10, punto 107) — llega como ?buscar=. */
     const q = this.route.snapshot.queryParamMap.get('buscar');

@@ -28,6 +28,16 @@ export class PedidoService {
   }
 
   /**
+   * Aplica en memoria el pedido que llegó por el WebSocket `/topic/admin/pedidos`, en vez de
+   * recargar la lista entera del backend en cada evento (pedido nuevo, asignación, entrega,
+   * cancelación...) — esos son justo los momentos de más tráfico. `pertenece` la decide quien
+   * llama según el tab activo (activos/programados), comparando contra `pedido.estado.id`.
+   */
+  patch(pedido: Pedido, pertenece: (p: Pedido) => boolean): void {
+    this.store.patchItem(pedido, (p) => p.id, pertenece);
+  }
+
+  /**
    * "Pedidos finalizados" paginado en la base (mejora 2026-09-16) — antes se traía TODO
    * el historial finalizado/cancelado de la cadetería de una y se recortaba de a 15 en el
    * navegador; con volumen real (100+ viajes/día) eso iba a envejecer mal. `desde`/`hasta`

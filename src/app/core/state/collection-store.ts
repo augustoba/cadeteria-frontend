@@ -67,4 +67,23 @@ export class CollectionStore<T> {
     this.itemsSignal.set(items);
     this.statusSignal.set('loaded');
   }
+
+  /**
+   * Aplica en memoria un item que llegó por WebSocket, sin refetch al backend
+   * (evita el refetch completo de la lista ante cada evento en tiempo real, que
+   * pegaba justo en los momentos de más tráfico — ver dashboard de pedidos).
+   * `pertenece` decide si el item actualizado debería estar en esta lista tal
+   * como está filtrada hoy (ej. un pedido que pasó a FINALIZADO sale de "activos").
+   */
+  patchItem(item: T, getId: (item: T) => string, pertenece: (item: T) => boolean): void {
+    if (this.statusSignal() !== 'loaded') return; // sin lista cargada todavía, nada que parchear
+    const id = getId(item);
+    const actuales = this.itemsSignal();
+    const idx = actuales.findIndex((i) => getId(i) === id);
+    if (pertenece(item)) {
+      this.itemsSignal.set(idx >= 0 ? actuales.map((i, k) => (k === idx ? item : i)) : [item, ...actuales]);
+    } else if (idx >= 0) {
+      this.itemsSignal.set(actuales.filter((i) => getId(i) !== id));
+    }
+  }
 }
