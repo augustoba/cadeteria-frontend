@@ -36,6 +36,11 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
           }
         </div>
       </div>
+      <p class="px-4 pt-2 text-xs text-white/80 bg-brand-600">
+        Esto es la PC donde corre el programa que manda los WhatsApp — si dice "desconectado", hay que prender esa PC
+        o revisar que el programa esté corriendo ahí. No tiene que ver con el estado de cada chip individual (eso se
+        ve más abajo, en cada uno).
+      </p>
 
       <div class="px-4 py-2 border-b border-gray-200 flex gap-2">
         <button type="button" class="btn-mini" [class]="pestaniaClase('chips')" (click)="pestania.set('chips')">
@@ -52,6 +57,11 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
       @switch (pestania()) {
         @case ('chips') {
           <div class="p-4 flex flex-col gap-3">
+            <p class="text-xs text-gray-500">
+              Cada "chip" es un WhatsApp que manda los mensajes automáticos (aviso de pedido en camino, etc.).
+              WhatsApp banea rápido a un número que manda muchos mensajes seguidos desde una PC — por eso se usan
+              varios chips descartables en rotación, en vez de un solo número fijo.
+            </p>
             <div class="flex justify-end">
               <button type="button" class="btn-action bg-emerald-600 hover:bg-emerald-700" (click)="mostrarNuevoChip.set(true)">
                 + Cargar chip nuevo
@@ -62,10 +72,12 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
                 <label class="flex flex-col gap-1">
                   <span class="text-xs font-medium text-gray-700">Id del chip</span>
                   <input class="input" [(ngModel)]="nuevoChipId" name="nuevoChipId" placeholder="ej: chip5" />
+                  <span class="text-xs text-gray-400">Un nombre cualquiera para reconocerlo en la lista (no hace falta que signifique nada).</span>
                 </label>
                 <label class="flex flex-col gap-1">
                   <span class="text-xs font-medium text-gray-700">Número (país + sin "+")</span>
                   <input class="input" [(ngModel)]="nuevoChipNumero" name="nuevoChipNumero" placeholder="ej: 5493811234567" />
+                  <span class="text-xs text-gray-400">Tiene que ser un WhatsApp recién instalado en un celular con chip nuevo — no el que ya usás vos.</span>
                 </label>
                 <button
                   type="button"
@@ -77,11 +89,23 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
                 </button>
                 <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="mostrarNuevoChip.set(false)">Cancelar</button>
                 <p class="text-xs text-gray-500 basis-full">
-                  Después de pedir el código: en el celular con ese chip, WhatsApp → Dispositivos vinculados → Vincular con número de
-                  teléfono, y cargar el código de 8 dígitos que va a aparecer acá abajo apenas el gateway lo pida.
+                  Pasos para terminar de vincularlo: 1) tocá "Pedir código" de arriba. 2) En el celular con ese chip,
+                  abrí WhatsApp → los tres puntitos (⋮) → Dispositivos vinculados → Vincular con número de teléfono.
+                  3) Va a pedir un código de 8 dígitos: cargá el que va a aparecer al lado del chip acá abajo, en la
+                  lista, apenas el gateway lo genere (chip en amarillo, "Código: ...").
                 </p>
               </div>
             }
+
+            <div class="border border-gray-200 rounded p-3 flex flex-col gap-1.5 text-xs text-gray-600">
+              <span class="font-semibold text-gray-700">Qué significa el estado de cada chip:</span>
+              <span><span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">Vinculando…</span> — se pidió el código y está esperando que lo cargues en el celular (ver pasos arriba). Si se traba mucho tiempo, dalo de baja y probá de nuevo.</span>
+              <span><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium">Conectado</span> — anda bien, mandando mensajes normalmente.</span>
+              <span><span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">Desconectado</span> — se cortó la conexión (el celular se quedó sin internet, se cerró WhatsApp, etc.). Normalmente vuelve solo; si tarda mucho, revisá ese celular.</span>
+              <span><span class="px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium">Baneado</span> — WhatsApp bloqueó ese número, ya no sirve. Dalo de baja y cargá uno nuevo con otro chip/SIM.</span>
+              <span><span class="px-2 py-0.5 rounded bg-gray-200 text-gray-500 font-medium">Dado de baja</span> — ya no se usa para mandar nada; queda solo de referencia en la lista, y podés "Eliminarlo" para que no aparezca más.</span>
+              <span>⚠️ <strong>Posible shadowban</strong> — sigue diciendo "Conectado", pero WhatsApp está entregando muy pocos de sus mensajes en silencio (sin avisar ban). Conviene darlo de baja preventivamente antes de que termine baneado del todo, y que los mensajes se repartan entre los demás chips.</span>
+            </div>
 
             @if (wa.cargandoChips()) {
               <app-loading-skeleton [filas]="3" />

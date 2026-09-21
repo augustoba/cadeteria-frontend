@@ -425,6 +425,35 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
       </div>
     }
 
+    @if (pedidoAQuitar(); as p) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cerrarModalQuitar()">
+        <div class="bg-white rounded shadow-lg w-full max-w-md" (click)="$event.stopPropagation()">
+          <div class="bg-brand-600 text-white px-4 py-3 rounded-t flex items-center justify-between">
+            <h2 class="font-semibold">Quitar pedido {{ p.numero }}</h2>
+            <button type="button" class="text-white/80 hover:text-white text-lg leading-none" (click)="cerrarModalQuitar()">
+              ✕
+            </button>
+          </div>
+          <div class="p-4 flex flex-col gap-3">
+            <p class="text-sm text-gray-600">
+              El cadete cobra por porcentaje: al aceptar este pedido ya se le descontó la comisión de su saldo.
+            </p>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="devolverComisionModal" />
+              <span class="text-sm text-gray-700">Devolver la comisión descontada al cadete</span>
+            </label>
+            <p class="text-xs text-gray-400">
+              Desmarcá esto si el motivo de sacarle el pedido no le corresponde a la cadetería devolvérsela.
+            </p>
+          </div>
+          <div class="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
+            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cerrarModalQuitar()">Volver</button>
+            <button type="button" class="btn bg-amber-600 hover:bg-amber-700" (click)="confirmarQuitar()">✔ Quitar pedido</button>
+          </div>
+        </div>
+      </div>
+    }
+
     @if (pedidoDetalle(); as p) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cerrarModalDetalle()">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden" (click)="$event.stopPropagation()">
@@ -1084,6 +1113,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly pedidoACancelar = signal<Pedido | null>(null);
   motivoCancelacionModal: string | null = null;
 
+  /** Solo se abre para un cadete PORCENTAJE — a un SEMANAL se lo sigue quitando al toque. */
+  readonly pedidoAQuitar = signal<Pedido | null>(null);
+  devolverComisionModal = true;
+
   readonly pedidoDetalle = signal<Pedido | null>(null);
   readonly smsReenviado = signal(false);
   readonly comentariosDetalle = signal<Comentario[]>([]);
@@ -1212,7 +1245,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.motivoCancelacionModal = 'CLIENTE';
       this.pedidoACancelar.set(pedido);
     } else if (accion === 'quitar') {
-      this.toast.conDeshacer(`Se le va a quitar el pedido #${pedido.numero} al cadete…`, () => this.pedidos.quitar(pedido.id));
+      const cadete = pedido.cadeteAsignado && this.cadetesSvc.cadetes().find((c) => c.id === pedido.cadeteAsignado!.id);
+      if (cadete?.modalidadPago === 'PORCENTAJE') {
+        this.devolverComisionModal = true;
+        this.pedidoAQuitar.set(pedido);
+      } else {
+        this.toast.conDeshacer(`Se le va a quitar el pedido #${pedido.numero} al cadete…`, () => this.pedidos.quitar(pedido.id));
+      }
     } else if (accion === 'finalizar') {
       this.receptorNombreModal = '';
       this.pedidoAFinalizar.set(pedido);
@@ -1235,6 +1274,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const motivo = this.motivoCancelacionModal;
     this.pedidoACancelar.set(null);
     this.toast.conDeshacer(`Se va a anular el pedido #${p.numero}…`, () => this.pedidos.cancelar(p.id, motivo));
+  }
+
+  cerrarModalQuitar(): void {
+    this.pedidoAQuitar.set(null);
+  }
+
+  confirmarQuitar(): void {
+    const p = this.pedidoAQuitar();
+    if (!p) return;
+    const devolverComision = this.devolverComisionModal;
+    this.pedidoAQuitar.set(null);
+    const aviso = devolverComision
+      ? `Se le va a quitar el pedido #${p.numero} al cadete (se le devuelve la comisión)…`
+      : `Se le va a quitar el pedido #${p.numero} al cadete (sin devolverle la comisión)…`;
+    this.toast.conDeshacer(aviso, () => this.pedidos.quitar(p.id, devolverComision));
   }
 
   reenviarSms(id: string): void {

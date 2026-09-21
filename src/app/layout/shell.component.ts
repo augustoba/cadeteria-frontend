@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthService } from '../core/services/auth.service';
 import { CadeteService } from '../core/services/cadete.service';
 import { ChatService } from '../core/services/chat.service';
@@ -8,6 +9,9 @@ import { PedidoService } from '../core/services/pedido.service';
 import { RealtimeService } from '../core/services/realtime.service';
 import { ThemeService } from '../core/services/theme.service';
 import { ToastService } from '../core/services/toast.service';
+import { OnboardingService } from '../core/services/onboarding.service';
+import { GUIAS, guiaVista, marcarGuiaVista } from '../core/guias';
+import { TourComponent, TourStep } from '../shared/tour.component';
 
 interface NavItem {
   label: string;
@@ -26,12 +30,12 @@ const NAV: NavItem[] = [
   { label: 'Pedidos web', path: '/solicitudes-pedido', icon: '📩' },
   { label: 'Pagos', path: '/pagos', icon: '💵', permisoRequerido: 'pagos' },
   { label: 'Chat', path: '/chat', icon: '💬' },
-  { label: 'WhatsApp', path: '/whatsapp', icon: '📲', permisoRequerido: 'whatsapp' },
   { label: 'Incidencias', path: '/incidencias', icon: '🎫' },
   { label: 'Métricas', path: '/metricas', icon: '📊', permisoRequerido: 'metricas' },
   { label: 'Configuración', path: '/configuracion', icon: '⚙️', permisoRequerido: 'configuracion' },
   { label: 'Usuarios', path: '/usuarios', icon: '👥', permisoRequerido: 'usuarios' },
   { label: 'Roles', path: '/roles', icon: '🔑', permisoRequerido: 'roles' },
+  { label: 'Ayuda', path: '/ayuda', icon: '❓' },
 ];
 
 interface AlertaAdminWs {
@@ -66,7 +70,7 @@ interface AlertaSesion {
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, TourComponent],
   template: `
     <div class="min-h-screen flex flex-col">
       <header class="h-14 bg-brand-600 text-white flex items-center justify-between px-4 shrink-0 z-10 gap-3">
@@ -183,6 +187,31 @@ interface AlertaSesion {
               </div>
             }
           </div>
+          @if (ob.porcentaje() < 100) {
+            <a
+              routerLink="/primeros-pasos"
+              class="hidden sm:flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-full px-3 py-1 text-xs font-semibold"
+              title="Terminá de configurar tu cadetería"
+            >
+              🚀 Configuración {{ ob.porcentaje() }}%
+            </a>
+          }
+          <button
+            type="button"
+            class="hidden sm:inline text-lg leading-none px-1"
+            title="Ver de nuevo la guía de esta pantalla"
+            (click)="abrirGuia()"
+          >
+            ❓
+          </button>
+          <a
+            routerLink="/ayuda/panel"
+            target="_blank"
+            class="hover:underline hidden sm:inline"
+            title="Manual completo del panel"
+          >
+            Manual
+          </a>
           <span class="hidden sm:inline">{{ auth.username() }}</span>
           <button type="button" class="hover:underline" (click)="logout()">Cerrar sesión</button>
         </div>
@@ -236,6 +265,10 @@ interface AlertaSesion {
           <router-outlet />
         </main>
       </div>
+
+      @if (guia(); as steps) {
+        <app-tour [steps]="steps" (closed)="cerrarGuia()" />
+      }
     </div>
   `,
 })
@@ -248,6 +281,10 @@ export class ShellComponent implements OnInit {
   private readonly pedidos = inject(PedidoService);
   readonly chat = inject(ChatService);
   readonly theme = inject(ThemeService);
+  readonly ob = inject(OnboardingService);
+
+  readonly guia = signal<TourStep[] | null>(null);
+  private ruta = '';
 
   readonly nav = computed(() => NAV.filter((n) => !n.permisoRequerido || this.auth.tienePermiso(n.permisoRequerido)));
   readonly collapsed = signal(false);
@@ -277,6 +314,39 @@ export class ShellComponent implements OnInit {
     this.chat.iniciar();
     this.cargarSmsFallidos();
     this.escucharAlertas();
+    this.escucharCambiosDeRuta();
+  }
+
+  /** ruta actual sin query params ni barra inicial ('' = Dashboard) — misma clave que usa GUIAS. */
+  private claveActual(): string {
+    return this.router.url.split('?')[0].replace(/^\//, '');
+  }
+
+  private escucharCambiosDeRuta(): void {
+    this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe(() => {
+      const k = this.claveActual();
+      this.ruta = k;
+      this.guia.set(null);
+      // Primera visita a la pantalla: aparece la guía, una sola vez.
+      if (GUIAS[k] && !guiaVista(k)) {
+        setTimeout(() => {
+          if (this.claveActual() === k) this.guia.set(GUIAS[k]);
+        }, 700);
+      }
+    });
+  }
+
+  cerrarGuia(): void {
+    marcarGuiaVista(this.ruta);
+    this.guia.set(null);
+  }
+
+  /** Botón "?" del header: repite la guía de la pantalla actual; si no tiene, lleva a Primeros pasos. */
+  abrirGuia(): void {
+    const k = this.claveActual();
+    this.ruta = k;
+    if (GUIAS[k]) this.guia.set(GUIAS[k]);
+    else this.router.navigateByUrl('/primeros-pasos');
   }
 
   /**
@@ -318,7 +388,7 @@ export class ShellComponent implements OnInit {
         this.toast.info(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'WHATSAPP_CHIP_BANEADO') {
-        const mensaje = `🚫 El chip de WhatsApp ${alerta.chipId} (${alerta.numero || 'sin número'}) fue baneado — revisalo en "WhatsApp".`;
+        const mensaje = `🚫 El chip de WhatsApp ${alerta.chipId} (${alerta.numero || 'sin número'}) fue baneado — revisalo en Configuración → "Gateway WhatsApp".`;
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'API_KEY_POOL_AGOTADO' && alerta.proveedor) {

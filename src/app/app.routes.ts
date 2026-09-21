@@ -22,6 +22,18 @@ export const routes: Routes = [
   },
   { path: 'pedir', loadComponent: () => import('./features/pedir/pedir.component').then((m) => m.PedirComponent) },
   {
+    path: 'ayuda',
+    loadComponent: () => import('./features/ayuda/ayuda-index.component').then((m) => m.AyudaIndexComponent),
+  },
+  {
+    path: 'ayuda/panel',
+    loadComponent: () => import('./features/ayuda/ayuda-panel.component').then((m) => m.AyudaPanelComponent),
+  },
+  {
+    path: 'ayuda/app',
+    loadComponent: () => import('./features/ayuda/ayuda-app.component').then((m) => m.AyudaAppComponent),
+  },
+  {
     path: 'confirmar-pedido/:token',
     loadComponent: () => import('./features/pedir/confirmar-pedido.component').then((m) => m.ConfirmarPedidoComponent),
   },
@@ -36,6 +48,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent) },
+      {
+        path: 'primeros-pasos',
+        loadComponent: () => import('./features/primeros-pasos/primeros-pasos.component').then((m) => m.PrimerosPasosComponent),
+      },
       {
         path: 'pedidos/nuevo',
         loadComponent: () => import('./features/pedidos/nuevo-pedido.component').then((m) => m.NuevoPedidoComponent),

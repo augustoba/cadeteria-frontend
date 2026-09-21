@@ -1,4 +1,13 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  signal,
+} from '@angular/core';
 import { Pedido } from '../../core/models/pedido.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 
@@ -123,30 +132,19 @@ export function claseEstadoPedido(estadoId: string): string {
                   <span title="No se pudo avisar por SMS al cliente" class="ml-1">📵</span>
                 }
               </td>
-              <td class="py-2 pr-3 whitespace-nowrap flex gap-2 flex-wrap">
-                @if (mostrarAcciones) {
-                  @if (p.estado.id === 'SIN_ASIGNAR') {
+              <td class="py-2 pr-3 whitespace-nowrap">
+                <div class="pedido-menu-wrap flex items-center justify-end gap-2">
+                  @if (mostrarAcciones && p.estado.id === 'SIN_ASIGNAR') {
                     <button type="button" class="btn-mini bg-indigo-600 hover:bg-indigo-700" (click)="accion.emit({ accion: 'asignar', pedido: p })">
                       Asignar
                     </button>
                   }
-                  <button type="button" class="btn-mini bg-red-600 hover:bg-red-700" (click)="accion.emit({ accion: 'anular', pedido: p })">
-                    Anular
-                  </button>
-                  @if (p.cadeteAsignado) {
-                    <button type="button" class="btn-mini bg-amber-500 hover:bg-amber-600" (click)="accion.emit({ accion: 'quitar', pedido: p })">
-                      Quitar
-                    </button>
-                    <button type="button" class="btn-mini bg-indigo-600 hover:bg-indigo-700" (click)="accion.emit({ accion: 'reasignar', pedido: p })">
-                      Reasignar
-                    </button>
-                  }
-                  @if (p.estado.id === 'EN_CURSO') {
+                  @if (mostrarAcciones && p.estado.id === 'EN_CURSO') {
                     <button type="button" class="btn-mini bg-blue-600 hover:bg-blue-700" (click)="accion.emit({ accion: 'finalizar', pedido: p })">
                       Finalizar
                     </button>
                   }
-                  @if (p.estado.id === 'NO_ENTREGADO') {
+                  @if (mostrarAcciones && p.estado.id === 'NO_ENTREGADO') {
                     <button
                       type="button"
                       class="btn-mini bg-orange-600 hover:bg-orange-700"
@@ -155,16 +153,34 @@ export function claseEstadoPedido(estadoId: string): string {
                       Reintentar entrega
                     </button>
                   }
-                  <button type="button" class="btn-mini bg-emerald-600 hover:bg-emerald-700" (click)="accion.emit({ accion: 'imprimir', pedido: p })">
-                    Imprimir
+                  @if (!tieneAccionPrincipal(p)) {
+                    <button type="button" class="btn-mini bg-gray-500 hover:bg-gray-600" (click)="accion.emit({ accion: 'detalle', pedido: p })">
+                      Detalle
+                    </button>
+                  }
+                  <button type="button" class="kebab" (click)="toggleMenu(p.id)" [attr.aria-expanded]="abierto() === p.id" aria-label="Más acciones">
+                    ⋯
                   </button>
-                }
-                <button type="button" class="btn-mini bg-amber-600 hover:bg-amber-700" (click)="accion.emit({ accion: 'incidencia', pedido: p })">
-                  🚨 Incidencia
-                </button>
-                <button type="button" class="btn-mini bg-gray-500 hover:bg-gray-600" (click)="accion.emit({ accion: 'detalle', pedido: p })">
-                  Detalle
-                </button>
+                  @if (abierto() === p.id) {
+                    <div class="menu">
+                      @if (tieneAccionPrincipal(p)) {
+                        <button type="button" (click)="emitirYCerrar('detalle', p)">Detalle</button>
+                      }
+                      @if (mostrarAcciones && p.cadeteAsignado) {
+                        <button type="button" (click)="emitirYCerrar('reasignar', p)">Reasignar</button>
+                        <button type="button" (click)="emitirYCerrar('quitar', p)">Quitar cadete</button>
+                      }
+                      @if (mostrarAcciones) {
+                        <button type="button" (click)="emitirYCerrar('imprimir', p)">Imprimir</button>
+                      }
+                      <button type="button" (click)="emitirYCerrar('incidencia', p)">🚨 Crear incidencia</button>
+                      @if (mostrarAcciones) {
+                        <div class="sep"></div>
+                        <button type="button" class="danger" (click)="emitirYCerrar('anular', p)">Anular pedido</button>
+                      }
+                    </div>
+                  }
+                </div>
               </td>
             </tr>
           } @empty {
@@ -216,6 +232,53 @@ export function claseEstadoPedido(estadoId: string): string {
       .btn-mini:disabled {
         opacity: 0.5;
       }
+      .pedido-menu-wrap {
+        position: relative;
+      }
+      .kebab {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.4rem;
+        color: #6b7280;
+        flex-shrink: 0;
+        line-height: 1;
+      }
+      .kebab:hover {
+        background: #f1f2f6;
+      }
+      .menu {
+        position: absolute;
+        top: 2.1rem;
+        right: 0;
+        background: white;
+        border: 1px solid #e6e8ef;
+        border-radius: 0.6rem;
+        box-shadow: 0 20px 40px -16px rgba(15, 23, 41, 0.25);
+        min-width: 170px;
+        z-index: 30;
+        padding: 0.35rem;
+      }
+      .menu button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 0.5rem 0.6rem;
+        border-radius: 0.4rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #111827;
+      }
+      .menu button:hover {
+        background: #f1f2f6;
+      }
+      .menu button.danger {
+        color: #dc2626;
+      }
+      .menu .sep {
+        height: 1px;
+        background: #e6e8ef;
+        margin: 0.25rem 0.1rem;
+      }
     `,
   ],
 })
@@ -232,9 +295,35 @@ export class TablaPedidosComponent implements OnChanges {
 
   readonly tamanoPagina = TAMANO_PAGINA;
   readonly pagina = signal(1);
+  /** Nº de pedido con el menú "⋯" de acciones secundarias abierto (uno solo a la vez). */
+  readonly abierto = signal<string | null>(null);
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['pedidos']) this.pagina.set(1);
+  }
+
+  toggleMenu(pedidoId: string): void {
+    this.abierto.update((actual) => (actual === pedidoId ? null : pedidoId));
+  }
+
+  emitirYCerrar(accionId: Accion, pedido: Pedido): void {
+    this.abierto.set(null);
+    this.accion.emit({ accion: accionId, pedido });
+  }
+
+  /** El botón principal visible (Asignar/Finalizar/Reintentar) según el estado — si no hay
+   *  ninguno (finalizado, cancelado), "Detalle" pasa a ser el botón visible en vez de ir
+   *  adentro del menú. */
+  tieneAccionPrincipal(p: Pedido): boolean {
+    if (!this.mostrarAcciones) return false;
+    return ['SIN_ASIGNAR', 'EN_CURSO', 'NO_ENTREGADO'].includes(p.estado.id);
+  }
+
+  @HostListener('document:click', ['$event'])
+  cerrarSiClickAfuera(event: MouseEvent): void {
+    if (this.abierto() === null) return;
+    const target = event.target as HTMLElement;
+    if (!target.closest('.pedido-menu-wrap')) this.abierto.set(null);
   }
 
   get totalPaginas(): number {

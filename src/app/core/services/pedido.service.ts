@@ -63,8 +63,9 @@ export class PedidoService {
     this.store.reload();
   }
 
-  quitar(id: string): void {
-    this.store.mutate(this.http.post(apiUrl(`/admin/pedidos/${id}/quitar`), {}));
+  /** devolverComision: solo importa para un cadete PORCENTAJE — default true (se le devuelve). */
+  quitar(id: string, devolverComision = true): void {
+    this.store.mutate(this.http.post(apiUrl(`/admin/pedidos/${id}/quitar`), { devolverComision }));
   }
 
   /** motivo: 'CLIENTE' | 'OTRO' | null — solo para métricas, no cambia el flujo. */
