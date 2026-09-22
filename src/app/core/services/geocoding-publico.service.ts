@@ -2,14 +2,15 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { apiUrl } from '../config/site-config';
-import { GeoAddress } from './geocoding.service';
+import { GeoAddress } from '../models/geo-address.model';
 
 /**
- * Igual que GeocodingService pero pasando por el backend (mejora 2026-09-17) — solo para
- * la página pública "/pedir": ahí no hay login, así que sin esto cualquiera podía
- * martillar Nominatim/Geoapify directo desde el navegador con la key expuesta en el
- * bundle. El panel admin (nuevo pedido, zonas) sigue usando GeocodingService tal cual,
- * sin cambios — no hace falta ese proxy ahí, es una pantalla logueada.
+ * Único punto de geocoding del front — pasa siempre por el backend (`GeocodingProxyService`),
+ * que a su vez consulta la cache de direcciones antes de gastar cupo de ningún proveedor
+ * (spec-geocoding-cache.md). Hasta 2026-09-21 el panel admin (nuevo pedido) llamaba directo a
+ * Nominatim/Geoapify/LocationIQ/Photon desde el navegador, con las keys de Geoapify y LocationIQ
+ * hardcodeadas y expuestas en el bundle — ese servicio (`geocoding.service.ts`) se eliminó al
+ * migrar acá, así que ya no hay ninguna key de geocoding en el front.
  */
 @Injectable({ providedIn: 'root' })
 export class GeocodingPublicoService {

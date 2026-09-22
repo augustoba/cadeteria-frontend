@@ -2,7 +2,6 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  Input,
   NgZone,
   computed,
   effect,
@@ -14,7 +13,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import * as L from 'leaflet';
-import { GeoAddress, GeocodingService } from '../core/services/geocoding.service';
+import { GeoAddress } from '../core/models/geo-address.model';
 import { GeocodingPublicoService } from '../core/services/geocoding-publico.service';
 
 export interface PickedAddress {
@@ -126,17 +125,9 @@ const PIN_ICON = L.divIcon({
 export class AddressPickerComponent {
   placeholder = 'Calle y altura, ej: San Juan 354';
 
-  /** true en la página pública "/pedir" (sin login) — usa el proxy del backend en vez de llamar a las APIs de geocoding directo. */
-  @Input() modoPublico = false;
-
-  private readonly geocodingAdmin = inject(GeocodingService);
-  private readonly geocodingPublico = inject(GeocodingPublicoService);
+  private readonly geocoding = inject(GeocodingPublicoService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly zone = inject(NgZone);
-
-  private get geocoding(): { search(t: string): Promise<GeoAddress[]>; reverse(lat: number, lng: number): Promise<GeoAddress | null> } {
-    return this.modoPublico ? this.geocodingPublico : this.geocodingAdmin;
-  }
 
   readonly addressPicked = output<PickedAddress | null>();
 

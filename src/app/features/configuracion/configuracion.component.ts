@@ -92,6 +92,16 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                   más preciso en el mapa, pero gasta más batería y datos móviles.
                 </span>
               </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Mapeo de calles con el GPS de los cadetes (segundos)</span>
+                <input type="number" min="0" step="1" class="input" [(ngModel)]="mapeoCallesCadetesIntervaloSeg" name="mapeoCallesCadetesIntervaloSeg" />
+                <span class="text-xs text-gray-400">
+                  Cada cuántos segundos se aprovecha la última ubicación de los cadetes activos para ir completando
+                  la cache de direcciones (gratis, vía Nominatim). <strong>0 = desactivado.</strong> Default de
+                  producción: 1200 (20 min) — solo bajalo (ej. 30) para "sembrar" la cache probando vos con pocas
+                  cuentas conectadas a la vez; subilo de nuevo antes de tener muchos cadetes reales conectados.
+                </span>
+              </label>
             </div>
             <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="asignacionAutomatica" name="asignacionAutomatica" />
@@ -700,6 +710,7 @@ export class ConfiguracionComponent implements OnInit {
 
   tiempoLimiteAceptacionSeg: number | null = null;
   frecuenciaUbicacionSeg: number | null = null;
+  mapeoCallesCadetesIntervaloSeg: number | null = null;
   asignacionAutomatica = false;
   asignacionAutomaticaMaxViajesCadete: number | null = null;
   maxRechazosPorPedido: number | null = null;
@@ -758,6 +769,7 @@ export class ConfiguracionComponent implements OnInit {
       this.inicializado = true;
       this.tiempoLimiteAceptacionSeg = Number(v['tiempo_limite_aceptacion_seg'] ?? 120);
       this.frecuenciaUbicacionSeg = Number(v['frecuencia_ubicacion_seg'] ?? 45);
+      this.mapeoCallesCadetesIntervaloSeg = Number(v['mapeo_calles_cadetes_intervalo_seg'] ?? 1200);
       this.asignacionAutomatica = (v['asignacion_automatica'] ?? 'false') === 'true';
       this.asignacionAutomaticaMaxViajesCadete = Number(v['asignacion_automatica_max_viajes_cadete'] ?? 1);
       this.maxRechazosPorPedido = Number(v['max_rechazos_por_pedido'] ?? 3);
@@ -862,6 +874,7 @@ export class ConfiguracionComponent implements OnInit {
 
     agregarSiCambio('tiempo_limite_aceptacion_seg', String(this.tiempoLimiteAceptacionSeg ?? ''));
     agregarSiCambio('frecuencia_ubicacion_seg', String(this.frecuenciaUbicacionSeg ?? ''));
+    agregarSiCambio('mapeo_calles_cadetes_intervalo_seg', String(this.mapeoCallesCadetesIntervaloSeg ?? ''));
     agregarSiCambio('asignacion_automatica', String(this.asignacionAutomatica));
     agregarSiCambio('asignacion_automatica_max_viajes_cadete', String(this.asignacionAutomaticaMaxViajesCadete ?? ''));
     agregarSiCambio('max_rechazos_por_pedido', String(this.maxRechazosPorPedido ?? ''));

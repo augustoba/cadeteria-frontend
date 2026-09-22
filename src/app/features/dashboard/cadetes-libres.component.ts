@@ -1,6 +1,6 @@
 import { Component, EventEmitter, OnInit, Output, computed, effect, inject, signal } from '@angular/core';
 import { CadeteService } from '../../core/services/cadete.service';
-import { GeocodingService } from '../../core/services/geocoding.service';
+import { GeocodingPublicoService } from '../../core/services/geocoding-publico.service';
 import { MetricasService } from '../../core/services/metricas.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { Cadete } from '../../core/models/cadete.model';
@@ -10,8 +10,8 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
  * del backend (PedidoService.buscarCandidato). */
 const ESTADOS_OCUPAN_CADETE = new Set(['PENDIENTE', 'EN_CURSO']);
 
-/** Metros mínimos de movimiento para volver a resolver la dirección — evita pegarle a
- * Nominatim en cada micro-jitter del GPS (respeta el límite de ~1 req/seg). */
+/** Metros mínimos de movimiento para volver a resolver la dirección — evita pegarle al
+ * backend (y de ahí a Nominatim) en cada micro-jitter del GPS. */
 const UMBRAL_METROS = 150;
 
 function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -154,7 +154,7 @@ export class CadetesLibresComponent implements OnInit {
   }
 
   private readonly cadetesSvc = inject(CadeteService);
-  private readonly geocoding = inject(GeocodingService);
+  private readonly geocoding = inject(GeocodingPublicoService);
   private readonly metricasSvc = inject(MetricasService);
   private readonly pedidosSvc = inject(PedidoService);
 

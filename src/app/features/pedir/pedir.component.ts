@@ -44,12 +44,12 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de origen</span>
-              <app-address-picker [modoPublico]="true" (addressPicked)="onOrigenPicked($event)" />
+              <app-address-picker (addressPicked)="onOrigenPicked($event)" />
             </div>
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de destino</span>
-              <app-address-picker [modoPublico]="true" (addressPicked)="onDestinoPicked($event)" />
+              <app-address-picker (addressPicked)="onDestinoPicked($event)" />
             </div>
 
             @if (cotizando()) {
