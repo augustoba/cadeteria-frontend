@@ -4,6 +4,7 @@ export interface CadeteInfoPublico {
   tipoVehiculo: string | null;
   vehiculoColor: string | null;
   vehiculoPatente: string | null;
+  fotoVehiculoUrl: string | null;
   cbu: string | null;
   aliasCbu: string | null;
 }
@@ -13,6 +14,9 @@ export interface Seguimiento {
   origenDireccion: string;
   destinoDireccion: string;
   precio: number;
+  llevaDinero: boolean;
+  montoDeclarado: number | null;
+  llevaValores: boolean;
   cadete: CadeteInfoPublico | null;
   comprobanteDisponible: boolean;
   entregaReceptorNombre: string | null;

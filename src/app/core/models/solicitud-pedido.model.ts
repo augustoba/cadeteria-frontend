@@ -10,6 +10,7 @@ export interface SolicitudPedido {
   destinoLng: number;
   llevaDinero: boolean;
   montoDeclarado: number | null;
+  llevaValores: boolean;
   retornaAlOrigen: boolean;
   clienteNombre: string;
   clienteTelefono: string;
@@ -31,6 +32,7 @@ export interface SolicitudPedidoInput {
   destinoLng: number;
   llevaDinero: boolean;
   montoDeclarado: number | null;
+  llevaValores: boolean;
   retornaAlOrigen: boolean;
   clienteNombre: string;
   clienteTelefono: string;

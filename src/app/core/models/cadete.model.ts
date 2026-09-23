@@ -17,7 +17,9 @@ export interface Cadete {
   vehiculoAnio: number | null;
   fotoVehiculoUrl: string | null;
   fotoCarnetUrl: string | null;
+  fotoCarnetDorsoUrl: string | null;
   fotoTarjetaVerdeUrl: string | null;
+  fotoTarjetaVerdeDorsoUrl: string | null;
   username: string;
   activo: boolean;
   estado: Lookup;
@@ -96,7 +98,9 @@ export interface CadeteInput {
   vehiculoAnio: number | null;
   fotoVehiculoUrl: string | null;
   fotoCarnetUrl: string | null;
+  fotoCarnetDorsoUrl: string | null;
   fotoTarjetaVerdeUrl: string | null;
+  fotoTarjetaVerdeDorsoUrl: string | null;
   username: string;
   password: string | null;
   montoMaximoTransportado: number | null;

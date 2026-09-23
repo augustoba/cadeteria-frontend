@@ -81,6 +81,11 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             }
 
             <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="llevaValores" name="llevaValores" />
+              <span class="text-sm text-gray-700">¿Transporta objetos de valor?</span>
+            </label>
+
+            <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="retornaAlOrigen" name="retornaAlOrigen" />
               <span class="text-sm text-gray-700">¿El cadete tiene que volver al origen?</span>
             </label>
@@ -159,6 +164,26 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
         }
       </div>
     </div>
+
+    @if (mostrarDisclaimer()) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cancelarDisclaimer()">
+        <div class="bg-white rounded shadow-lg w-full max-w-md" (click)="$event.stopPropagation()">
+          <div class="bg-brand-600 text-white px-4 py-3 rounded-t">
+            <h2 class="font-semibold">¿Confirmás el envío?</h2>
+          </div>
+          <div class="p-4 flex flex-col gap-2">
+            <p class="text-sm text-gray-700">
+              No declaraste que el envío lleve dinero ni objetos de valor. Recordá que la cadetería
+              no se hace responsable por dinero o valores que no hayan sido declarados al pedir el envío.
+            </p>
+          </div>
+          <div class="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
+            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cancelarDisclaimer()">Volver</button>
+            <button type="button" class="btn bg-brand-600 hover:bg-brand-700" (click)="confirmarEnvioSinDeclarar()">✔ Confirmar y enviar</button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [
     `
@@ -167,6 +192,13 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
         border-radius: 0.25rem;
         padding: 0.5rem 0.75rem;
         font-size: 0.875rem;
+      }
+      .btn {
+        color: white;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
       }
     `,
   ],
@@ -202,6 +234,7 @@ export class PedirComponent {
     clearTimeout(this.debounceMontoDeclarado);
     this.debounceMontoDeclarado = setTimeout(() => this.actualizarEstimado(), 500);
   }
+  llevaValores = false;
   retornaAlOrigen = false;
   clienteNombre = '';
   clienteTelefono = '';
@@ -213,6 +246,7 @@ export class PedirComponent {
   readonly error = signal<string | null>(null);
   readonly cotizando = signal(false);
   readonly precioEstimado = signal<number | null>(null);
+  readonly mostrarDisclaimer = signal(false);
 
   readonly codigoEnviado = signal(false);
   readonly enviandoCodigo = signal(false);
@@ -324,20 +358,39 @@ export class PedirComponent {
       return;
     }
 
+    if (!this.llevaDinero && !this.llevaValores) {
+      this.mostrarDisclaimer.set(true);
+      return;
+    }
+
+    this.enviarPedido();
+  }
+
+  cancelarDisclaimer(): void {
+    this.mostrarDisclaimer.set(false);
+  }
+
+  confirmarEnvioSinDeclarar(): void {
+    this.mostrarDisclaimer.set(false);
+    this.enviarPedido();
+  }
+
+  private enviarPedido(): void {
     const input: SolicitudPedidoInput = {
-      origenDireccion: this.origenPicked.address,
-      origenLat: this.origenPicked.lat,
-      origenLng: this.origenPicked.lng,
-      destinoDireccion: this.destinoPicked.address,
-      destinoLat: this.destinoPicked.lat,
-      destinoLng: this.destinoPicked.lng,
+      origenDireccion: this.origenPicked!.address,
+      origenLat: this.origenPicked!.lat,
+      origenLng: this.origenPicked!.lng,
+      destinoDireccion: this.destinoPicked!.address,
+      destinoLat: this.destinoPicked!.lat,
+      destinoLng: this.destinoPicked!.lng,
       llevaDinero: this.llevaDinero,
       montoDeclarado: this.llevaDinero ? this.montoDeclarado : null,
+      llevaValores: this.llevaValores,
       retornaAlOrigen: this.retornaAlOrigen,
       clienteNombre: this.clienteNombre.trim(),
       clienteTelefono: this.clienteTelefono.trim(),
       detalle: this.detalle.trim() || null,
-      verificacionToken: this.verificacionToken,
+      verificacionToken: this.verificacionToken!,
     };
 
     this.enviando.set(true);

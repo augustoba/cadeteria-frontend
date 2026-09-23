@@ -24,7 +24,9 @@ export interface SolicitudCadeteForm {
   fotoUrl: string | null;
   fotoVehiculoUrl: string | null;
   fotoCarnetUrl: string | null;
+  fotoCarnetDorsoUrl: string | null;
   fotoTarjetaVerdeUrl: string | null;
+  fotoTarjetaVerdeDorsoUrl: string | null;
   usernamePropuesto: string;
 }
 
@@ -48,7 +50,9 @@ export interface SolicitudCadete {
   fotoUrl: string | null;
   fotoVehiculoUrl: string | null;
   fotoCarnetUrl: string | null;
+  fotoCarnetDorsoUrl: string | null;
   fotoTarjetaVerdeUrl: string | null;
+  fotoTarjetaVerdeDorsoUrl: string | null;
   usernamePropuesto: string | null;
   motivoRechazo: string | null;
   cadeteCreadoId: string | null;

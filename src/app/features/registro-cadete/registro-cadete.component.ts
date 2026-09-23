@@ -78,45 +78,63 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
                   }
                 </select>
               </label>
-              <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Marca</span>
-                <input class="input" [(ngModel)]="vehiculoMarca" name="vehiculoMarca" />
-              </label>
-              <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Modelo</span>
-                <input class="input" [(ngModel)]="vehiculoModelo" name="vehiculoModelo" />
-              </label>
-              <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Color</span>
-                <input class="input" [(ngModel)]="vehiculoColor" name="vehiculoColor" />
-              </label>
-              <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Patente</span>
-                <input class="input" [(ngModel)]="vehiculoPatente" name="vehiculoPatente" />
-              </label>
+              @if (esMoto()) {
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-gray-700">Marca</span>
+                  <input class="input" [(ngModel)]="vehiculoMarca" name="vehiculoMarca" />
+                </label>
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-gray-700">Modelo</span>
+                  <input class="input" [(ngModel)]="vehiculoModelo" name="vehiculoModelo" />
+                </label>
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-gray-700">Color</span>
+                  <input class="input" [(ngModel)]="vehiculoColor" name="vehiculoColor" />
+                </label>
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-gray-700">Patente</span>
+                  <input class="input" [(ngModel)]="vehiculoPatente" name="vehiculoPatente" />
+                </label>
+              }
             </div>
 
             <div class="grid sm:grid-cols-2 gap-4 border-t border-gray-200 pt-4">
               <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Tu foto</span>
+                <span class="text-sm font-medium text-gray-700">Tu foto (de frente, sin gorra ni nada que te tape la cara)</span>
                 <app-image-upload [value]="fotoUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoUrl = $event" />
               </div>
+              <div></div>
               <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Foto del vehículo</span>
-                <app-image-upload [value]="fotoVehiculoUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoVehiculoUrl = $event" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Foto del carnet</span>
+                <span class="text-sm font-medium text-gray-700">DNI — frente</span>
                 <app-image-upload [value]="fotoCarnetUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoCarnetUrl = $event" />
               </div>
               <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Foto de la tarjeta verde</span>
-                <app-image-upload
-                  [value]="fotoTarjetaVerdeUrl"
-                  [credenciales]="cloudinaryCreds()"
-                  (valueChange)="fotoTarjetaVerdeUrl = $event"
-                />
+                <span class="text-sm font-medium text-gray-700">DNI — dorso</span>
+                <app-image-upload [value]="fotoCarnetDorsoUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoCarnetDorsoUrl = $event" />
               </div>
+              @if (esMoto()) {
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-gray-700">Foto del vehículo (que se vea la patente)</span>
+                  <app-image-upload [value]="fotoVehiculoUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoVehiculoUrl = $event" />
+                </div>
+                <div></div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-gray-700">Tarjeta verde — frente</span>
+                  <app-image-upload
+                    [value]="fotoTarjetaVerdeUrl"
+                    [credenciales]="cloudinaryCreds()"
+                    (valueChange)="fotoTarjetaVerdeUrl = $event"
+                  />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-medium text-gray-700">Tarjeta verde — dorso</span>
+                  <app-image-upload
+                    [value]="fotoTarjetaVerdeDorsoUrl"
+                    [credenciales]="cloudinaryCreds()"
+                    (valueChange)="fotoTarjetaVerdeDorsoUrl = $event"
+                  />
+                </div>
+              }
             </div>
 
             <button type="button" class="btn bg-emerald-600 hover:bg-emerald-700 self-end" [disabled]="enviando()" (click)="enviar()">
@@ -182,7 +200,14 @@ export class RegistroCadeteComponent implements OnInit {
   fotoUrl: string | null = null;
   fotoVehiculoUrl: string | null = null;
   fotoCarnetUrl: string | null = null;
+  fotoCarnetDorsoUrl: string | null = null;
   fotoTarjetaVerdeUrl: string | null = null;
+  fotoTarjetaVerdeDorsoUrl: string | null = null;
+
+  /** BICI no necesita marca/patente/foto de vehículo ni tarjeta verde — eso es de un motor. */
+  esMoto(): boolean {
+    return this.tipoVehiculoId === 'MOTO';
+  }
 
   ngOnInit(): void {
     this.token = this.route.snapshot.paramMap.get('token') ?? '';
@@ -218,6 +243,14 @@ export class RegistroCadeteComponent implements OnInit {
       this.error.set('Elegí un usuario.');
       return;
     }
+    if (!this.fotoUrl || !this.fotoCarnetUrl || !this.fotoCarnetDorsoUrl) {
+      this.error.set('Faltan tu foto y/o las fotos de frente y dorso del DNI.');
+      return;
+    }
+    if (this.esMoto() && (!this.fotoVehiculoUrl || !this.fotoTarjetaVerdeUrl || !this.fotoTarjetaVerdeDorsoUrl)) {
+      this.error.set('Para moto faltan: foto del vehículo y las fotos de frente y dorso de la tarjeta verde.');
+      return;
+    }
 
     this.enviando.set(true);
     this.service
@@ -228,14 +261,16 @@ export class RegistroCadeteComponent implements OnInit {
         telefono: this.telefono,
         email: this.email,
         tipoVehiculoId: this.tipoVehiculoId,
-        vehiculoColor: this.vehiculoColor || null,
-        vehiculoPatente: this.vehiculoPatente || null,
-        vehiculoMarca: this.vehiculoMarca || null,
-        vehiculoModelo: this.vehiculoModelo || null,
+        vehiculoColor: this.esMoto() ? this.vehiculoColor || null : null,
+        vehiculoPatente: this.esMoto() ? this.vehiculoPatente || null : null,
+        vehiculoMarca: this.esMoto() ? this.vehiculoMarca || null : null,
+        vehiculoModelo: this.esMoto() ? this.vehiculoModelo || null : null,
         fotoUrl: this.fotoUrl,
-        fotoVehiculoUrl: this.fotoVehiculoUrl,
+        fotoVehiculoUrl: this.esMoto() ? this.fotoVehiculoUrl : null,
         fotoCarnetUrl: this.fotoCarnetUrl,
-        fotoTarjetaVerdeUrl: this.fotoTarjetaVerdeUrl,
+        fotoCarnetDorsoUrl: this.fotoCarnetDorsoUrl,
+        fotoTarjetaVerdeUrl: this.esMoto() ? this.fotoTarjetaVerdeUrl : null,
+        fotoTarjetaVerdeDorsoUrl: this.esMoto() ? this.fotoTarjetaVerdeDorsoUrl : null,
         usernamePropuesto: this.usernamePropuesto,
       })
       .subscribe({

@@ -73,7 +73,7 @@ const ESTADO_CLASES: Record<string, string> = {
                   <span>Email: {{ s.email }}</span>
                   <span>Vehículo: {{ s.tipoVehiculo?.nombre }} {{ s.vehiculoMarca }} {{ s.vehiculoModelo }} ({{ s.vehiculoPatente }})</span>
                 </div>
-                @if (s.fotoUrl || s.fotoVehiculoUrl || s.fotoCarnetUrl || s.fotoTarjetaVerdeUrl) {
+                @if (s.fotoUrl || s.fotoVehiculoUrl || s.fotoCarnetUrl || s.fotoCarnetDorsoUrl || s.fotoTarjetaVerdeUrl || s.fotoTarjetaVerdeDorsoUrl) {
                   <div class="flex gap-2 flex-wrap">
                     @if (s.fotoUrl) {
                       <button type="button" (click)="lightbox.abrir(s.fotoUrl!)"><img [src]="optimizar(s.fotoUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
@@ -84,8 +84,14 @@ const ESTADO_CLASES: Record<string, string> = {
                     @if (s.fotoCarnetUrl) {
                       <button type="button" (click)="lightbox.abrir(s.fotoCarnetUrl!)"><img [src]="optimizar(s.fotoCarnetUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
                     }
+                    @if (s.fotoCarnetDorsoUrl) {
+                      <button type="button" (click)="lightbox.abrir(s.fotoCarnetDorsoUrl!)"><img [src]="optimizar(s.fotoCarnetDorsoUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
+                    }
                     @if (s.fotoTarjetaVerdeUrl) {
                       <button type="button" (click)="lightbox.abrir(s.fotoTarjetaVerdeUrl!)"><img [src]="optimizar(s.fotoTarjetaVerdeUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
+                    }
+                    @if (s.fotoTarjetaVerdeDorsoUrl) {
+                      <button type="button" (click)="lightbox.abrir(s.fotoTarjetaVerdeDorsoUrl!)"><img [src]="optimizar(s.fotoTarjetaVerdeDorsoUrl, 120)" class="w-14 h-14 object-cover rounded border" /></button>
                     }
                   </div>
                 }

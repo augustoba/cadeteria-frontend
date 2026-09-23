@@ -21,6 +21,8 @@ export interface Pedido {
   destinoLng: number;
   precio: number;
   montoDeclarado: number;
+  /** Declarado por el cliente al pedir — no afecta el tope de 5.2, solo informativo. */
+  llevaValores: boolean;
   detalle: string | null;
   requiereMoto: boolean;
   estado: Lookup;

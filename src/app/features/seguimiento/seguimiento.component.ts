@@ -119,6 +119,12 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
               <div><span class="text-gray-500">Origen:</span> {{ s.origenDireccion }}</div>
               <div><span class="text-gray-500">Destino:</span> {{ s.destinoDireccion }}</div>
               <div><span class="text-gray-500">Precio:</span> $ {{ s.precio }}</div>
+              @if (s.llevaDinero) {
+                <div>💵 Declaraste llevar dinero{{ s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '' }}.</div>
+              }
+              @if (s.llevaValores) {
+                <div>💎 Declaraste transportar objetos de valor.</div>
+              }
             </div>
 
             @if (s.cadete) {
@@ -138,6 +144,12 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
                     </div>
                   }
                 </div>
+                @if (s.cadete.fotoVehiculoUrl) {
+                  <img
+                    [src]="optimizar(s.cadete.fotoVehiculoUrl, 160)"
+                    class="w-14 h-14 rounded object-cover border border-gray-200 ml-auto"
+                  />
+                }
               </div>
               @if (s.cadete.cbu || s.cadete.aliasCbu) {
                 <div class="rounded bg-gray-50 text-sm px-3 py-2 flex flex-col gap-0.5">

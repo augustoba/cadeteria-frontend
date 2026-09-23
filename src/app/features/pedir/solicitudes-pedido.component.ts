@@ -64,6 +64,7 @@ const ESTADO_CLASES: Record<string, string> = {
                 <span>📍 Origen: {{ s.origenDireccion }}</span>
                 <span>🏁 Destino: {{ s.destinoDireccion }}</span>
                 <span>{{ s.llevaDinero ? '💵 Lleva dinero' + (s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '') : 'No lleva dinero' }}</span>
+                <span>{{ s.llevaValores ? '💎 Transporta valores' : 'No transporta valores' }}</span>
                 <span>{{ s.retornaAlOrigen ? '🔁 Retorna al origen' : 'No retorna al origen' }}</span>
               </div>
               @if (s.detalle) {
