@@ -3,7 +3,6 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SolicitudPedidoService } from '../../core/services/solicitud-pedido.service';
-import { LookupService } from '../../core/services/lookup.service';
 import { ToastService } from '../../core/services/toast.service';
 import { CotizacionService } from '../../core/services/cotizacion.service';
 import { SolicitudPedido } from '../../core/models/solicitud-pedido.model';
@@ -184,7 +183,6 @@ const ESTADO_CLASES: Record<string, string> = {
 })
 export class SolicitudesPedidoComponent implements OnInit {
   readonly service = inject(SolicitudPedidoService);
-  readonly lookups = inject(LookupService);
   private readonly toast = inject(ToastService);
   private readonly cotizacion = inject(CotizacionService);
 
@@ -201,7 +199,6 @@ export class SolicitudesPedidoComponent implements OnInit {
   motivoRechazoModal = '';
 
   ngOnInit(): void {
-    this.lookups.ensureLoaded();
     this.service.listar(this.filtroActual() ?? undefined);
   }
 

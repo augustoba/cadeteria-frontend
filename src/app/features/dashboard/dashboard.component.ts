@@ -1104,9 +1104,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Método (no computed) porque depende de `pedidoIdsParaCadete`, un array plano que se muta con checkboxes. */
   loteOrigenesLejos(): boolean {
-    const seleccionados = this.pedidosSinAsignar().filter((p) => this.pedidoIdsParaCadete.includes(p.id));
+    // Ancla en el orden de click (`pedidoIdsParaCadete`), no en el orden de la lista mostrada —
+    // el backend (`PedidoService.asignarLote`) ancla su chequeo de distancia en `pedidoIds.get(0)`,
+    // que es el primer elemento del array que el front manda en el body (este mismo orden de click).
+    const seleccionados = this.pedidoIdsParaCadete
+      .map((id) => this.pedidosSinAsignar().find((p) => p.id === id))
+      .filter((p): p is Pedido => p != null);
     if (seleccionados.length < 2) return false;
-    const topeKm = Number(this.config.valores()['distancia_maxima_lote_km'] ?? 3);
+    const topeKm = Number(this.config.valores()['distancia_maxima_lote_km']) || 3;
     const [primero, ...resto] = seleccionados;
     return resto.some((p) => this.distanciaKm(primero.origenLat, primero.origenLng, p.origenLat, p.origenLng) > topeKm);
   }

@@ -2,7 +2,6 @@ import { Component, OnInit, computed, inject, signal, viewChild } from '@angular
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs';
-import { LookupService } from '../../core/services/lookup.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { ClienteService } from '../../core/services/cliente.service';
@@ -235,7 +234,6 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
   ],
 })
 export class NuevoPedidoComponent implements OnInit {
-  readonly lookups = inject(LookupService);
   private readonly config = inject(ConfiguracionService);
   readonly pedidos = inject(PedidoService);
   private readonly clientes = inject(ClienteService);
@@ -318,7 +316,6 @@ export class NuevoPedidoComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.lookups.ensureLoaded();
     this.config.ensureLoaded();
   }
 
