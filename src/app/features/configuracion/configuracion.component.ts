@@ -146,9 +146,25 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                 <span class="text-sm font-medium text-gray-700">Distancia máxima de viaje para BICI (km)</span>
                 <input type="number" min="0" step="0.5" class="input" [(ngModel)]="distanciaMaximaBiciKm" name="distanciaMaximaBiciKm" placeholder="0 = sin límite" />
                 <span class="text-xs text-gray-400">
-                  Si el pedido pide BICI y el viaje (origen→destino) supera esta distancia, la asignación
-                  automática/sugerida no se lo ofrece a nadie — 0 = sin límite. Vos podés seguir asignando a mano
-                  igual si te parece razonable en un caso puntual.
+                  Si un cadete en BICI es candidato y el viaje (origen→destino) supera esta distancia, la
+                  asignación automática/sugerida no se lo ofrece a él (sí puede seguir ofreciéndose a una moto) —
+                  0 = sin límite. Vos podés seguir asignando a mano igual si te parece razonable en un caso puntual.
+                </span>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Distancia máxima del cadete al retiro (BICI, km)</span>
+                <input type="number" min="0" step="0.5" class="input" [(ngModel)]="distanciaMaximaBiciRetiroKm" name="distanciaMaximaBiciRetiroKm" placeholder="0 = sin límite" />
+                <span class="text-xs text-gray-400">
+                  Si un cadete en BICI está más lejos que esto del punto de retiro del pedido, la asignación
+                  automática/sugerida no se lo ofrece — 0 = sin límite.
+                </span>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Distancia máxima entre orígenes para agrupar en un lote (km)</span>
+                <input type="number" min="0" step="0.5" class="input" [(ngModel)]="distanciaMaximaLoteKm" name="distanciaMaximaLoteKm" />
+                <span class="text-xs text-gray-400">
+                  Al agrupar varios pedidos en una sola tanda de ofertas a un cadete ("Asignar viaje" desde
+                  Cadetes libres), todos los orígenes tienen que estar a esta distancia o menos entre sí.
                 </span>
               </label>
             </div>
@@ -716,6 +732,8 @@ export class ConfiguracionComponent implements OnInit {
   maxRechazosPorPedido: number | null = null;
   minutosPedidoUrgenteReintentar: number | null = null;
   distanciaMaximaBiciKm: number | null = null;
+  distanciaMaximaBiciRetiroKm: number | null = null;
+  distanciaMaximaLoteKm: number | null = null;
   asignacionPriorizaRankingAceptacion = false;
   alertaDemoraRetiroMin: number | null = null;
   alertaDemoraFinalizacionMin: number | null = null;
@@ -775,6 +793,8 @@ export class ConfiguracionComponent implements OnInit {
       this.maxRechazosPorPedido = Number(v['max_rechazos_por_pedido'] ?? 3);
       this.minutosPedidoUrgenteReintentar = Number(v['minutos_pedido_urgente_reintentar'] ?? 30);
       this.distanciaMaximaBiciKm = Number(v['distancia_maxima_bici_km'] ?? 0);
+      this.distanciaMaximaBiciRetiroKm = Number(v['distancia_maxima_bici_retiro_km'] ?? 0);
+      this.distanciaMaximaLoteKm = Number(v['distancia_maxima_lote_km'] ?? 3);
       this.asignacionPriorizaRankingAceptacion = (v['asignacion_prioriza_ranking_aceptacion'] ?? 'false') === 'true';
       this.alertaDemoraRetiroMin = Number(v['alerta_demora_retiro_min'] ?? 30);
       this.alertaDemoraFinalizacionMin = Number(v['alerta_demora_finalizacion_min'] ?? 60);
@@ -880,6 +900,8 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('max_rechazos_por_pedido', String(this.maxRechazosPorPedido ?? ''));
     agregarSiCambio('minutos_pedido_urgente_reintentar', String(this.minutosPedidoUrgenteReintentar ?? ''));
     agregarSiCambio('distancia_maxima_bici_km', String(this.distanciaMaximaBiciKm ?? 0));
+    agregarSiCambio('distancia_maxima_bici_retiro_km', String(this.distanciaMaximaBiciRetiroKm ?? 0));
+    agregarSiCambio('distancia_maxima_lote_km', String(this.distanciaMaximaLoteKm ?? 3));
     agregarSiCambio('asignacion_prioriza_ranking_aceptacion', String(this.asignacionPriorizaRankingAceptacion));
     agregarSiCambio('alerta_demora_retiro_min', String(this.alertaDemoraRetiroMin ?? ''));
     agregarSiCambio('alerta_demora_finalizacion_min', String(this.alertaDemoraFinalizacionMin ?? ''));

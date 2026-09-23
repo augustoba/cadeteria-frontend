@@ -1,5 +1,3 @@
-import { Lookup } from './lookup.model';
-
 export type EstadoSolicitudPedido = 'PENDIENTE' | 'COTIZADO' | 'CONFIRMADA' | 'RECHAZADA';
 
 export interface SolicitudPedido {
@@ -17,8 +15,7 @@ export interface SolicitudPedido {
   clienteTelefono: string;
   detalle: string | null;
   estado: EstadoSolicitudPedido;
-  zona: Lookup | null;
-  tipoVehiculoRequerido: Lookup | null;
+  requiereMoto: boolean;
   precio: number | null;
   pedidoCreadoId: string | null;
   motivoRechazo: string | null;
@@ -43,8 +40,7 @@ export interface SolicitudPedidoInput {
 }
 
 export interface RevisarSolicitudInput {
-  zonaId: string;
-  tipoVehiculoRequeridoId: string;
+  requiereMoto: boolean;
   precio: number;
   montoDeclarado: number | null;
 }

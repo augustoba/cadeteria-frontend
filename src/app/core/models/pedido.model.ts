@@ -22,8 +22,7 @@ export interface Pedido {
   precio: number;
   montoDeclarado: number;
   detalle: string | null;
-  zona: Lookup;
-  tipoVehiculoRequerido: Lookup;
+  requiereMoto: boolean;
   estado: Lookup;
   cadeteAsignado: CadeteResumen | null;
   programado: boolean;
@@ -112,8 +111,7 @@ export interface PedidoInput {
   precio: number;
   montoDeclarado: number | null;
   detalle: string | null;
-  zonaId: string;
-  tipoVehiculoRequeridoId: string;
+  requiereMoto: boolean;
   programado: boolean;
   fechaProgramada: string | null;
   /** Paradas intermedias, en orden — null o vacío si el pedido es simple. */
