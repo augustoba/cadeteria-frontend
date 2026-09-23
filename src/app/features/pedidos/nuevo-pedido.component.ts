@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs';
 import { LookupService } from '../../core/services/lookup.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { ZonaService } from '../../core/services/zona.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { CotizacionService } from '../../core/services/cotizacion.service';
@@ -161,25 +160,9 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
           </div>
 
           <div class="grid sm:grid-cols-4 gap-4">
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Zona</span>
-              <select class="input" [ngModel]="zonaId" (ngModelChange)="onZonaChange($event)" name="zonaId">
-                <option [ngValue]="null" disabled>Elegir…</option>
-                @for (z of zonas.zonas(); track z.id) {
-                  @if (z.activo) {
-                    <option [ngValue]="z.id">{{ z.nombre }}</option>
-                  }
-                }
-              </select>
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Tipo de vehículo</span>
-              <select class="input" [(ngModel)]="tipoVehiculoRequeridoId" name="tipoVehiculoRequeridoId">
-                <option [ngValue]="null" disabled>Elegir…</option>
-                @for (t of lookups.tiposVehiculo(); track t.id) {
-                  <option [ngValue]="t.id">{{ t.nombre }}</option>
-                }
-              </select>
+            <label class="flex items-center gap-2 mt-6">
+              <input type="checkbox" [(ngModel)]="requiereMoto" name="requiereMoto" />
+              <span class="text-sm font-medium text-gray-700">Requiere moto</span>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Valor trámite</span>
@@ -253,7 +236,6 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 })
 export class NuevoPedidoComponent implements OnInit {
   readonly lookups = inject(LookupService);
-  readonly zonas = inject(ZonaService);
   private readonly config = inject(ConfiguracionService);
   readonly pedidos = inject(PedidoService);
   private readonly clientes = inject(ClienteService);
@@ -275,8 +257,7 @@ export class NuevoPedidoComponent implements OnInit {
   private siguienteIdLocal = 1;
   readonly paradas = signal<Array<{ idLocal: number; picked: PickedAddress | null }>>([]);
 
-  zonaId: string | null = null;
-  tipoVehiculoRequeridoId: string | null = null;
+  requiereMoto = false;
   precio: number | null = null;
   precioSugeridoInfo: string | null = null;
   montoDeclarado: number | null = null;
@@ -338,7 +319,6 @@ export class NuevoPedidoComponent implements OnInit {
 
   ngOnInit(): void {
     this.lookups.ensureLoaded();
-    this.zonas.ensureLoaded();
     this.config.ensureLoaded();
   }
 
@@ -402,16 +382,6 @@ export class NuevoPedidoComponent implements OnInit {
     return 2 * R * Math.asin(Math.sqrt(a));
   }
 
-  onZonaChange(zonaId: string | null): void {
-    this.zonaId = zonaId;
-    if (this.precio != null) return;
-    const zona = this.zonas.zonas().find((z) => z.id === zonaId);
-    if (zona?.tarifaSugerida != null) {
-      this.precio = zona.tarifaSugerida;
-      this.precioSugeridoInfo = `Sugerido por zona (${zona.nombre})`;
-    }
-  }
-
   onOrigenPicked(p: PickedAddress | null): void {
     this.origenPicked = p;
     this.sugerirPrecio();
@@ -441,12 +411,8 @@ export class NuevoPedidoComponent implements OnInit {
       .subscribe((c) => {
         if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
-        if (c.metodo === 'ZONA' && c.zonaId) {
-          if (!this.zonaId) this.zonaId = c.zonaId;
-          this.precioSugeridoInfo = `Sugerido por zona (${c.zonaNombre})`;
-        } else {
-          this.precioSugeridoInfo = `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
-        }
+        this.precioSugeridoInfo =
+          c.metodo === 'ZONA' ? `Sugerido por zona (${c.zonaNombre})` : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
       });
   }
 
@@ -475,10 +441,6 @@ export class NuevoPedidoComponent implements OnInit {
     const paradasSinDireccion = this.paradas().some((p) => !p.picked);
     if (paradasSinDireccion) {
       this.error.set('Buscá y marcá la dirección de todas las paradas, o quitá las que no vayas a usar.');
-      return;
-    }
-    if (!this.zonaId || !this.tipoVehiculoRequeridoId) {
-      this.error.set('Elegí la zona y el tipo de vehículo.');
       return;
     }
     if (this.precio == null || this.precio < 0) {
@@ -513,8 +475,7 @@ export class NuevoPedidoComponent implements OnInit {
       precio: this.precio,
       montoDeclarado: this.montoDeclarado,
       detalle: this.detalle || null,
-      zonaId: this.zonaId,
-      tipoVehiculoRequeridoId: this.tipoVehiculoRequeridoId,
+      requiereMoto: this.requiereMoto,
       programado: this.programado,
       fechaProgramada,
       paradasAdicionales: paradasAdicionales.length ? paradasAdicionales : null,
@@ -534,7 +495,7 @@ export class NuevoPedidoComponent implements OnInit {
   /**
    * Para un cliente que hace varios envíos separados desde el mismo lugar (no paradas de
    * un solo viaje, sino pedidos independientes): deja el origen tal cual está cargado y
-   * solo limpia lo que cambia de un pedido a otro (destino, precio, zona, etc.).
+   * solo limpia lo que cambia de un pedido a otro (destino, precio, requiere moto, etc.).
    */
   private resetearFormularioMismoOrigen(): void {
     this.guardadoAviso.set('✅ Pedido cargado. Buscá el destino del próximo — el origen queda igual.');
@@ -543,8 +504,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.hora = '';
     this.destinoPicked = null;
     this.paradas.set([]);
-    this.zonaId = null;
-    this.tipoVehiculoRequeridoId = null;
+    this.requiereMoto = false;
     this.precio = null;
     this.precioSugeridoInfo = null;
     this.montoDeclarado = null;
@@ -552,7 +512,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.destinoPickerRef()?.setValue(null);
   }
 
-  /** Ronda de auditoría UX — evita perder la zona/tipo de vehículo elegidos cuando se cargan varios pedidos seguidos del mismo lado. */
+  /** Ronda de auditoría UX — evita perder el "requiere moto" elegido cuando se cargan varios pedidos seguidos del mismo lado. */
   private resetearFormulario(): void {
     this.guardadoAviso.set('✅ Pedido cargado. Podés cargar otro.');
     this.clienteNombre = '';
