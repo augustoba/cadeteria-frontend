@@ -3,7 +3,6 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SolicitudPedidoService } from '../../core/services/solicitud-pedido.service';
-import { ZonaService } from '../../core/services/zona.service';
 import { LookupService } from '../../core/services/lookup.service';
 import { ToastService } from '../../core/services/toast.service';
 import { CotizacionService } from '../../core/services/cotizacion.service';
@@ -75,25 +74,9 @@ const ESTADO_CLASES: Record<string, string> = {
               @if (s.estado === 'PENDIENTE') {
                 <div class="border-t border-gray-100 pt-2 flex flex-col gap-2">
                   <div class="grid sm:grid-cols-4 gap-2">
-                    <label class="flex flex-col gap-1">
-                      <span class="text-xs font-medium text-gray-700">Zona</span>
-                      <select class="input" [(ngModel)]="zonaSeleccionada[s.id]" [name]="'zona-' + s.id">
-                        <option [ngValue]="null" disabled>Elegir…</option>
-                        @for (z of zonas.zonas(); track z.id) {
-                          @if (z.activo) {
-                            <option [ngValue]="z.id">{{ z.nombre }}</option>
-                          }
-                        }
-                      </select>
-                    </label>
-                    <label class="flex flex-col gap-1">
-                      <span class="text-xs font-medium text-gray-700">Vehículo</span>
-                      <select class="input" [(ngModel)]="vehiculoSeleccionado[s.id]" [name]="'vehiculo-' + s.id">
-                        <option [ngValue]="null" disabled>Elegir…</option>
-                        @for (t of lookups.tiposVehiculo(); track t.id) {
-                          <option [ngValue]="t.id">{{ t.nombre }}</option>
-                        }
-                      </select>
+                    <label class="flex items-center gap-2">
+                      <input type="checkbox" [(ngModel)]="requiereMotoSeleccionado[s.id]" [name]="'requiereMoto-' + s.id" />
+                      <span class="text-xs font-medium text-gray-700">Requiere moto</span>
                     </label>
                     <label class="flex flex-col gap-1">
                       <span class="text-xs font-medium text-gray-700">Valor trámite</span>
@@ -201,7 +184,6 @@ const ESTADO_CLASES: Record<string, string> = {
 })
 export class SolicitudesPedidoComponent implements OnInit {
   readonly service = inject(SolicitudPedidoService);
-  readonly zonas = inject(ZonaService);
   readonly lookups = inject(LookupService);
   private readonly toast = inject(ToastService);
   private readonly cotizacion = inject(CotizacionService);
@@ -211,8 +193,7 @@ export class SolicitudesPedidoComponent implements OnInit {
   readonly linkPedir = `${window.location.origin}/pedir`;
   readonly linkCopiado = signal(false);
 
-  zonaSeleccionada: Record<string, string | null> = {};
-  vehiculoSeleccionado: Record<string, string | null> = {};
+  requiereMotoSeleccionado: Record<string, boolean> = {};
   precioModal: Record<string, number | null> = {};
   montoModal: Record<string, number | null> = {};
 
@@ -220,7 +201,6 @@ export class SolicitudesPedidoComponent implements OnInit {
   motivoRechazoModal = '';
 
   ngOnInit(): void {
-    this.zonas.ensureLoaded();
     this.lookups.ensureLoaded();
     this.service.listar(this.filtroActual() ?? undefined);
   }
@@ -243,19 +223,18 @@ export class SolicitudesPedidoComponent implements OnInit {
   }
 
   private datosValidos(s: SolicitudPedido): boolean {
-    return !!this.zonaSeleccionada[s.id] && !!this.vehiculoSeleccionado[s.id] && !!this.precioModal[s.id];
+    return !!this.precioModal[s.id];
   }
 
   confirmarDirecto(s: SolicitudPedido): void {
     if (!this.datosValidos(s)) {
-      this.toast.error('Elegí zona, vehículo y precio antes de confirmar.');
+      this.toast.error('Ingresá el precio antes de confirmar.');
       return;
     }
     this.service.confirmarDirecto(
       s.id,
       {
-        zonaId: this.zonaSeleccionada[s.id]!,
-        tipoVehiculoRequeridoId: this.vehiculoSeleccionado[s.id]!,
+        requiereMoto: this.requiereMotoSeleccionado[s.id] ?? false,
         precio: this.precioModal[s.id]!,
         montoDeclarado: this.montoModal[s.id] ?? null,
       },
@@ -274,9 +253,6 @@ export class SolicitudesPedidoComponent implements OnInit {
         return;
       }
       this.precioModal[s.id] = c.precioSugerido;
-      if (c.metodo === 'ZONA' && c.zonaId && !this.zonaSeleccionada[s.id]) {
-        this.zonaSeleccionada[s.id] = c.zonaId;
-      }
       this.toast.success(
         c.metodo === 'ZONA' ? `Sugerido por zona (${c.zonaNombre}).` : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`,
       );
@@ -285,14 +261,13 @@ export class SolicitudesPedidoComponent implements OnInit {
 
   cotizar(s: SolicitudPedido): void {
     if (!this.datosValidos(s)) {
-      this.toast.error('Elegí zona, vehículo y precio antes de cotizar.');
+      this.toast.error('Ingresá el precio antes de cotizar.');
       return;
     }
     this.service.cotizar(
       s.id,
       {
-        zonaId: this.zonaSeleccionada[s.id]!,
-        tipoVehiculoRequeridoId: this.vehiculoSeleccionado[s.id]!,
+        requiereMoto: this.requiereMotoSeleccionado[s.id] ?? false,
         precio: this.precioModal[s.id]!,
         montoDeclarado: this.montoModal[s.id] ?? null,
       },
