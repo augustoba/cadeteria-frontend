@@ -68,6 +68,11 @@ export const routes: Routes = [
           import('./features/registro-cadete/solicitudes-cadete.component').then((m) => m.SolicitudesCadeteComponent),
       },
       {
+        path: 'cadetes/actualizaciones',
+        loadComponent: () =>
+          import('./features/cadetes/revision-cadetes.component').then((m) => m.RevisionCadetesComponent),
+      },
+      {
         path: 'solicitudes-pedido',
         loadComponent: () => import('./features/pedir/solicitudes-pedido.component').then((m) => m.SolicitudesPedidoComponent),
       },

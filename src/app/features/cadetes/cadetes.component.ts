@@ -34,6 +34,7 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
             📢 Aviso general
           </button>
           <a routerLink="/cadetes/solicitudes" class="btn-action bg-indigo-600 hover:bg-indigo-700">📝 Solicitudes de alta</a>
+          <a routerLink="/cadetes/actualizaciones" class="btn-action bg-purple-600 hover:bg-purple-700">🔄 Actualizaciones pendientes</a>
           <a routerLink="/cadetes/nuevo" class="btn-action bg-emerald-600 hover:bg-emerald-700">+ Nuevo cadete</a>
         </div>
       </div>
