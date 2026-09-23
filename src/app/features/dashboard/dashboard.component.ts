@@ -10,6 +10,7 @@ import { IncidenciaService } from '../../core/services/incidencia.service';
 import { Incidencia, PrioridadIncidencia } from '../../core/models/incidencia.model';
 import { RealtimeService } from '../../core/services/realtime.service';
 import { ToastService } from '../../core/services/toast.service';
+import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { LightboxService } from '../../core/services/lightbox.service';
 import { TablaPedidosComponent, claseEstadoPedido } from './tabla-pedidos.component';
 import { CadetesLibresComponent } from './cadetes-libres.component';
@@ -264,19 +265,19 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
               </p>
             }
             <p class="text-sm text-gray-600">
-              {{ p.origenDireccion }} → {{ p.destinoDireccion }} · Zona {{ p.zona.nombre }} ·
-              {{ p.tipoVehiculoRequerido.nombre }}
+              {{ p.origenDireccion }} → {{ p.destinoDireccion }} ·
+              {{ p.requiereMoto ? 'Requiere moto' : 'Cualquier vehículo' }}
             </p>
             @if (buscandoSugerencia()) {
               <p class="text-xs text-gray-400">Buscando un candidato sugerido…</p>
             } @else if (sugerido()) {
               <p class="text-xs text-emerald-700">
-                Sugerido por el sistema: {{ sugerido()!.nombre }} {{ sugerido()!.apellido }} (el primero libre de esa
-                zona/vehículo). Podés confirmarlo o elegir otro cadete abajo.
+                Sugerido por el sistema: {{ sugerido()!.nombre }} {{ sugerido()!.apellido }} (el más cercano libre que
+                cumple los topes de distancia). Podés confirmarlo o elegir otro cadete abajo.
               </p>
             } @else {
               <p class="text-xs text-amber-700">
-                El sistema no encontró ningún cadete libre que matchee zona y vehículo — elegí uno a mano.
+                El sistema no encontró ningún cadete libre cerca — elegí uno a mano.
               </p>
             }
             <div class="flex items-center gap-3 text-sm">
@@ -356,8 +357,9 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
               <p class="text-sm text-gray-500">No hay pedidos sin asignar ahora mismo.</p>
             } @else {
               <p class="text-xs text-gray-400 -mb-1">
-                Marcá uno o más pedidos de la misma zona para agruparlos en una sola tanda de ofertas a este cadete
-                (necesita "Máx. viajes simultáneos" configurado en 2 o más para que le entren varios a la vez).
+                Marcá uno o más pedidos con orígenes cercanos entre sí para agruparlos en una sola tanda de ofertas
+                a este cadete (necesita "Máx. viajes simultáneos" configurado en 2 o más para que le entren varios a
+                la vez).
               </p>
               <div class="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
                 @for (p of pedidosSinAsignar(); track p.id) {
@@ -370,14 +372,14 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                     />
                     <span>
                       #{{ p.numero }} — {{ p.origenDireccion }} → {{ p.destinoDireccion }}
-                      <span class="text-gray-400">(Zona {{ p.zona.nombre }}, {{ p.tipoVehiculoRequerido.nombre }})</span>
+                      <span class="text-gray-400">({{ p.requiereMoto ? 'Requiere moto' : 'Cualquier vehículo' }})</span>
                     </span>
                   </label>
                 }
               </div>
-              @if (loteZonaMezclada()) {
+              @if (loteOrigenesLejos()) {
                 <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-2.5 py-1.5">
-                  Todos los pedidos que agrupes tienen que ser de la misma zona (o zonas aledañas).
+                  Todos los pedidos que agrupes tienen que tener orígenes cercanos entre sí.
                 </div>
               }
             }
@@ -387,7 +389,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
             <button
               type="button"
               class="btn bg-indigo-600 hover:bg-indigo-700"
-              [disabled]="pedidoIdsParaCadete.length === 0 || loteZonaMezclada()"
+              [disabled]="pedidoIdsParaCadete.length === 0 || loteOrigenesLejos()"
               (click)="confirmarAsignarDesdeCadete()"
             >
               ✔ Confirmar asignación{{ pedidoIdsParaCadete.length > 1 ? ' (' + pedidoIdsParaCadete.length + ')' : '' }}
@@ -515,12 +517,8 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
               </div>
               <div class="grid grid-cols-2 gap-x-4 gap-y-2.5 mt-2.5 pt-2.5 border-t border-gray-100">
                 <div>
-                  <div class="text-xs text-gray-400">Zona</div>
-                  <div class="font-medium text-gray-800">{{ p.zona.nombre }}</div>
-                </div>
-                <div>
                   <div class="text-xs text-gray-400">Vehículo</div>
-                  <div class="font-medium text-gray-800">{{ p.tipoVehiculoRequerido.nombre }}</div>
+                  <div class="font-medium text-gray-800">{{ p.requiereMoto ? 'Requiere moto' : 'Cualquier vehículo' }}</div>
                 </div>
                 @if (p.detalle) {
                   <div class="col-span-2">
@@ -950,6 +948,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   readonly lightbox = inject(LightboxService);
   private readonly route = inject(ActivatedRoute);
+  private readonly config = inject(ConfiguracionService);
   private desuscribirPedidos: (() => void) | null = null;
 
   readonly tabs = TABS;
@@ -1104,10 +1103,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly pedidosSinAsignar = computed(() => this.pedidos.pedidos().filter((p) => p.estado.id === 'SIN_ASIGNAR'));
 
   /** Método (no computed) porque depende de `pedidoIdsParaCadete`, un array plano que se muta con checkboxes. */
-  loteZonaMezclada(): boolean {
+  loteOrigenesLejos(): boolean {
     const seleccionados = this.pedidosSinAsignar().filter((p) => this.pedidoIdsParaCadete.includes(p.id));
-    const zonas = new Set(seleccionados.map((p) => p.zona.id));
-    return zonas.size > 1;
+    if (seleccionados.length < 2) return false;
+    const topeKm = Number(this.config.valores()['distancia_maxima_lote_km'] ?? 3);
+    const [primero, ...resto] = seleccionados;
+    return resto.some((p) => this.distanciaKm(primero.origenLat, primero.origenLng, p.origenLat, p.origenLng) > topeKm);
+  }
+
+  private distanciaKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
   }
 
   readonly pedidoACancelar = signal<Pedido | null>(null);
@@ -1133,6 +1143,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cadetesSvc.ensureLoaded();
+    this.config.ensureLoaded();
     const tabInicial = this.activeTab();
     if (tabInicial === 'finalizados') {
       this.cargarFinalizadosPagina();
@@ -1408,7 +1419,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.pedidoAFinalizar.set(null);
   }
 
-  /** Botón "Asignar"/"Reasignar": el sistema sugiere un candidato (zona + vehículo + FIFO), el admin confirma o elige otro. */
+  /** Botón "Asignar"/"Reasignar": el sistema sugiere un candidato (distancia + FIFO), el admin confirma o elige otro. */
   private abrirModalAsignar(pedido: Pedido, reasignar: boolean): void {
     this.cadetesSvc.ensureLoaded();
     this.cadeteIdSeleccionado = null;
@@ -1472,7 +1483,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   confirmarAsignarDesdeCadete(): void {
     const c = this.cadeteParaAsignar();
-    if (!c || this.pedidoIdsParaCadete.length === 0 || this.loteZonaMezclada()) return;
+    if (!c || this.pedidoIdsParaCadete.length === 0 || this.loteOrigenesLejos()) return;
     if (this.pedidoIdsParaCadete.length === 1) {
       this.pedidos.asignar(this.pedidoIdsParaCadete[0], c.id, () => this.cadeteParaAsignar.set(null));
     } else {
