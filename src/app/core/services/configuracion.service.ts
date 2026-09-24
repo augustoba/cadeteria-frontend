@@ -6,6 +6,31 @@ interface ConfiguracionResponse {
   valores: Record<string, string>;
 }
 
+/** Simulador del factor de línea recta contra lo cobrado antes (Configuración → Tarifas). */
+export interface SimulacionTarifa {
+  factor: number;
+  dias: number;
+  pedidosAnalizados: number;
+  formulaMasCara: number;
+  formulaMasBarata: number;
+  parecidos: number;
+  totalCobrado: number;
+  totalConFormula: number;
+  diferenciaPromedio: number;
+  diferenciaPromedioPct: number;
+  factorSugerido: number | null;
+  pedidosParaSugerencia: number;
+  mayoresDiferencias: {
+    numero: number;
+    creadoEn: string;
+    origen: string;
+    destino: string;
+    lineaRectaKm: number;
+    cobrado: number;
+    conFormula: number;
+  }[];
+}
+
 export interface EstadoApiKey {
   proveedor: string;
   claveEnmascarada: string;
@@ -65,6 +90,12 @@ export class ConfiguracionService {
   }
 
   /** Semáforo de las API keys de geocoding/rutas (verde/rojo, y cupo restante si el proveedor lo informa). */
+  simularTarifa(factor: number | null, dias: number) {
+    const params: Record<string, string> = { dias: String(dias) };
+    if (factor != null) params['factor'] = String(factor);
+    return this.http.get<SimulacionTarifa>(apiUrl('/admin/tarifas/simular'), { params });
+  }
+
   estadoApiKeys() {
     return this.http.get<EstadoApiKey[]>(apiUrl('/admin/configuracion/api-keys/estado'));
   }

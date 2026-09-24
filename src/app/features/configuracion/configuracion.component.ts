@@ -1,8 +1,8 @@
 import { Component, OnInit, effect, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ConfiguracionService, EstadoApiKey } from '../../core/services/configuracion.service';
+import { ConfiguracionService, EstadoApiKey, SimulacionTarifa } from '../../core/services/configuracion.service';
 import { SeguridadService } from '../../core/services/seguridad.service';
 import { SaludService, Salud } from '../../core/services/salud.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -29,7 +29,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
  */
 @Component({
   selector: 'app-configuracion',
-  imports: [FormsModule, DatePipe, RouterLink],
+  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -240,6 +240,112 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                 real es en promedio 1,38 veces la recta (medido en 12 viajes), por eso el default es 1,4.
               </span>
             </label>
+
+            <!-- Simulador (2026-09-24): elegir el factor comparando contra lo que se cobraba, no a ojo. -->
+            <div class="rounded border border-gray-200 p-3 flex flex-col gap-3 max-w-3xl">
+              <div class="flex flex-wrap items-end gap-3">
+                <div class="text-sm font-medium text-gray-700 w-full">Probar el factor contra lo que se cobraba antes</div>
+                <label class="flex flex-col gap-1">
+                  <span class="text-xs text-gray-500">Factor a probar</span>
+                  <input type="number" min="1" step="0.05" class="input w-24" [(ngModel)]="factorAProbar" name="factorAProbar" />
+                </label>
+                <label class="flex flex-col gap-1">
+                  <span class="text-xs text-gray-500">Pedidos de los últimos</span>
+                  <select class="input" [(ngModel)]="diasSimulacion" name="diasSimulacion">
+                    <option [ngValue]="30">30 días</option>
+                    <option [ngValue]="90">90 días</option>
+                    <option [ngValue]="180">180 días</option>
+                    <option [ngValue]="365">1 año</option>
+                  </select>
+                </label>
+                <button type="button" class="btn bg-brand-600 hover:bg-brand-700" (click)="simularTarifa()" [disabled]="simulando()">
+                  {{ simulando() ? 'Calculando…' : 'Probar' }}
+                </button>
+              </div>
+              <p class="text-xs text-gray-400 -mt-1">
+                Calcula cuánto habría cobrado la fórmula en cada pedido finalizado usando la línea recta × el factor, y
+                lo compara con lo que realmente se cobró. Usa el mínimo, los km y el precio por km de arriba tal como
+                están guardados.
+              </p>
+              @if (simulacion(); as s) {
+                @if (s.pedidosAnalizados === 0) {
+                  <p class="text-sm text-gray-500">No hay pedidos finalizados con precio en ese período.</p>
+                } @else {
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                    <div class="rounded bg-gray-50 px-3 py-2">
+                      <div class="text-xs text-gray-500">Pedidos</div>
+                      <div class="font-semibold">{{ s.pedidosAnalizados }}</div>
+                    </div>
+                    <div class="rounded bg-gray-50 px-3 py-2">
+                      <div class="text-xs text-gray-500">Parecidos (±5%)</div>
+                      <div class="font-semibold text-emerald-700">{{ s.parecidos }}</div>
+                    </div>
+                    <div class="rounded bg-gray-50 px-3 py-2">
+                      <div class="text-xs text-gray-500">La fórmula cobra más</div>
+                      <div class="font-semibold text-amber-700">{{ s.formulaMasCara }}</div>
+                    </div>
+                    <div class="rounded bg-gray-50 px-3 py-2">
+                      <div class="text-xs text-gray-500">La fórmula cobra menos</div>
+                      <div class="font-semibold text-red-700">{{ s.formulaMasBarata }}</div>
+                    </div>
+                  </div>
+                  <p class="text-sm text-gray-700">
+                    Con factor {{ s.factor }}: se cobró $ {{ s.totalCobrado | number: '1.0-0' }} y la fórmula habría
+                    cobrado $ {{ s.totalConFormula | number: '1.0-0' }}; en promedio
+                    <strong>{{ s.diferenciaPromedio >= 0 ? '+' : '' }}$ {{ s.diferenciaPromedio | number: '1.0-0' }}</strong>
+                    por pedido ({{ s.diferenciaPromedioPct >= 0 ? '+' : '' }}{{ s.diferenciaPromedioPct | number: '1.0-1' }}%).
+                  </p>
+                  @if (s.factorSugerido != null) {
+                    <div class="flex flex-wrap items-center gap-2 rounded bg-brand-50 border border-brand-200 px-3 py-2 text-sm">
+                      <span>
+                        El factor que mejor coincide con lo que se cobraba es <strong>{{ s.factorSugerido }}</strong>
+                        <span class="text-xs text-gray-500">(sale de {{ s.pedidosParaSugerencia }} pedidos cobrados por encima del mínimo)</span>
+                      </span>
+                      <button
+                        type="button"
+                        class="bg-brand-600 hover:bg-brand-700 text-white px-2 py-1 rounded text-xs font-medium"
+                        (click)="usarFactorSugerido(s.factorSugerido)"
+                      >
+                        Usar {{ s.factorSugerido }}
+                      </button>
+                    </div>
+                  } @else {
+                    <p class="text-xs text-gray-500">
+                      No hay pedidos cobrados por encima del mínimo en ese período: no se puede sugerir un factor.
+                    </p>
+                  }
+                  @if (s.mayoresDiferencias.length) {
+                    <details class="text-sm">
+                      <summary class="cursor-pointer text-brand-700">Ver los pedidos que más se alejan</summary>
+                      <div class="overflow-x-auto mt-2">
+                        <table class="w-full text-xs">
+                          <thead>
+                            <tr class="text-left text-gray-500 border-b border-gray-200">
+                              <th class="py-1 pr-2">#</th>
+                              <th class="py-1 pr-2">Origen → destino</th>
+                              <th class="py-1 pr-2 text-right">Recta</th>
+                              <th class="py-1 pr-2 text-right">Cobrado</th>
+                              <th class="py-1 text-right">Fórmula</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (f of s.mayoresDiferencias; track f.numero) {
+                              <tr class="border-b border-gray-100">
+                                <td class="py-1 pr-2 whitespace-nowrap">{{ f.numero }}</td>
+                                <td class="py-1 pr-2">{{ f.origen }} → {{ f.destino }}</td>
+                                <td class="py-1 pr-2 text-right whitespace-nowrap">{{ f.lineaRectaKm | number: '1.1-1' }} km</td>
+                                <td class="py-1 pr-2 text-right whitespace-nowrap">$ {{ f.cobrado | number: '1.0-0' }}</td>
+                                <td class="py-1 text-right whitespace-nowrap">$ {{ f.conFormula | number: '1.0-0' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  }
+                }
+              }
+            </div>
             <p class="text-xs text-gray-400 -mt-2">
               Ejemplo con mínimo $2000 hasta 2 km y $320/km: un viaje de 5 km cobra $2000 + 3 km × $320 = $2960.
             </p>
@@ -793,6 +899,10 @@ export class ConfiguracionComponent implements OnInit {
   distanciaMinimaKm: number | null = null;
   precioPorKm: number | null = null;
   factorLineaRecta: number | null = 1.4;
+  factorAProbar: number | null = 1.4;
+  diasSimulacion = 90;
+  readonly simulacion = signal<SimulacionTarifa | null>(null);
+  readonly simulando = signal(false);
   recargoDineroUmbral: number | null = null;
   recargoDineroMonto: number | null = null;
   geoapifyKeys = '';
@@ -860,6 +970,7 @@ export class ConfiguracionComponent implements OnInit {
       this.distanciaMinimaKm = Number(v['distancia_minima_km'] ?? 2);
       this.precioPorKm = Number(v['precio_por_km'] ?? 0);
       this.factorLineaRecta = Number(v['factor_linea_recta'] ?? 1.4);
+      this.factorAProbar = this.factorLineaRecta;
       this.recargoDineroUmbral = Number(v['recargo_dinero_transportado_umbral'] ?? 0);
       this.recargoDineroMonto = Number(v['recargo_dinero_transportado_monto'] ?? 0);
       this.geoapifyKeys = v['geoapify_keys'] ?? '';
@@ -904,6 +1015,24 @@ export class ConfiguracionComponent implements OnInit {
       },
       error: () => this.cargandoEstadoApiKeys.set(false),
     });
+  }
+
+  simularTarifa(): void {
+    this.simulando.set(true);
+    this.config.simularTarifa(this.factorAProbar, this.diasSimulacion).subscribe({
+      next: (r) => {
+        this.simulacion.set(r);
+        this.simulando.set(false);
+      },
+      error: () => this.simulando.set(false),
+    });
+  }
+
+  /** Lo copia al campo de arriba: se aplica recién al tocar "Guardar", como el resto de Configuración. */
+  usarFactorSugerido(factor: number): void {
+    this.factorLineaRecta = factor;
+    this.factorAProbar = factor;
+    this.simularTarifa();
   }
 
   nombreProveedor(proveedor: string): string {
