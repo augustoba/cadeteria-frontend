@@ -62,8 +62,11 @@ export function claseEstadoPedido(estadoId: string): string {
         </thead>
         <tbody>
           @for (p of pedidosPagina; track p.id) {
+            <!-- Filas cebra: las impares un gris más oscuro para seguir la fila con la vista; las que
+                 ya tienen color por estado (cancelado/finalizado/prioritario) lo conservan. -->
             <tr
-              class="border-b border-gray-100 hover:bg-gray-50"
+              class="border-b border-gray-100 hover:bg-brand-50"
+              [class.bg-slate-100]="$odd && !tieneColorDeEstado(p)"
               [class.bg-red-50]="p.estado.id === 'CANCELADO'"
               [class.bg-emerald-50]="p.estado.id === 'FINALIZADO'"
               [class.bg-amber-50]="p.prioritario && p.estado.id !== 'CANCELADO' && p.estado.id !== 'FINALIZADO'"
@@ -162,21 +165,33 @@ export function claseEstadoPedido(estadoId: string): string {
                     ⋯
                   </button>
                   @if (abierto() === p.id) {
+                    <!-- Cada opción con el color que tenía cuando los botones estaban sueltos en la fila,
+                         para reconocerla de un vistazo. -->
                     <div class="menu">
                       @if (tieneAccionPrincipal(p)) {
-                        <button type="button" (click)="emitirYCerrar('detalle', p)">Detalle</button>
+                        <button type="button" class="bg-gray-500 hover:bg-gray-600" (click)="emitirYCerrar('detalle', p)">Detalle</button>
                       }
                       @if (mostrarAcciones && p.cadeteAsignado) {
-                        <button type="button" (click)="emitirYCerrar('reasignar', p)">Reasignar</button>
-                        <button type="button" (click)="emitirYCerrar('quitar', p)">Quitar cadete</button>
+                        <button type="button" class="bg-indigo-600 hover:bg-indigo-700" (click)="emitirYCerrar('reasignar', p)">
+                          Reasignar
+                        </button>
+                        <button type="button" class="bg-amber-500 hover:bg-amber-600" (click)="emitirYCerrar('quitar', p)">
+                          Quitar cadete
+                        </button>
                       }
                       @if (mostrarAcciones) {
-                        <button type="button" (click)="emitirYCerrar('imprimir', p)">Imprimir</button>
+                        <button type="button" class="bg-emerald-600 hover:bg-emerald-700" (click)="emitirYCerrar('imprimir', p)">
+                          Imprimir
+                        </button>
                       }
-                      <button type="button" (click)="emitirYCerrar('incidencia', p)">🚨 Crear incidencia</button>
+                      <button type="button" class="bg-amber-600 hover:bg-amber-700" (click)="emitirYCerrar('incidencia', p)">
+                        🚨 Crear incidencia
+                      </button>
                       @if (mostrarAcciones) {
                         <div class="sep"></div>
-                        <button type="button" class="danger" (click)="emitirYCerrar('anular', p)">Anular pedido</button>
+                        <button type="button" class="bg-red-600 hover:bg-red-700" (click)="emitirYCerrar('anular', p)">
+                          Anular pedido
+                        </button>
                       }
                     </div>
                   }
@@ -258,21 +273,21 @@ export function claseEstadoPedido(estadoId: string): string {
         z-index: 30;
         padding: 0.35rem;
       }
+      .menu {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
       .menu button {
         display: block;
         width: 100%;
         text-align: left;
-        padding: 0.5rem 0.6rem;
-        border-radius: 0.4rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 0.35rem;
         font-size: 0.8125rem;
         font-weight: 600;
-        color: #111827;
-      }
-      .menu button:hover {
-        background: #f1f2f6;
-      }
-      .menu button.danger {
-        color: #dc2626;
+        color: white;
+        transition: background-color 0.15s;
       }
       .menu .sep {
         height: 1px;
@@ -304,6 +319,11 @@ export class TablaPedidosComponent implements OnChanges {
 
   toggleMenu(pedidoId: string): void {
     this.abierto.update((actual) => (actual === pedidoId ? null : pedidoId));
+  }
+
+  /** Cancelado/finalizado/prioritario ya pintan la fila: la cebra no los tapa. */
+  tieneColorDeEstado(p: Pedido): boolean {
+    return p.estado.id === 'CANCELADO' || p.estado.id === 'FINALIZADO' || p.prioritario;
   }
 
   emitirYCerrar(accionId: Accion, pedido: Pedido): void {
