@@ -42,6 +42,80 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               <div class="rounded bg-red-50 text-red-700 text-sm px-3 py-2">{{ error() }}</div>
             }
 
+            <!-- Primero el celular de quien pide (2026-09-24): es el contacto del pedido y el que se verifica. -->
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Tu número de celular</span>
+              <input
+                class="input"
+                [ngModel]="clienteTelefono"
+                (ngModelChange)="onTelefonoChange($event)"
+                name="clienteTelefono"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="Ej: 381 555 1234"
+                [disabled]="verificandoCodigo()"
+              />
+            </label>
+            <p class="text-xs text-gray-400 -mt-3">Es el número al que te contactamos por este envío.</p>
+
+            @if (verificarTelefono() && !telefonoVerificado()) {
+              <div class="rounded bg-gray-50 border border-gray-200 px-3 py-2 flex flex-col gap-2">
+                @if (!codigoEnviado()) {
+                  <p class="text-xs text-gray-500">Antes de enviar el pedido, confirmamos que ese teléfono es real.</p>
+                  <button
+                    type="button"
+                    class="w-full sm:w-auto sm:self-start bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2.5 sm:py-1.5 sm:text-xs rounded"
+                    [disabled]="!clienteTelefono.trim() || enviandoCodigo()"
+                    (click)="enviarCodigo()"
+                  >
+                    {{ enviandoCodigo() ? 'Enviando…' : '📲 Enviarme un código' }}
+                  </button>
+                } @else {
+                  <p class="text-xs text-gray-500">
+                    Te mandamos un código por {{ medioCodigo() }} a {{ clienteTelefono }} — vence en 10 minutos.
+                  </p>
+                  <div class="flex gap-2">
+                    <input
+                      class="input flex-1 min-w-0"
+                      [(ngModel)]="codigoInput"
+                      name="codigoInput"
+                      placeholder="Código de 6 dígitos"
+                      maxlength="6"
+                      inputmode="numeric"
+                      autocomplete="one-time-code"
+                    />
+                    <button
+                      type="button"
+                      class="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm sm:text-xs font-medium px-4 py-2 sm:py-1.5 rounded"
+                      [disabled]="verificandoCodigo()"
+                      (click)="verificarCodigo()"
+                    >
+                      {{ verificandoCodigo() ? 'Verificando…' : 'Verificar' }}
+                    </button>
+                  </div>
+                  <button type="button" class="text-xs text-brand-600 hover:underline self-start" (click)="enviarCodigo()">
+                    Reenviar código
+                  </button>
+                }
+                @if (errorVerificacion()) {
+                  <p class="text-xs text-red-600">{{ errorVerificacion() }}</p>
+                }
+              </div>
+            } @else if (verificarTelefono()) {
+              @if (sinVerificar()) {
+                <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
+                  No pudimos mandarte el código ahora. Podés enviar el pedido igual: te vamos a contactar a ese
+                  número para confirmarlo antes de salir.
+                </div>
+              } @else {
+                <div class="rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-2">
+                  ✅ Teléfono verificado
+                </div>
+              }
+            }
+
+
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de origen</span>
               <app-address-picker (addressPicked)="onOrigenPicked($event)" />
@@ -121,82 +195,10 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               <span class="text-sm text-gray-700">¿El cadete tiene que volver al origen?</span>
             </label>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">¿Por quién pregunta el cadete?</span>
-                <input class="input" [(ngModel)]="clienteNombre" name="clienteNombre" placeholder="Nombre" />
-              </label>
-              <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Teléfono de esa persona</span>
-                <input
-                  class="input"
-                  [ngModel]="clienteTelefono"
-                  (ngModelChange)="onTelefonoChange($event)"
-                  name="clienteTelefono"
-                  type="tel"
-                  inputmode="tel"
-                  autocomplete="tel"
-                  placeholder="Teléfono"
-                  [disabled]="verificandoCodigo()"
-                />
-              </label>
-            </div>
-
-            @if (verificarTelefono() && !telefonoVerificado()) {
-              <div class="rounded bg-gray-50 border border-gray-200 px-3 py-2 flex flex-col gap-2">
-                @if (!codigoEnviado()) {
-                  <p class="text-xs text-gray-500">Antes de enviar el pedido, confirmamos que ese teléfono es real.</p>
-                  <button
-                    type="button"
-                    class="w-full sm:w-auto sm:self-start bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2.5 sm:py-1.5 sm:text-xs rounded"
-                    [disabled]="!clienteTelefono.trim() || enviandoCodigo()"
-                    (click)="enviarCodigo()"
-                  >
-                    {{ enviandoCodigo() ? 'Enviando…' : '📲 Enviarme un código' }}
-                  </button>
-                } @else {
-                  <p class="text-xs text-gray-500">
-                    Te mandamos un código por {{ medioCodigo() }} a {{ clienteTelefono }} — vence en 10 minutos.
-                  </p>
-                  <div class="flex gap-2">
-                    <input
-                      class="input flex-1 min-w-0"
-                      [(ngModel)]="codigoInput"
-                      name="codigoInput"
-                      placeholder="Código de 6 dígitos"
-                      maxlength="6"
-                      inputmode="numeric"
-                      autocomplete="one-time-code"
-                    />
-                    <button
-                      type="button"
-                      class="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm sm:text-xs font-medium px-4 py-2 sm:py-1.5 rounded"
-                      [disabled]="verificandoCodigo()"
-                      (click)="verificarCodigo()"
-                    >
-                      {{ verificandoCodigo() ? 'Verificando…' : 'Verificar' }}
-                    </button>
-                  </div>
-                  <button type="button" class="text-xs text-brand-600 hover:underline self-start" (click)="enviarCodigo()">
-                    Reenviar código
-                  </button>
-                }
-                @if (errorVerificacion()) {
-                  <p class="text-xs text-red-600">{{ errorVerificacion() }}</p>
-                }
-              </div>
-            } @else if (verificarTelefono()) {
-              @if (sinVerificar()) {
-                <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
-                  No pudimos mandarte el código ahora. Podés enviar el pedido igual: te vamos a contactar a ese
-                  número para confirmarlo antes de salir.
-                </div>
-              } @else {
-                <div class="rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-2">
-                  ✅ Teléfono verificado
-                </div>
-              }
-            }
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">¿Por quién pregunta el cadete?</span>
+              <input class="input" [(ngModel)]="clienteNombre" name="clienteNombre" placeholder="Nombre" autocomplete="name" />
+            </label>
 
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Detalle del pedido (opcional)</span>
@@ -446,7 +448,7 @@ export class PedirComponent {
       return;
     }
     if (!this.clienteNombre.trim() || !this.clienteTelefono.trim()) {
-      this.error.set('Completá por quién pregunta el cadete y el teléfono.');
+      this.error.set('Completá tu número de celular y por quién pregunta el cadete.');
       return;
     }
     if (this.verificarTelefono() && (!this.telefonoVerificado() || !this.verificacionToken)) {
