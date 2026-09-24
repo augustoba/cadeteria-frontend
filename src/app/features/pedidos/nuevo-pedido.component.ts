@@ -113,6 +113,22 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               @for (k of [formKey()]; track k) {
                 <app-address-picker (addressPicked)="onOrigenPicked($event)" />
               }
+              <div class="grid grid-cols-3 gap-2">
+                <input
+                  class="input"
+                  [(ngModel)]="origenPisoDepto"
+                  name="origenPisoDepto"
+                  maxlength="50"
+                  placeholder="Piso / depto (opcional)"
+                />
+                <input
+                  class="input col-span-2"
+                  [(ngModel)]="origenObservaciones"
+                  name="origenObservaciones"
+                  maxlength="300"
+                  placeholder="Observaciones de la dirección (opcional)"
+                />
+              </div>
             </div>
 
             <div class="flex flex-col gap-1">
@@ -120,6 +136,22 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               @for (k of [formKey()]; track k) {
                 <app-address-picker #destinoPickerRef (addressPicked)="onDestinoPicked($event)" />
               }
+              <div class="grid grid-cols-3 gap-2">
+                <input
+                  class="input"
+                  [(ngModel)]="destinoPisoDepto"
+                  name="destinoPisoDepto"
+                  maxlength="50"
+                  placeholder="Piso / depto (opcional)"
+                />
+                <input
+                  class="input col-span-2"
+                  [(ngModel)]="destinoObservaciones"
+                  name="destinoObservaciones"
+                  maxlength="300"
+                  placeholder="Observaciones de la dirección (opcional)"
+                />
+              </div>
             </div>
           </div>
 
@@ -190,11 +222,24 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                 name="montoDeclarado"
               />
             </label>
+            <label class="flex items-center gap-2 mt-6" title="Objetos de valor (no dinero en efectivo) — solo informativo">
+              <input type="checkbox" [(ngModel)]="llevaValores" name="llevaValores" />
+              <span class="text-sm font-medium text-gray-700">Transporta valores</span>
+            </label>
           </div>
 
           <label class="flex flex-col gap-1">
-            <span class="text-sm font-medium text-gray-700">Descripción</span>
-            <textarea class="input" rows="2" [(ngModel)]="detalle" name="detalle"></textarea>
+            <span class="text-sm font-medium text-gray-700">Detalle del pedido</span>
+            <textarea
+              class="input"
+              rows="2"
+              [(ngModel)]="detalle"
+              name="detalle"
+              placeholder="Qué se lleva, cómo va embalado, a quién preguntar…"
+            ></textarea>
+            <span class="text-xs text-gray-400">
+              El cadete ve el detalle, el piso/depto y las observaciones recién cuando acepta el viaje.
+            </span>
           </label>
         </div>
       </div>
@@ -259,7 +304,12 @@ export class NuevoPedidoComponent implements OnInit {
   precio: number | null = null;
   precioSugeridoInfo: string | null = null;
   montoDeclarado: number | null = null;
+  llevaValores = false;
   detalle = '';
+  origenPisoDepto = '';
+  origenObservaciones = '';
+  destinoPisoDepto = '';
+  destinoObservaciones = '';
 
   readonly error = signal<string | null>(null);
   readonly guardadoAviso = signal<string | null>(null);
@@ -471,7 +521,12 @@ export class NuevoPedidoComponent implements OnInit {
       destinoLng: this.destinoPicked.lng,
       precio: this.precio,
       montoDeclarado: this.montoDeclarado,
+      llevaValores: this.llevaValores,
       detalle: this.detalle || null,
+      origenPisoDepto: this.origenPisoDepto.trim() || null,
+      origenObservaciones: this.origenObservaciones.trim() || null,
+      destinoPisoDepto: this.destinoPisoDepto.trim() || null,
+      destinoObservaciones: this.destinoObservaciones.trim() || null,
       requiereMoto: this.requiereMoto,
       programado: this.programado,
       fechaProgramada,
@@ -505,7 +560,10 @@ export class NuevoPedidoComponent implements OnInit {
     this.precio = null;
     this.precioSugeridoInfo = null;
     this.montoDeclarado = null;
+    this.llevaValores = false;
     this.detalle = '';
+    this.destinoPisoDepto = '';
+    this.destinoObservaciones = '';
     this.destinoPickerRef()?.setValue(null);
   }
 
@@ -525,7 +583,12 @@ export class NuevoPedidoComponent implements OnInit {
     this.precio = null;
     this.precioSugeridoInfo = null;
     this.montoDeclarado = null;
+    this.llevaValores = false;
     this.detalle = '';
+    this.origenPisoDepto = '';
+    this.origenObservaciones = '';
+    this.destinoPisoDepto = '';
+    this.destinoObservaciones = '';
     this.formKey.update((k) => k + 1);
   }
 

@@ -61,11 +61,22 @@ const ESTADO_CLASES: Record<string, string> = {
               </div>
 
               <div class="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
-                <span>📍 Origen: {{ s.origenDireccion }}</span>
-                <span>🏁 Destino: {{ s.destinoDireccion }}</span>
+                <span>
+                  📍 Origen: {{ s.origenDireccion }}
+                  @if (s.origenPisoDepto) { <strong> — {{ s.origenPisoDepto }}</strong> }
+                  @if (s.origenObservaciones) { <span class="block text-xs text-gray-500">📝 {{ s.origenObservaciones }}</span> }
+                </span>
+                <span>
+                  🏁 Destino: {{ s.destinoDireccion }}
+                  @if (s.destinoPisoDepto) { <strong> — {{ s.destinoPisoDepto }}</strong> }
+                  @if (s.destinoObservaciones) { <span class="block text-xs text-gray-500">📝 {{ s.destinoObservaciones }}</span> }
+                </span>
                 <span>{{ s.llevaDinero ? '💵 Lleva dinero' + (s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '') : 'No lleva dinero' }}</span>
                 <span>{{ s.llevaValores ? '💎 Transporta valores' : 'No transporta valores' }}</span>
                 <span>{{ s.retornaAlOrigen ? '🔁 Retorna al origen' : 'No retorna al origen' }}</span>
+                @if (s.requiereMoto) {
+                  <span>🏍️ Pidió moto</span>
+                }
               </div>
               @if (s.detalle) {
                 <p class="text-sm text-gray-600 italic">"{{ s.detalle }}"</p>
@@ -75,7 +86,9 @@ const ESTADO_CLASES: Record<string, string> = {
                 <div class="border-t border-gray-100 pt-2 flex flex-col gap-2">
                   <div class="grid sm:grid-cols-4 gap-2">
                     <label class="flex items-center gap-2">
-                      <input type="checkbox" [(ngModel)]="requiereMotoSeleccionado[s.id]" [name]="'requiereMoto-' + s.id" />
+                      <input type="checkbox" [ngModel]="requiereMotoSeleccionado[s.id] ?? s.requiereMoto"
+                        (ngModelChange)="requiereMotoSeleccionado[s.id] = $event"
+                        [name]="'requiereMoto-' + s.id" />
                       <span class="text-xs font-medium text-gray-700">Requiere moto</span>
                     </label>
                     <label class="flex flex-col gap-1">
@@ -192,7 +205,8 @@ export class SolicitudesPedidoComponent implements OnInit {
   readonly linkPedir = `${window.location.origin}/pedir`;
   readonly linkCopiado = signal(false);
 
-  requiereMotoSeleccionado: Record<string, boolean> = {};
+  /** Sin entrada = lo que pidió el cliente (s.requiereMoto). */
+  requiereMotoSeleccionado: Record<string, boolean | undefined> = {};
   precioModal: Record<string, number | null> = {};
   montoModal: Record<string, number | null> = {};
 
@@ -232,7 +246,7 @@ export class SolicitudesPedidoComponent implements OnInit {
     this.service.confirmarDirecto(
       s.id,
       {
-        requiereMoto: this.requiereMotoSeleccionado[s.id] ?? false,
+        requiereMoto: this.requiereMotoSeleccionado[s.id] ?? s.requiereMoto,
         precio: this.precioModal[s.id]!,
         montoDeclarado: this.montoModal[s.id] ?? null,
       },
@@ -265,7 +279,7 @@ export class SolicitudesPedidoComponent implements OnInit {
     this.service.cotizar(
       s.id,
       {
-        requiereMoto: this.requiereMotoSeleccionado[s.id] ?? false,
+        requiereMoto: this.requiereMotoSeleccionado[s.id] ?? s.requiereMoto,
         precio: this.precioModal[s.id]!,
         montoDeclarado: this.montoModal[s.id] ?? null,
       },

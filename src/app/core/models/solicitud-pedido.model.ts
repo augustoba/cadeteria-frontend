@@ -15,6 +15,11 @@ export interface SolicitudPedido {
   clienteNombre: string;
   clienteTelefono: string;
   detalle: string | null;
+  /** Piso/depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
+  origenPisoDepto: string | null;
+  origenObservaciones: string | null;
+  destinoPisoDepto: string | null;
+  destinoObservaciones: string | null;
   estado: EstadoSolicitudPedido;
   requiereMoto: boolean;
   precio: number | null;
@@ -33,10 +38,17 @@ export interface SolicitudPedidoInput {
   llevaDinero: boolean;
   montoDeclarado: number | null;
   llevaValores: boolean;
+  /** Lo pide el cliente — el admin lo puede cambiar al revisar. */
+  requiereMoto: boolean;
   retornaAlOrigen: boolean;
   clienteNombre: string;
   clienteTelefono: string;
   detalle: string | null;
+  /** Piso/depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
+  origenPisoDepto: string | null;
+  origenObservaciones: string | null;
+  destinoPisoDepto: string | null;
+  destinoObservaciones: string | null;
   /** Token de VerificacionTelefonoService.verificarCodigo (mejora 2026-09-17) — confirma que el teléfono es real. */
   verificacionToken: string;
 }

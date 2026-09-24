@@ -496,6 +496,12 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 <div>
                   <div class="text-xs text-gray-400">Origen</div>
                   <div class="font-medium text-gray-800">{{ p.origenDireccion }}</div>
+                  @if (p.origenPisoDepto) {
+                    <div class="text-gray-700">Piso/depto: {{ p.origenPisoDepto }}</div>
+                  }
+                  @if (p.origenObservaciones) {
+                    <div class="text-xs text-gray-500">📝 {{ p.origenObservaciones }}</div>
+                  }
                 </div>
                 @for (parada of p.paradas; track parada.id) {
                   <div>
@@ -513,6 +519,12 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 <div>
                   <div class="text-xs text-gray-400">Destino</div>
                   <div class="font-medium text-gray-800">{{ p.destinoDireccion }}</div>
+                  @if (p.destinoPisoDepto) {
+                    <div class="text-gray-700">Piso/depto: {{ p.destinoPisoDepto }}</div>
+                  }
+                  @if (p.destinoObservaciones) {
+                    <div class="text-xs text-gray-500">📝 {{ p.destinoObservaciones }}</div>
+                  }
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-x-4 gap-y-2.5 mt-2.5 pt-2.5 border-t border-gray-100">
@@ -522,7 +534,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 </div>
                 @if (p.detalle) {
                   <div class="col-span-2">
-                    <div class="text-xs text-gray-400">Detalle</div>
+                    <div class="text-xs text-gray-400">Detalle del pedido</div>
                     <div class="font-medium text-gray-800">{{ p.detalle }}</div>
                   </div>
                 }

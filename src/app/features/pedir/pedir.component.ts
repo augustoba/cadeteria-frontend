@@ -45,11 +45,45 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de origen</span>
               <app-address-picker (addressPicked)="onOrigenPicked($event)" />
+              <div class="grid grid-cols-3 gap-2">
+                <input
+                  class="input"
+                  [(ngModel)]="origenPisoDepto"
+                  name="origenPisoDepto"
+                  maxlength="50"
+                  placeholder="Piso / depto"
+                />
+                <input
+                  class="input col-span-2"
+                  [(ngModel)]="origenObservaciones"
+                  name="origenObservaciones"
+                  maxlength="300"
+                  placeholder="Observaciones (timbre, portón…)"
+                />
+              </div>
+              <span class="text-xs text-gray-400">Opcionales.</span>
             </div>
 
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de destino</span>
               <app-address-picker (addressPicked)="onDestinoPicked($event)" />
+              <div class="grid grid-cols-3 gap-2">
+                <input
+                  class="input"
+                  [(ngModel)]="destinoPisoDepto"
+                  name="destinoPisoDepto"
+                  maxlength="50"
+                  placeholder="Piso / depto"
+                />
+                <input
+                  class="input col-span-2"
+                  [(ngModel)]="destinoObservaciones"
+                  name="destinoObservaciones"
+                  maxlength="300"
+                  placeholder="Observaciones (timbre, portón…)"
+                />
+              </div>
+              <span class="text-xs text-gray-400">Opcionales.</span>
             </div>
 
             @if (cotizando()) {
@@ -83,6 +117,14 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="llevaValores" name="llevaValores" />
               <span class="text-sm text-gray-700">¿Transporta objetos de valor?</span>
+            </label>
+            @if (llevaValores) {
+              <p class="text-xs text-gray-500 -mt-2 ml-6">Contanos qué son en "Detalle del pedido", más abajo.</p>
+            }
+
+            <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="requiereMoto" name="requiereMoto" />
+              <span class="text-sm text-gray-700">¿Necesitás que vaya en moto?</span>
             </label>
 
             <label class="flex items-center gap-2">
@@ -148,8 +190,14 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             }
 
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Detalle (opcional)</span>
-              <textarea class="input" rows="2" [(ngModel)]="detalle" name="detalle" placeholder="Algo que tengamos que saber…"></textarea>
+              <span class="text-sm font-medium text-gray-700">Detalle del pedido (opcional)</span>
+              <textarea
+                class="input"
+                rows="2"
+                [(ngModel)]="detalle"
+                name="detalle"
+                placeholder="Qué hay que llevar, cómo va embalado, algo que tengamos que saber…"
+              ></textarea>
             </label>
 
             <button
@@ -235,7 +283,12 @@ export class PedirComponent {
     this.debounceMontoDeclarado = setTimeout(() => this.actualizarEstimado(), 500);
   }
   llevaValores = false;
+  requiereMoto = false;
   retornaAlOrigen = false;
+  origenPisoDepto = '';
+  origenObservaciones = '';
+  destinoPisoDepto = '';
+  destinoObservaciones = '';
   clienteNombre = '';
   clienteTelefono = '';
   detalle = '';
@@ -386,10 +439,15 @@ export class PedirComponent {
       llevaDinero: this.llevaDinero,
       montoDeclarado: this.llevaDinero ? this.montoDeclarado : null,
       llevaValores: this.llevaValores,
+      requiereMoto: this.requiereMoto,
       retornaAlOrigen: this.retornaAlOrigen,
       clienteNombre: this.clienteNombre.trim(),
       clienteTelefono: this.clienteTelefono.trim(),
       detalle: this.detalle.trim() || null,
+      origenPisoDepto: this.origenPisoDepto.trim() || null,
+      origenObservaciones: this.origenObservaciones.trim() || null,
+      destinoPisoDepto: this.destinoPisoDepto.trim() || null,
+      destinoObservaciones: this.destinoObservaciones.trim() || null,
       verificacionToken: this.verificacionToken!,
     };
 
