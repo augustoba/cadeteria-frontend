@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { apiUrl } from '../config/site-config';
-import { CadeteMetrica, PorHora, Rechazo, ResumenDia, ZonaMetrica } from '../models/metricas.model';
+import { CadeteMetrica, PorHora, PorOrigen, Rechazo, ResumenDia, ZonaMetrica } from '../models/metricas.model';
 
 @Injectable({ providedIn: 'root' })
 export class MetricasService {
@@ -24,6 +24,11 @@ export class MetricasService {
   /** Para el gráfico de pedidos por hora del día. */
   porHora(desde?: string, hasta?: string) {
     return this.http.get<PorHora[]>(apiUrl('/admin/metricas/por-hora'), { params: this.params(desde, hasta) });
+  }
+
+  /** Online vs. cargados en el panel, y estos por usuario. */
+  porOrigen(desde?: string, hasta?: string) {
+    return this.http.get<PorOrigen>(apiUrl('/admin/metricas/por-origen'), { params: this.params(desde, hasta) });
   }
 
   /** Volumen e ingresos por zona. */

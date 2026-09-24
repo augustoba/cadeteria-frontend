@@ -1,3 +1,5 @@
+import { ClienteAviso } from './cliente.model';
+
 export type EstadoSolicitudPedido = 'PENDIENTE' | 'COTIZADO' | 'CONFIRMADA' | 'RECHAZADA';
 
 export interface SolicitudPedido {
@@ -26,6 +28,10 @@ export interface SolicitudPedido {
   pedidoCreadoId: string | null;
   motivoRechazo: string | null;
   creadoEn: string;
+  /** No se pudo mandar el código por ningún medio — hay que validar el teléfono a mano (spec-antiabuso §6). */
+  sinVerificar: boolean;
+  /** Problemático / reportes de cadetes del teléfono, null si no hay nada (spec-antiabuso Fase 1). */
+  avisoCliente: ClienteAviso | null;
 }
 
 export interface SolicitudPedidoInput {

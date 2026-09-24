@@ -8,11 +8,12 @@ import { ClienteService } from '../../core/services/cliente.service';
 import { CotizacionService } from '../../core/services/cotizacion.service';
 import { ParadaInput, PedidoInput } from '../../core/models/pedido.model';
 import { ClienteAviso } from '../../core/models/cliente.model';
+import { AvisoClienteComponent } from '../../shared/aviso-cliente.component';
 import { AddressPickerComponent, PickedAddress } from '../../shared/address-picker.component';
 
 @Component({
   selector: 'app-nuevo-pedido',
-  imports: [FormsModule, AddressPickerComponent],
+  imports: [FormsModule, AddressPickerComponent, AvisoClienteComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-end gap-2 px-4 py-3 border-b border-gray-200">
@@ -80,11 +81,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
           </label>
         </div>
 
-        @if (clienteAviso()?.problematico) {
-          <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
-            ⚠️ Este teléfono está marcado como cliente problemático{{ clienteAviso()!.notasProblematico ? ': ' + clienteAviso()!.notasProblematico : '' }}.
-          </div>
-        }
+        <app-aviso-cliente [aviso]="clienteAviso()" />
 
         <div class="grid sm:grid-cols-3 gap-4 items-end">
           <label class="flex flex-col gap-1">

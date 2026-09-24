@@ -62,6 +62,10 @@ export interface Pedido {
   noEntregadoEn: string | null;
   /** Paradas intermedias, en orden (repartos con varias entregas en la misma vuelta) — vacío si el pedido es simple. */
   paradas: Parada[];
+  /** WEB (cliente desde /pedir o el seguimiento) | PANEL | null (anterior al 24/09/2026). */
+  origenCarga: 'WEB' | 'PANEL' | null;
+  /** Usuario del panel que lo cargó (solo PANEL). */
+  creadoPorUsername: string | null;
   /** Auditoría: qué admin asignó/canceló el pedido — null si fue automático o no aplica. */
   asignadoPorUsername: string | null;
   canceladoPorUsername: string | null;

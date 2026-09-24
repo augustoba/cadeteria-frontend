@@ -34,6 +34,21 @@ export class SolicitudPedidoService {
     this.http.post(apiUrl(`/admin/solicitudes-pedido/${id}/cotizar`), input).subscribe(() => onSuccess?.());
   }
 
+  /** Marca el teléfono como cliente problemático y rechaza la solicitud si seguía abierta (spec-antiabuso Fase 4). */
+  marcarFraudulenta(id: string, nota: string | null, onSuccess?: () => void): void {
+    this.http.post(apiUrl(`/admin/solicitudes-pedido/${id}/fraudulento`), { nota }).subscribe(() => onSuccess?.());
+  }
+
+  /** Le manda al cliente los datos del pedido por WhatsApp para que confirme. */
+  pedirConfirmacionWhatsapp(id: string, onSuccess?: () => void): void {
+    this.http.post(apiUrl(`/admin/solicitudes-pedido/${id}/whatsapp-confirmacion`), {}).subscribe(() => onSuccess?.());
+  }
+
+  /** El admin confirmó el teléfono a mano (ej. llamó) — saca la marca "sin verificar". */
+  validarTelefono(id: string, onSuccess?: () => void): void {
+    this.http.post(apiUrl(`/admin/solicitudes-pedido/${id}/validar-telefono`), {}).subscribe(() => onSuccess?.());
+  }
+
   rechazar(id: string, motivo: string | null, onSuccess?: () => void): void {
     this.http.post(apiUrl(`/admin/solicitudes-pedido/${id}/rechazar`), { motivo }).subscribe(() => onSuccess?.());
   }

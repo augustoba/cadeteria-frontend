@@ -556,6 +556,15 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
               hay que frenar por falta de cadetes libres o cualquier otro motivo puntual. No afecta el seguimiento
               de pedidos ya cargados.
             </p>
+
+            <label class="flex items-center gap-2 pt-2 border-t border-gray-100">
+              <input type="checkbox" [(ngModel)]="recordarTelefonos" name="recordarTelefonos" />
+              <span class="text-sm text-gray-700">No volver a pedir el código a un teléfono que ya se verificó</span>
+            </label>
+            <p class="text-xs text-gray-400 -mt-2">
+              Más cómodo para los clientes de siempre, pero cualquiera que sepa uno de esos números puede cargar un
+              pedido a su nombre sin código. Apagalo si empiezan a llegar pedidos falsos con números conocidos.
+            </p>
           </section>
         }
 
@@ -595,6 +604,14 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                   <span>{{ s.whatsappGatewayConectado ? '🟢' : '🔴' }}</span>
                   <span class="text-gray-700">Gateway de WhatsApp {{ s.whatsappGatewayConectado ? '' : '(desconectado)' }}</span>
                 </div>
+                @if (s.whatsappModoSimulado) {
+                  <div class="flex items-center gap-2 rounded border border-red-300 bg-red-50 px-3 py-2">
+                    <span>🔴</span>
+                    <span class="text-red-700">
+                      WhatsApp en modo simulado: los códigos de /pedir no se mandan (apagar WHATSAPP_MODO_SIMULADO)
+                    </span>
+                  </div>
+                }
                 <div class="flex items-center gap-2 rounded border border-gray-200 px-3 py-2">
                   <span>{{ s.smsFallidosPendientes > 0 ? '🟡' : '🟢' }}</span>
                   <span class="text-gray-700">{{ s.smsFallidosPendientes }} SMS sin poder enviar</span>
@@ -771,6 +788,7 @@ export class ConfiguracionComponent implements OnInit {
   horarioAtencionHasta = '22:00';
   pedidosPausados = false;
   pedidosPausadosMensaje = '';
+  recordarTelefonos = true;
   retencionWhatsappDias: number | null = null;
   retencionChatDias: number | null = null;
 
@@ -830,6 +848,7 @@ export class ConfiguracionComponent implements OnInit {
       this.horarioAtencionHasta = v['horario_atencion_hasta'] ?? '22:00';
       this.pedidosPausados = (v['pedidos_pausados'] ?? 'false') === 'true';
       this.pedidosPausadosMensaje = v['pedidos_pausados_mensaje'] ?? 'Estamos pausados temporalmente, disculpá las molestias.';
+      this.recordarTelefonos = (v['verificacion_recordar_telefonos'] ?? 'true') === 'true';
       this.retencionWhatsappDias = Number(v['retencion_whatsapp_dias'] ?? 0);
       this.retencionChatDias = Number(v['retencion_chat_dias'] ?? 0);
     });
@@ -937,6 +956,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('horario_atencion_hasta', this.horarioAtencionHasta);
     agregarSiCambio('pedidos_pausados', String(this.pedidosPausados));
     agregarSiCambio('pedidos_pausados_mensaje', this.pedidosPausadosMensaje);
+    agregarSiCambio('verificacion_recordar_telefonos', String(this.recordarTelefonos));
     agregarSiCambio('retencion_whatsapp_dias', String(this.retencionWhatsappDias ?? 0));
     agregarSiCambio('retencion_chat_dias', String(this.retencionChatDias ?? 0));
 

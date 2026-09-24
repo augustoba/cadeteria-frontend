@@ -532,6 +532,14 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   <div class="text-xs text-gray-400">Vehículo</div>
                   <div class="font-medium text-gray-800">{{ p.requiereMoto ? 'Requiere moto' : 'Cualquier vehículo' }}</div>
                 </div>
+                @if (p.origenCarga) {
+                  <div>
+                    <div class="text-xs text-gray-400">Cargado</div>
+                    <div class="font-medium text-gray-800">
+                      {{ p.origenCarga === 'WEB' ? 'Online (cliente)' : 'Panel' + (p.creadoPorUsername ? ' — ' + p.creadoPorUsername : '') }}
+                    </div>
+                  </div>
+                }
                 @if (p.detalle) {
                   <div class="col-span-2">
                     <div class="text-xs text-gray-400">Detalle del pedido</div>

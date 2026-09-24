@@ -55,3 +55,15 @@ export interface ZonaMetrica {
   finalizados: number;
   montoCobradoTotal: number;
 }
+
+/**
+ * Pedidos del rango según de dónde salieron (mejora 2026-09-24): online (cliente desde /pedir o
+ * repitiendo desde el seguimiento) contra cargados en el panel, y estos por usuario.
+ * sinDato = pedidos anteriores a que se empezara a registrar.
+ */
+export interface PorOrigen {
+  web: number;
+  panel: number;
+  sinDato: number;
+  porUsuario: { username: string; cantidad: number }[];
+}

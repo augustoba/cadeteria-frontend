@@ -10,6 +10,8 @@ export interface Salud {
   webPushConfigurado: boolean;
   geocodingOk: boolean;
   whatsappGatewayConectado: boolean;
+  /** WHATSAPP_MODO_SIMULADO prendido: los códigos de /pedir no salen de verdad (solo desarrollo). */
+  whatsappModoSimulado: boolean;
   smsFallidosPendientes: number;
   pedidosActivos: number;
   ultimoPedidoCreadoEn: string | null;

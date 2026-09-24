@@ -160,10 +160,12 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                     [disabled]="!clienteTelefono.trim() || enviandoCodigo()"
                     (click)="enviarCodigo()"
                   >
-                    {{ enviandoCodigo() ? 'Enviando…' : '📲 Enviar código por SMS' }}
+                    {{ enviandoCodigo() ? 'Enviando…' : '📲 Enviarme un código' }}
                   </button>
                 } @else {
-                  <p class="text-xs text-gray-500">Te mandamos un código por SMS a {{ clienteTelefono }} — vence en 10 minutos.</p>
+                  <p class="text-xs text-gray-500">
+                    Te mandamos un código por {{ medioCodigo() }} a {{ clienteTelefono }} — vence en 10 minutos.
+                  </p>
                   <div class="flex gap-2">
                     <input class="input flex-1" [(ngModel)]="codigoInput" name="codigoInput" placeholder="Código de 6 dígitos" maxlength="6" />
                     <button
@@ -184,9 +186,16 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                 }
               </div>
             } @else {
-              <div class="rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-2">
-                ✅ Teléfono verificado
-              </div>
+              @if (sinVerificar()) {
+                <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
+                  No pudimos mandarte el código ahora. Podés enviar el pedido igual: te vamos a contactar a ese
+                  número para confirmarlo antes de salir.
+                </div>
+              } @else {
+                <div class="rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-2">
+                  ✅ Teléfono verificado
+                </div>
+              }
             }
 
             <label class="flex flex-col gap-1">
@@ -305,6 +314,9 @@ export class PedirComponent {
   readonly enviandoCodigo = signal(false);
   readonly verificandoCodigo = signal(false);
   readonly telefonoVerificado = signal(false);
+  /** No hubo forma de mandar el código (spec-antiabuso §6): se puede enviar igual, el admin lo confirma. */
+  readonly sinVerificar = signal(false);
+  readonly medioCodigo = signal<'WhatsApp' | 'SMS'>('SMS');
   readonly errorVerificacion = signal<string | null>(null);
   private verificacionToken: string | null = null;
 
@@ -312,6 +324,7 @@ export class PedirComponent {
   onTelefonoChange(valor: string): void {
     this.clienteTelefono = valor;
     this.telefonoVerificado.set(false);
+    this.sinVerificar.set(false);
     this.codigoEnviado.set(false);
     this.verificacionToken = null;
     this.errorVerificacion.set(null);
@@ -322,8 +335,16 @@ export class PedirComponent {
     this.errorVerificacion.set(null);
     this.enviandoCodigo.set(true);
     this.verificacionTelefono.enviarCodigo(this.clienteTelefono.trim()).subscribe({
-      next: () => {
+      next: (r) => {
         this.enviandoCodigo.set(false);
+        if (r.token) {
+          // YA_VALIDADO (ya confirmó este teléfono antes) o SIN_VERIFICAR (no hubo forma de mandar el código).
+          this.verificacionToken = r.token;
+          this.sinVerificar.set(r.resultado === 'SIN_VERIFICAR');
+          this.telefonoVerificado.set(true);
+          return;
+        }
+        this.medioCodigo.set(r.resultado === 'CODIGO_WHATSAPP' ? 'WhatsApp' : 'SMS');
         this.codigoEnviado.set(true);
       },
       error: (e) => {

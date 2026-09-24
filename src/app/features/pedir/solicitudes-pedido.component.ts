@@ -8,6 +8,7 @@ import { CotizacionService } from '../../core/services/cotizacion.service';
 import { SolicitudPedido } from '../../core/models/solicitud-pedido.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
+import { AvisoClienteComponent } from '../../shared/aviso-cliente.component';
 
 const ESTADO_CLASES: Record<string, string> = {
   PENDIENTE: 'bg-amber-100 text-amber-800',
@@ -19,7 +20,7 @@ const ESTADO_CLASES: Record<string, string> = {
 /** Revisión de los pedidos que el cliente carga solo desde "/pedir" (sin llamar/escribir por WhatsApp). */
 @Component({
   selector: 'app-solicitudes-pedido',
-  imports: [DatePipe, FormsModule, RouterLink, EmptyStateComponent, LoadingSkeletonComponent],
+  imports: [DatePipe, FormsModule, RouterLink, EmptyStateComponent, LoadingSkeletonComponent, AvisoClienteComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="bg-brand-600 text-white px-4 py-3 rounded-t flex items-center justify-between">
@@ -56,6 +57,14 @@ const ESTADO_CLASES: Record<string, string> = {
                   </span>
                   <span class="font-medium text-gray-700">{{ s.clienteNombre }}</span>
                   <span class="text-xs text-gray-400"> — {{ s.clienteTelefono }}</span>
+                  @if (s.sinVerificar) {
+                    <span
+                      class="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800"
+                      title="No se pudo mandar el código de verificación — confirmá el teléfono antes de despachar"
+                    >
+                      Teléfono sin verificar
+                    </span>
+                  }
                 </div>
                 <span class="text-xs text-gray-400">Creado {{ s.creadoEn | date: 'short' }}</span>
               </div>
@@ -81,6 +90,7 @@ const ESTADO_CLASES: Record<string, string> = {
               @if (s.detalle) {
                 <p class="text-sm text-gray-600 italic">"{{ s.detalle }}"</p>
               }
+              <app-aviso-cliente [aviso]="s.avisoCliente" />
 
               @if (s.estado === 'PENDIENTE') {
                 <div class="border-t border-gray-100 pt-2 flex flex-col gap-2">
@@ -121,6 +131,31 @@ const ESTADO_CLASES: Record<string, string> = {
                   </div>
                 </div>
               }
+              @if (s.estado === 'PENDIENTE' || s.estado === 'COTIZADO') {
+                <div class="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    class="btn-mini bg-green-600 hover:bg-green-700"
+                    title="Le manda al cliente origen y destino por WhatsApp para que confirme — la respuesta se ve en WhatsApp → Respuestas"
+                    (click)="pedirConfirmacionWhatsapp(s)"
+                  >
+                    📱 Pedir confirmación por WhatsApp
+                  </button>
+                  @if (s.sinVerificar) {
+                    <button type="button" class="btn-mini bg-amber-600 hover:bg-amber-700" (click)="validarTelefono(s)">
+                      ✔ Ya confirmé el teléfono
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="btn-mini bg-gray-700 hover:bg-gray-800"
+                    title="Marca el teléfono como cliente problemático (avisa en próximos pedidos, no bloquea)"
+                    (click)="abrirFraudulenta(s)"
+                  >
+                    🚫 Marcar como fraudulento
+                  </button>
+                </div>
+              }
               @if (s.estado === 'COTIZADO') {
                 <p class="text-xs text-indigo-700">
                   Cotización enviada: $ {{ s.precio }} — esperando que el cliente confirme por el link que le mandamos.
@@ -136,6 +171,31 @@ const ESTADO_CLASES: Record<string, string> = {
         }
       </div>
     </div>
+
+    @if (solicitudAFraude(); as s) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="solicitudAFraude.set(null)">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden" (click)="$event.stopPropagation()">
+          <div class="bg-gray-800 text-white px-5 py-4">
+            <h2 class="font-semibold">Marcar como fraudulento</h2>
+            <p class="text-gray-200 text-sm">{{ s.clienteNombre }} — {{ s.clienteTelefono }}</p>
+          </div>
+          <div class="p-5 flex flex-col gap-2">
+            <p class="text-sm text-gray-600">
+              El teléfono queda como cliente problemático: se avisa en sus próximos pedidos, no se bloquea.
+              @if (s.estado === 'PENDIENTE' || s.estado === 'COTIZADO') { La solicitud se rechaza. }
+            </p>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">Nota (opcional)</span>
+              <textarea class="input" rows="3" [(ngModel)]="notaFraudeModal" name="notaFraude"></textarea>
+            </label>
+          </div>
+          <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-white">
+            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="solicitudAFraude.set(null)">Volver</button>
+            <button type="button" class="btn bg-gray-800 hover:bg-gray-900" (click)="confirmarFraudulenta()">Marcar</button>
+          </div>
+        </div>
+      </div>
+    }
 
     @if (solicitudARechazar(); as s) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cerrarRechazar()">
@@ -212,6 +272,9 @@ export class SolicitudesPedidoComponent implements OnInit {
 
   readonly solicitudARechazar = signal<SolicitudPedido | null>(null);
   motivoRechazoModal = '';
+
+  readonly solicitudAFraude = signal<SolicitudPedido | null>(null);
+  notaFraudeModal = '';
 
   ngOnInit(): void {
     this.service.listar(this.filtroActual() ?? undefined);
@@ -297,6 +360,34 @@ export class SolicitudesPedidoComponent implements OnInit {
 
   cerrarRechazar(): void {
     this.solicitudARechazar.set(null);
+  }
+
+  abrirFraudulenta(s: SolicitudPedido): void {
+    this.notaFraudeModal = '';
+    this.solicitudAFraude.set(s);
+  }
+
+  confirmarFraudulenta(): void {
+    const s = this.solicitudAFraude();
+    if (!s) return;
+    this.service.marcarFraudulenta(s.id, this.notaFraudeModal.trim() || null, () => {
+      this.toast.success('Teléfono marcado como cliente problemático.');
+      this.filtrar(this.filtroActual());
+    });
+    this.solicitudAFraude.set(null);
+  }
+
+  pedirConfirmacionWhatsapp(s: SolicitudPedido): void {
+    this.service.pedirConfirmacionWhatsapp(s.id, () =>
+      this.toast.success(`Mensaje encolado para ${s.clienteNombre}. La respuesta aparece en WhatsApp → Respuestas.`),
+    );
+  }
+
+  validarTelefono(s: SolicitudPedido): void {
+    this.service.validarTelefono(s.id, () => {
+      this.toast.success('Teléfono validado — la próxima vez no le vamos a pedir código.');
+      this.filtrar(this.filtroActual());
+    });
   }
 
   confirmarRechazar(): void {

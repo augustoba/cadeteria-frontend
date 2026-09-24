@@ -3,7 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MetricasService } from '../../core/services/metricas.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { CadeteMetrica, PorHora, Rechazo, ResumenDia, ZonaMetrica } from '../../core/models/metricas.model';
+import { CadeteMetrica, PorHora, PorOrigen, Rechazo, ResumenDia, ZonaMetrica } from '../../core/models/metricas.model';
 import { PedidosPorHoraChartComponent } from './pedidos-por-hora-chart.component';
 import { EstadosPieChartComponent } from './estados-pie-chart.component';
 import { ZonasBarChartComponent } from './zonas-bar-chart.component';
@@ -113,6 +113,55 @@ interface Delta {
                 <div class="tarjeta"><div class="valor text-emerald-700">$ {{ dineroCobrado() | number: '1.0-0' }}</div><div class="etiqueta">Valor de trámites</div></div>
                 <div class="tarjeta"><div class="valor text-gray-700">$ {{ dineroTransportado() | number: '1.0-0' }}</div><div class="etiqueta">Dinero transportado</div></div>
               </div>
+            </section>
+          }
+
+          @if (porOrigen(); as o) {
+            <section>
+              <h2 class="font-semibold text-gray-700 mb-2">
+                Cómo entraron los pedidos
+                <span class="text-xs font-normal text-gray-400">(online desde /pedir o el seguimiento, contra cargados en el panel)</span>
+              </h2>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="tarjeta">
+                  <div class="valor text-brand-600">{{ o.web }}</div>
+                  <div class="etiqueta">Online</div>
+                  @if (o.web + o.panel > 0) {
+                    <div class="text-xs text-gray-400 mt-1">{{ (o.web * 100) / (o.web + o.panel) | number: '1.0-0' }}%</div>
+                  }
+                </div>
+                <div class="tarjeta">
+                  <div class="valor text-gray-700">{{ o.panel }}</div>
+                  <div class="etiqueta">Cargados en el panel</div>
+                  @if (o.web + o.panel > 0) {
+                    <div class="text-xs text-gray-400 mt-1">{{ (o.panel * 100) / (o.web + o.panel) | number: '1.0-0' }}%</div>
+                  }
+                </div>
+                @if (o.sinDato > 0) {
+                  <div class="tarjeta" title="Pedidos cargados antes de que se empezara a registrar el origen (24/09/2026)">
+                    <div class="valor text-gray-400">{{ o.sinDato }}</div>
+                    <div class="etiqueta">Sin dato (anteriores)</div>
+                  </div>
+                }
+              </div>
+              @if (o.porUsuario.length) {
+                <table class="mt-3 text-sm">
+                  <thead>
+                    <tr class="text-left text-gray-500">
+                      <th class="py-1 pr-6 font-medium">Usuario del panel</th>
+                      <th class="py-1 font-medium text-right">Pedidos cargados</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (u of o.porUsuario; track u.username) {
+                      <tr class="border-t border-gray-100">
+                        <td class="py-1 pr-6 text-gray-700">{{ u.username }}</td>
+                        <td class="py-1 text-right tabular-nums">{{ u.cantidad }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
             </section>
           }
 
@@ -385,6 +434,7 @@ export class MetricasComponent implements OnInit {
   readonly rechazos = signal<Rechazo[]>([]);
   readonly rechazosAbierto = signal(false);
   readonly porHora = signal<PorHora[]>([]);
+  readonly porOrigen = signal<PorOrigen | null>(null);
   readonly zonas = signal<ZonaMetrica[]>([]);
 
   /** Período anterior de igual duración — para comparar (ronda 5, punto 45). */
@@ -437,6 +487,7 @@ export class MetricasComponent implements OnInit {
     });
     this.metricasSvc.rechazos(this.desde, this.hasta).subscribe((r) => this.rechazos.set(r));
     this.metricasSvc.porHora(this.desde, this.hasta).subscribe((p) => this.porHora.set(p));
+    this.metricasSvc.porOrigen(this.desde, this.hasta).subscribe((o) => this.porOrigen.set(o));
     this.metricasSvc.zonas(this.desde, this.hasta).subscribe((z) => this.zonas.set(z));
 
     const dias = diferenciaEnDias(this.desde, this.hasta) + 1;

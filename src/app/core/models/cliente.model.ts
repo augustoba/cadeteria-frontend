@@ -38,11 +38,26 @@ export interface ClienteFicha {
   pedidosRecientes: PedidoResumenCliente[];
 }
 
-/** Aviso rápido al cargar un pedido nuevo (ronda 4, puntos 44/58). */
+/** Aviso rápido al cargar un pedido nuevo o revisar una solicitud web (ronda 4 + spec-antiabuso Fase 4). */
 export interface ClienteAviso {
   problematico: boolean;
   notasProblematico: string | null;
   tarifaEspecial: number | null;
+  cantidadReportes: number;
+  /** DEMORO | NO_DECLARO_VALORES | PEDIDO_FALSO | OTRO → cantidad (solo los que tienen alguno). */
+  reportesPorTipo: Record<string, number>;
+  ultimoReporteEn: string | null;
+}
+
+/** Reporte de un cadete sobre un cliente (spec-antiabuso Fase 3). */
+export interface ReporteCliente {
+  id: string;
+  tipo: string;
+  pedidoNumero: number | null;
+  pedidoId: string | null;
+  cadeteNombre: string | null;
+  nota: string | null;
+  creadoEn: string;
 }
 
 /** Listado paginado (mejora 2026-09-16) — antes `/admin/clientes` devolvía un array plano sin paginar. */
