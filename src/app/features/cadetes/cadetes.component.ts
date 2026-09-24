@@ -99,7 +99,7 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
             </thead>
             <tbody>
               @for (c of cadetesFiltrados(); track c.id) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                <tr class="border-b border-gray-100">
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.nombre }} {{ c.apellido }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.dni }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.telefono }}</td>

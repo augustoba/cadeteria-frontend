@@ -34,7 +34,7 @@ import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.componen
             </thead>
             <tbody>
               @for (z of zonas.zonas(); track z.id) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50" [class.opacity-50]="!z.activo">
+                <tr class="border-b border-gray-100" [class.opacity-50]="!z.activo">
                   <td class="py-2 pr-3 whitespace-nowrap">{{ z.nombre }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap font-mono text-xs">{{ z.centroLat }}, {{ z.centroLng }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">{{ z.radioM }}</td>

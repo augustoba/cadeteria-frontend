@@ -49,7 +49,7 @@ import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.componen
             </thead>
             <tbody>
               @for (c of clientes.clientes(); track c.telefono) {
-                <tr class="border-b border-gray-100 hover:bg-gray-50" [class.opacity-50]="!c.activo">
+                <tr class="border-b border-gray-100" [class.opacity-50]="!c.activo">
                   <td class="py-2 pr-3 whitespace-nowrap">
                     {{ c.nombreContacto || '(sin nombre)' }}
                     @if (c.problematico) {

@@ -26,6 +26,27 @@ body {
   height: 100%;
 }
 
+/*
+ * Filas cebra en todas las tablas del panel (2026-09-24): las filas pares un gris más marcado
+ * y celeste al pasar el mouse, para seguir una fila con la vista en listados largos. Va en
+ * @layer base a propósito: las clases de Tailwind (utilities) le ganan siempre, así una fila
+ * con color propio (ej. bg-red-50 de un pedido cancelado) conserva su color.
+ */
+@layer base {
+  tbody > tr:nth-child(even) {
+    background-color: var(--color-slate-100);
+  }
+  tbody > tr:hover {
+    background-color: var(--color-brand-50);
+  }
+  html.dark tbody > tr:nth-child(even) {
+    background-color: #253349;
+  }
+  html.dark tbody > tr:hover {
+    background-color: #2d3d57;
+  }
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #f4f6f9;

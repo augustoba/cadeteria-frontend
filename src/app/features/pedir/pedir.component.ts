@@ -15,8 +15,8 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
   selector: 'app-pedir',
   imports: [FormsModule, AddressPickerComponent],
   template: `
-    <div class="min-h-screen bg-gray-100 flex items-start sm:items-center justify-center p-4">
-      <div class="bg-white rounded-lg shadow-sm w-full max-w-md overflow-hidden">
+    <div class="min-h-screen bg-gray-100 flex items-start sm:items-center justify-center sm:p-4">
+      <div class="bg-white sm:rounded-lg shadow-sm w-full max-w-md overflow-hidden min-h-screen sm:min-h-0">
         <div class="bg-brand-600 text-white px-5 py-4">
           <h1 class="font-semibold text-lg">Pedir un envío</h1>
           <p class="text-white/80 text-xs mt-0.5">Completá los datos y te confirmamos en breve.</p>
@@ -37,7 +37,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <p class="text-sm text-gray-500">En breve te confirmamos por SMS — si hace falta cotizar, te va a llegar un link para confirmarlo.</p>
           </div>
         } @else {
-          <div class="p-5 flex flex-col gap-4">
+          <div class="p-4 sm:p-5 flex flex-col gap-4">
             @if (error()) {
               <div class="rounded bg-red-50 text-red-700 text-sm px-3 py-2">{{ error() }}</div>
             }
@@ -45,7 +45,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de origen</span>
               <app-address-picker (addressPicked)="onOrigenPicked($event)" />
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   class="input"
                   [(ngModel)]="origenPisoDepto"
@@ -54,7 +54,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                   placeholder="Piso / depto"
                 />
                 <input
-                  class="input col-span-2"
+                  class="input sm:col-span-2"
                   [(ngModel)]="origenObservaciones"
                   name="origenObservaciones"
                   maxlength="300"
@@ -67,7 +67,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de destino</span>
               <app-address-picker (addressPicked)="onDestinoPicked($event)" />
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   class="input"
                   [(ngModel)]="destinoPisoDepto"
@@ -76,7 +76,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                   placeholder="Piso / depto"
                 />
                 <input
-                  class="input col-span-2"
+                  class="input sm:col-span-2"
                   [(ngModel)]="destinoObservaciones"
                   name="destinoObservaciones"
                   maxlength="300"
@@ -95,7 +95,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               </div>
             }
 
-            <label class="flex items-center gap-2">
+            <label class="check flex items-center gap-3">
               <input type="checkbox" [ngModel]="llevaDinero" (ngModelChange)="onLlevaDineroChange($event)" name="llevaDinero" />
               <span class="text-sm text-gray-700">¿Lleva dinero?</span>
             </label>
@@ -114,7 +114,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               </label>
             }
 
-            <label class="flex items-center gap-2">
+            <label class="check flex items-center gap-3">
               <input type="checkbox" [(ngModel)]="llevaValores" name="llevaValores" />
               <span class="text-sm text-gray-700">¿Transporta objetos de valor?</span>
             </label>
@@ -122,17 +122,17 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               <p class="text-xs text-gray-500 -mt-2 ml-6">Contanos qué son en "Detalle del pedido", más abajo.</p>
             }
 
-            <label class="flex items-center gap-2">
+            <label class="check flex items-center gap-3">
               <input type="checkbox" [(ngModel)]="requiereMoto" name="requiereMoto" />
               <span class="text-sm text-gray-700">¿Necesitás que vaya en moto?</span>
             </label>
 
-            <label class="flex items-center gap-2">
+            <label class="check flex items-center gap-3">
               <input type="checkbox" [(ngModel)]="retornaAlOrigen" name="retornaAlOrigen" />
               <span class="text-sm text-gray-700">¿El cadete tiene que volver al origen?</span>
             </label>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">¿Por quién pregunta el cadete?</span>
                 <input class="input" [(ngModel)]="clienteNombre" name="clienteNombre" placeholder="Nombre" />
@@ -144,6 +144,9 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                   [ngModel]="clienteTelefono"
                   (ngModelChange)="onTelefonoChange($event)"
                   name="clienteTelefono"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
                   placeholder="Teléfono"
                   [disabled]="verificandoCodigo()"
                 />
@@ -156,7 +159,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                   <p class="text-xs text-gray-500">Antes de enviar el pedido, confirmamos que ese teléfono es real.</p>
                   <button
                     type="button"
-                    class="self-start bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-xs font-medium px-3 py-1.5 rounded"
+                    class="w-full sm:w-auto sm:self-start bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2.5 sm:py-1.5 sm:text-xs rounded"
                     [disabled]="!clienteTelefono.trim() || enviandoCodigo()"
                     (click)="enviarCodigo()"
                   >
@@ -167,10 +170,18 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                     Te mandamos un código por {{ medioCodigo() }} a {{ clienteTelefono }} — vence en 10 minutos.
                   </p>
                   <div class="flex gap-2">
-                    <input class="input flex-1" [(ngModel)]="codigoInput" name="codigoInput" placeholder="Código de 6 dígitos" maxlength="6" />
+                    <input
+                      class="input flex-1 min-w-0"
+                      [(ngModel)]="codigoInput"
+                      name="codigoInput"
+                      placeholder="Código de 6 dígitos"
+                      maxlength="6"
+                      inputmode="numeric"
+                      autocomplete="one-time-code"
+                    />
                     <button
                       type="button"
-                      class="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-xs font-medium px-3 py-1.5 rounded"
+                      class="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm sm:text-xs font-medium px-4 py-2 sm:py-1.5 rounded"
                       [disabled]="verificandoCodigo()"
                       (click)="verificarCodigo()"
                     >
@@ -249,6 +260,23 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
         border-radius: 0.25rem;
         padding: 0.5rem 0.75rem;
         font-size: 0.875rem;
+      }
+      /* Casillas más grandes y filas más altas: se tocan con el pulgar sin errarle. */
+      .check {
+        min-height: 2.25rem;
+      }
+      .check input[type='checkbox'] {
+        width: 1.25rem;
+        height: 1.25rem;
+        flex-shrink: 0;
+      }
+      /* Celular (spec: la mayoría pide desde el teléfono): 16px evita que iOS haga zoom al
+         tocar un campo, y los campos un poco más altos se tocan mejor con el dedo. */
+      @media (max-width: 639px) {
+        .input {
+          font-size: 16px;
+          padding: 0.65rem 0.75rem;
+        }
       }
       .btn {
         color: white;

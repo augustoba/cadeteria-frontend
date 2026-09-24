@@ -119,6 +119,14 @@ const PIN_ICON = L.divIcon({
         outline: none;
         box-shadow: 0 0 0 2px var(--color-brand-400);
       }
+      /* Celular (spec: la mayoría pide desde el teléfono): 16px evita que iOS haga zoom al
+         tocar un campo, y los campos un poco más altos se tocan mejor con el dedo. */
+      @media (max-width: 639px) {
+        .input {
+          font-size: 16px;
+          padding: 0.65rem 0.75rem;
+        }
+      }
     `,
   ],
 })

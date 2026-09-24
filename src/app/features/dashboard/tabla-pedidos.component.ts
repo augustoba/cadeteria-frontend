@@ -62,11 +62,9 @@ export function claseEstadoPedido(estadoId: string): string {
         </thead>
         <tbody>
           @for (p of pedidosPagina; track p.id) {
-            <!-- Filas cebra: las impares un gris más oscuro para seguir la fila con la vista; las que
-                 ya tienen color por estado (cancelado/finalizado/prioritario) lo conservan. -->
+            <!-- Filas cebra: regla global en styles.css (tbody > tr); el color por estado de abajo le gana. -->
             <tr
-              class="border-b border-gray-100 hover:bg-brand-50"
-              [class.bg-slate-100]="$odd && !tieneColorDeEstado(p)"
+              class="border-b border-gray-100"
               [class.bg-red-50]="p.estado.id === 'CANCELADO'"
               [class.bg-emerald-50]="p.estado.id === 'FINALIZADO'"
               [class.bg-amber-50]="p.prioritario && p.estado.id !== 'CANCELADO' && p.estado.id !== 'FINALIZADO'"
@@ -319,11 +317,6 @@ export class TablaPedidosComponent implements OnChanges {
 
   toggleMenu(pedidoId: string): void {
     this.abierto.update((actual) => (actual === pedidoId ? null : pedidoId));
-  }
-
-  /** Cancelado/finalizado/prioritario ya pintan la fila: la cebra no los tapa. */
-  tieneColorDeEstado(p: Pedido): boolean {
-    return p.estado.id === 'CANCELADO' || p.estado.id === 'FINALIZADO' || p.prioritario;
   }
 
   emitirYCerrar(accionId: Accion, pedido: Pedido): void {
