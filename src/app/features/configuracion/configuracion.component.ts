@@ -296,12 +296,21 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
               </span>
             </label>
             <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="fotoRetiroObligatoria" name="fotoRetiroObligatoria" />
+              <span class="text-sm text-gray-700">Exigir foto del pedido al marcar "Retirado"</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="fotoEntregaObligatoria" name="fotoEntregaObligatoria" />
+              <span class="text-sm text-gray-700">Exigir foto de la entrega para poder finalizar</span>
+            </label>
+            <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="firmaReceptorObligatoria" name="firmaReceptorObligatoria" />
               <span class="text-sm text-gray-700">Exigir firma digital del receptor para poder finalizar</span>
             </label>
             <p class="text-xs text-gray-400 -mt-2">
-              Apagado (default): la firma es opcional, además de la foto y el nombre que ya se piden siempre.
-              Prendido: no deja finalizar sin ella.
+              El nombre de quien recibió se pide siempre. La app pide la foto o la firma antes de intentar, así el
+              cadete no se entera por un error. Si el cadete estaba sin señal y la foto se le borró del teléfono antes
+              de subirse, el viaje se registra igual y queda un comentario automático en el pedido.
             </p>
             <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="checklistDocumentacionObligatorio" name="checklistDocumentacionObligatorio" />
@@ -759,6 +768,8 @@ export class ConfiguracionComponent implements OnInit {
   cloudinaryUploadPreset = '';
   versionMinimaApp: number | null = null;
   firmaReceptorObligatoria = false;
+  fotoRetiroObligatoria = false;
+  fotoEntregaObligatoria = true;
   checklistDocumentacionObligatorio = false;
   telefonoSoporte = '';
   metaMensualFacturacion: number | null = null;
@@ -821,6 +832,8 @@ export class ConfiguracionComponent implements OnInit {
       this.cloudinaryUploadPreset = v['cloudinary_upload_preset'] ?? '';
       this.versionMinimaApp = Number(v['version_minima_app'] ?? 1);
       this.firmaReceptorObligatoria = (v['firma_receptor_obligatoria'] ?? 'false') === 'true';
+      this.fotoRetiroObligatoria = (v['foto_retiro_obligatoria'] ?? 'false') === 'true';
+      this.fotoEntregaObligatoria = (v['foto_entrega_obligatoria'] ?? 'true') === 'true';
       this.checklistDocumentacionObligatorio = (v['checklist_documentacion_obligatorio'] ?? 'false') === 'true';
       this.telefonoSoporte = v['telefono_soporte'] ?? '';
       this.metaMensualFacturacion = Number(v['meta_mensual_facturacion'] ?? 0);
@@ -929,6 +942,8 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('cloudinary_upload_preset', this.cloudinaryUploadPreset);
     agregarSiCambio('version_minima_app', String(this.versionMinimaApp ?? ''));
     agregarSiCambio('firma_receptor_obligatoria', String(this.firmaReceptorObligatoria));
+    agregarSiCambio('foto_retiro_obligatoria', String(this.fotoRetiroObligatoria));
+    agregarSiCambio('foto_entrega_obligatoria', String(this.fotoEntregaObligatoria));
     agregarSiCambio('checklist_documentacion_obligatorio', String(this.checklistDocumentacionObligatorio));
     agregarSiCambio('telefono_soporte', this.telefonoSoporte);
     agregarSiCambio('meta_mensual_facturacion', String(this.metaMensualFacturacion ?? 0));
