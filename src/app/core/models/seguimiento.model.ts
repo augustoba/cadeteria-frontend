@@ -17,6 +17,7 @@ export interface Seguimiento {
   llevaDinero: boolean;
   montoDeclarado: number | null;
   llevaValores: boolean;
+  montoValores: number | null;
   cadete: CadeteInfoPublico | null;
   comprobanteDisponible: boolean;
   entregaReceptorNombre: string | null;

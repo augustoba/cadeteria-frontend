@@ -83,7 +83,7 @@ const ESTADO_CLASES: Record<string, string> = {
                   @if (s.destinoObservaciones) { <span class="block text-xs text-gray-500">📝 {{ s.destinoObservaciones }}</span> }
                 </span>
                 <span>{{ s.llevaDinero ? '💵 Lleva dinero' + (s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '') : 'No lleva dinero' }}</span>
-                <span>{{ s.llevaValores ? '💎 Transporta valores' : 'No transporta valores' }}</span>
+                <span>{{ s.llevaValores ? '💎 Transporta valores' + (s.montoValores ? ' ($' + s.montoValores + ')' : '') : 'No transporta valores' }}</span>
                 <span>{{ s.retornaAlOrigen ? '🔁 Retorna al origen' : 'No retorna al origen' }}</span>
                 @if (s.requiereMoto) {
                   <span>🏍️ Pidió moto</span>
@@ -110,7 +110,7 @@ const ESTADO_CLASES: Record<string, string> = {
                         <button
                           type="button"
                           class="btn-mini bg-violet-600 hover:bg-violet-700"
-                          title="Sugerir precio por zona/distancia GPS"
+                          title="Sugerir precio por distancia"
                           (click)="sugerirPrecio(s)"
                         >
                           💰
@@ -326,13 +326,11 @@ export class SolicitudesPedidoComponent implements OnInit {
   sugerirPrecio(s: SolicitudPedido): void {
     this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng, this.montoModal[s.id]).subscribe((c) => {
       if (c.precioSugerido == null) {
-        this.toast.error('No hay zona con precio cargado ni "precio por km" configurado — cargalo a mano.');
+        this.toast.error('No hay "precio por km" configurado — cargalo a mano.');
         return;
       }
       this.precioModal[s.id] = c.precioSugerido;
-      this.toast.success(
-        c.metodo === 'ZONA' ? `Sugerido por zona (${c.zonaNombre}).` : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`,
-      );
+      this.toast.success(`Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`);
     });
   }
 

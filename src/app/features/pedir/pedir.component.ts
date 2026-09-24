@@ -164,11 +164,12 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             </label>
             @if (llevaDinero) {
               <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">¿Cuánto?</span>
+                <span class="text-sm font-medium text-gray-700">¿Cuánto dinero?</span>
                 <input
                   type="number"
                   min="0"
                   step="1"
+                  inputmode="numeric"
                   class="input"
                   [ngModel]="montoDeclarado"
                   (ngModelChange)="onMontoDeclaradoChange($event)"
@@ -182,7 +183,19 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               <span class="text-sm text-gray-700">¿Transporta objetos de valor?</span>
             </label>
             @if (llevaValores) {
-              <p class="text-xs text-gray-500 -mt-2 ml-6">Contanos qué son en "Detalle del pedido", más abajo.</p>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">¿Cuánto valen?</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  class="input"
+                  [(ngModel)]="montoValores"
+                  name="montoValores"
+                  placeholder="Valor aproximado en $"
+                />
+              </label>
             }
 
             <label class="check flex items-center gap-3">
@@ -314,6 +327,7 @@ export class PedirComponent {
     this.debounceMontoDeclarado = setTimeout(() => this.actualizarEstimado(), 500);
   }
   llevaValores = false;
+  montoValores: number | null = null;
   requiereMoto = false;
   retornaAlOrigen = false;
   origenPiso = '';
@@ -484,6 +498,7 @@ export class PedirComponent {
       llevaDinero: this.llevaDinero,
       montoDeclarado: this.llevaDinero ? this.montoDeclarado : null,
       llevaValores: this.llevaValores,
+      montoValores: this.llevaValores ? this.montoValores : null,
       requiereMoto: this.requiereMoto,
       retornaAlOrigen: this.retornaAlOrigen,
       clienteNombre: this.clienteNombre.trim(),

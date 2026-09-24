@@ -13,6 +13,7 @@ export interface SolicitudPedido {
   llevaDinero: boolean;
   montoDeclarado: number | null;
   llevaValores: boolean;
+  montoValores: number | null;
   retornaAlOrigen: boolean;
   clienteNombre: string;
   clienteTelefono: string;
@@ -46,6 +47,7 @@ export interface SolicitudPedidoInput {
   llevaDinero: boolean;
   montoDeclarado: number | null;
   llevaValores: boolean;
+  montoValores: number | null;
   /** Lo pide el cliente — el admin lo puede cambiar al revisar. */
   requiereMoto: boolean;
   retornaAlOrigen: boolean;

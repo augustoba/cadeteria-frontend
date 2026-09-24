@@ -23,6 +23,8 @@ export interface Pedido {
   montoDeclarado: number;
   /** Declarado por el cliente al pedir — no afecta el tope de 5.2, solo informativo. */
   llevaValores: boolean;
+  /** Valor declarado de los objetos de valor, null si no lleva. */
+  montoValores: number | null;
   detalle: string | null;
   /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
   origenPiso: string | null;
@@ -125,6 +127,8 @@ export interface PedidoInput {
   montoDeclarado: number | null;
   /** Transporta objetos de valor (no dinero) — solo informativo. */
   llevaValores: boolean;
+  /** Valor declarado de los objetos de valor, null si no lleva. */
+  montoValores: number | null;
   detalle: string | null;
   /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
   origenPiso: string | null;

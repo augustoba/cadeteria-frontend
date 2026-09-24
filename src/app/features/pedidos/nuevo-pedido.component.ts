@@ -213,6 +213,12 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               <input type="checkbox" [(ngModel)]="llevaValores" name="llevaValores" />
               <span class="text-sm font-medium text-gray-700">Transporta valores</span>
             </label>
+            @if (llevaValores) {
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Valor de los objetos</span>
+                <input type="number" min="0" step="0.01" class="input" [(ngModel)]="montoValores" name="montoValores" />
+              </label>
+            }
           </div>
 
           <label class="flex flex-col gap-1">
@@ -292,6 +298,7 @@ export class NuevoPedidoComponent implements OnInit {
   precioSugeridoInfo: string | null = null;
   montoDeclarado: number | null = null;
   llevaValores = false;
+  montoValores: number | null = null;
   detalle = '';
   origenPiso = '';
   origenDepto = '';
@@ -447,8 +454,7 @@ export class NuevoPedidoComponent implements OnInit {
       .subscribe((c) => {
         if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
-        this.precioSugeridoInfo =
-          c.metodo === 'ZONA' ? `Sugerido por zona (${c.zonaNombre})` : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
+        this.precioSugeridoInfo = `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
       });
   }
 
@@ -511,6 +517,7 @@ export class NuevoPedidoComponent implements OnInit {
       precio: this.precio,
       montoDeclarado: this.montoDeclarado,
       llevaValores: this.llevaValores,
+      montoValores: this.llevaValores ? this.montoValores : null,
       detalle: this.detalle || null,
       origenPiso: this.origenPiso.trim() || null,
       origenDepto: this.origenDepto.trim() || null,
@@ -552,6 +559,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.precioSugeridoInfo = null;
     this.montoDeclarado = null;
     this.llevaValores = false;
+    this.montoValores = null;
     this.detalle = '';
     this.destinoPiso = '';
     this.destinoDepto = '';
@@ -576,6 +584,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.precioSugeridoInfo = null;
     this.montoDeclarado = null;
     this.llevaValores = false;
+    this.montoValores = null;
     this.detalle = '';
     this.origenPiso = '';
     this.origenDepto = '';

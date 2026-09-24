@@ -123,7 +123,7 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
                 <div>💵 Declaraste llevar dinero{{ s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '' }}.</div>
               }
               @if (s.llevaValores) {
-                <div>💎 Declaraste transportar objetos de valor.</div>
+                <div>💎 Declaraste transportar objetos de valor{{ s.montoValores ? ' ($' + s.montoValores + ')' : '' }}.</div>
               }
             </div>
 

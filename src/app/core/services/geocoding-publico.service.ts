@@ -26,6 +26,20 @@ export class GeocodingPublicoService {
     }
   }
 
+  /**
+   * "No está mi dirección — buscar de nuevo": saltea la cache del backend y prueba Google si hay
+   * key cargada (si no, vuelve a consultar los gratuitos).
+   */
+  async searchAmpliado(text: string): Promise<GeoAddress[]> {
+    const q = text.trim();
+    if (q.length < 4) return [];
+    try {
+      return await firstValueFrom(this.http.get<GeoAddress[]>(apiUrl('/publico/direcciones/buscar-ampliado'), { params: { q } }));
+    } catch {
+      return [];
+    }
+  }
+
   async reverse(lat: number, lng: number): Promise<GeoAddress | null> {
     try {
       return await firstValueFrom(

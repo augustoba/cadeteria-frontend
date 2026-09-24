@@ -212,23 +212,9 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tarifas — cotización automática</h2>
             <p class="text-xs text-gray-400">
-              Cuando se carga un pedido nuevo (desde el panel o desde "/pedir"), el sistema sugiere un precio solo:
-              si el origen cae dentro de una Zona con "precio sugerido" cargado, usa ese precio fijo; si no, calcula
-              distancia real origen→destino y cobra la base más el valor del km. Siempre es editable, nunca obliga.
+              Cuando se carga un pedido nuevo (desde el panel o desde "/pedir"), el sistema sugiere un precio solo, por
+              la distancia real por calle entre origen y destino. Siempre es editable, nunca obliga.
             </p>
-            <label class="flex flex-col gap-1 max-w-xs">
-              <span class="text-sm font-medium text-gray-700">Método de cotización</span>
-              <select class="input" [(ngModel)]="metodoCotizacion" name="metodoCotizacion">
-                <option value="AUTOMATICO">Automático (zona si tiene precio, si no por km)</option>
-                <option value="ZONA">Siempre por zona</option>
-                <option value="DISTANCIA">Siempre por km</option>
-              </select>
-              <span class="text-xs text-gray-400">
-                "Siempre por zona" nunca calcula por distancia aunque haya "precio por km" cargado — si ninguna de
-                las dos zonas (origen/destino) tiene precio, no hay sugerencia. "Siempre por km" ignora el precio de
-                zona por completo.
-              </span>
-            </label>
             <div class="grid sm:grid-cols-3 gap-4 max-w-lg">
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Monto mínimo del viaje ($)</span>
@@ -247,9 +233,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
               </label>
             </div>
             <p class="text-xs text-gray-400 -mt-2">
-              Ejemplo con mínimo $2000 hasta 2 km y $150/km: un viaje de 5 km cobra $2000 + 3 km × $150 = $2450. El
-              precio sugerido por Zona siempre tiene prioridad sobre este cálculo — configurá el precio de cada Zona
-              desde "Zonas".
+              Ejemplo con mínimo $2000 hasta 2 km y $320/km: un viaje de 5 km cobra $2000 + 3 km × $320 = $2960.
             </p>
             <div class="grid sm:grid-cols-2 gap-4 max-w-sm">
               <label class="flex flex-col gap-1">
@@ -387,6 +371,21 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                 <span class="text-sm font-medium text-gray-700">Geoapify — API keys (direcciones)</span>
                 <textarea class="input" rows="2" [(ngModel)]="geoapifyKeys" name="geoapifyKeys" placeholder="Sacalas gratis en geoapify.com — una por línea"></textarea>
                 <span class="text-xs text-gray-400">Se usan para autocompletar direcciones en la página pública "Pedir online".</span>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Google — API keys (direcciones, "buscar de nuevo")</span>
+                <textarea
+                  class="input"
+                  rows="2"
+                  [(ngModel)]="googleGeocodingKeys"
+                  name="googleGeocodingKeys"
+                  placeholder="Geocoding API de Google Cloud — una por línea"
+                ></textarea>
+                <span class="text-xs text-gray-400">
+                  Solo se usa cuando el cliente toca "No está mi dirección — buscar de nuevo". Tope propio de 300
+                  búsquedas por día por key (~9.000/mes, dentro del cupo sin cargo de Google). Vacío = ese segundo
+                  intento vuelve a probar los servicios gratuitos.
+                </span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">GraphHopper — API keys (distancia)</span>
@@ -782,13 +781,13 @@ export class ConfiguracionComponent implements OnInit {
   checklistDocumentacionObligatorio = false;
   telefonoSoporte = '';
   metaMensualFacturacion: number | null = null;
-  metodoCotizacion = 'AUTOMATICO';
   precioBaseViaje: number | null = null;
   distanciaMinimaKm: number | null = null;
   precioPorKm: number | null = null;
   recargoDineroUmbral: number | null = null;
   recargoDineroMonto: number | null = null;
   geoapifyKeys = '';
+  googleGeocodingKeys = '';
   graphhopperKey = '';
   openRouteServiceKey = '';
   openRouteServiceUrl = '';
@@ -848,13 +847,13 @@ export class ConfiguracionComponent implements OnInit {
       this.checklistDocumentacionObligatorio = (v['checklist_documentacion_obligatorio'] ?? 'false') === 'true';
       this.telefonoSoporte = v['telefono_soporte'] ?? '';
       this.metaMensualFacturacion = Number(v['meta_mensual_facturacion'] ?? 0);
-      this.metodoCotizacion = v['metodo_cotizacion'] ?? 'AUTOMATICO';
       this.precioBaseViaje = Number(v['precio_base_viaje'] ?? 0);
       this.distanciaMinimaKm = Number(v['distancia_minima_km'] ?? 2);
       this.precioPorKm = Number(v['precio_por_km'] ?? 0);
       this.recargoDineroUmbral = Number(v['recargo_dinero_transportado_umbral'] ?? 0);
       this.recargoDineroMonto = Number(v['recargo_dinero_transportado_monto'] ?? 0);
       this.geoapifyKeys = v['geoapify_keys'] ?? '';
+      this.googleGeocodingKeys = v['google_geocoding_keys'] ?? '';
       this.graphhopperKey = v['graphhopper_key'] ?? '';
       this.openRouteServiceKey = v['open_route_service_key'] ?? '';
       this.openRouteServiceUrl = v['open_route_service_url'] ?? '';
@@ -900,6 +899,7 @@ export class ConfiguracionComponent implements OnInit {
   nombreProveedor(proveedor: string): string {
     const nombres: Record<string, string> = {
       geoapify: 'Geoapify (direcciones)',
+      google: 'Google (direcciones, búsqueda ampliada)',
       graphhopper: 'GraphHopper (distancia)',
       openrouteservice: 'OpenRouteService (distancia)',
     };
@@ -959,13 +959,13 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('checklist_documentacion_obligatorio', String(this.checklistDocumentacionObligatorio));
     agregarSiCambio('telefono_soporte', this.telefonoSoporte);
     agregarSiCambio('meta_mensual_facturacion', String(this.metaMensualFacturacion ?? 0));
-    agregarSiCambio('metodo_cotizacion', this.metodoCotizacion);
     agregarSiCambio('precio_base_viaje', String(this.precioBaseViaje ?? 0));
     agregarSiCambio('distancia_minima_km', String(this.distanciaMinimaKm ?? 2));
     agregarSiCambio('precio_por_km', String(this.precioPorKm ?? 0));
     agregarSiCambio('recargo_dinero_transportado_umbral', String(this.recargoDineroUmbral ?? 0));
     agregarSiCambio('recargo_dinero_transportado_monto', String(this.recargoDineroMonto ?? 0));
     agregarSiCambio('geoapify_keys', this.geoapifyKeys);
+    agregarSiCambio('google_geocoding_keys', this.googleGeocodingKeys);
     agregarSiCambio('graphhopper_key', this.graphhopperKey);
     agregarSiCambio('open_route_service_key', this.openRouteServiceKey);
     agregarSiCambio('open_route_service_url', this.openRouteServiceUrl);

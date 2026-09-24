@@ -57,15 +57,24 @@ const PIN_ICON = L.divIcon({
           name="direccionBusqueda"
         />
 
+        <!-- Tres pasos (2026-09-24): lista normal → "no está, buscar de nuevo" (sin cache, con Google si
+             hay key) → "tampoco está, ubicarla a mano". Antes, si la lista traía direcciones pero
+             ninguna era la correcta, no había forma de salir de ahí. -->
         @if (searching()) {
-          <p class="text-xs text-gray-400 mt-1">Buscando…</p>
+          <p class="text-xs text-gray-400 mt-1">{{ ampliada() ? 'Buscando en más lugares…' : 'Buscando…' }}</p>
         } @else if (query().length >= 4 && !results().length) {
           <p class="text-xs text-gray-500 mt-1">
-            No encontramos esa dirección.
-            <button type="button" (click)="useTyped()" class="font-semibold text-brand-600 hover:underline">
-              Cargarla igual
-            </button>
-            y ubicarla a mano en el mapa.
+            @if (!ampliada()) {
+              No la encontramos.
+              <button type="button" (click)="buscarDeNuevo()" class="font-semibold text-brand-600 hover:underline">
+                Buscar de nuevo
+              </button>
+            } @else {
+              Tampoco la encontramos.
+              <button type="button" (click)="useTyped()" class="font-semibold text-brand-600 hover:underline">
+                Ubicarla a mano en el mapa
+              </button>
+            }
           </p>
         }
 
@@ -76,12 +85,31 @@ const PIN_ICON = L.divIcon({
                 <button
                   type="button"
                   (click)="choose(r)"
-                  class="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 border-b border-gray-100 last:border-0"
+                  class="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 border-b border-gray-100"
                 >
                   {{ r.label }}
                 </button>
               </li>
             }
+            <li>
+              @if (!ampliada()) {
+                <button
+                  type="button"
+                  (click)="buscarDeNuevo()"
+                  class="w-full text-left px-3 py-2.5 text-sm font-semibold text-brand-700 bg-gray-50 hover:bg-brand-50"
+                >
+                  🔎 No está mi dirección — buscar de nuevo
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  (click)="useTyped()"
+                  class="w-full text-left px-3 py-2.5 text-sm font-semibold text-brand-700 bg-gray-50 hover:bg-brand-50"
+                >
+                  📍 Tampoco está — ubicarla a mano en el mapa
+                </button>
+              }
+            </li>
           </ul>
         }
       </div>
@@ -144,6 +172,8 @@ export class AddressPickerComponent {
   readonly query = signal('');
   readonly results = signal<GeoAddress[]>([]);
   readonly searching = signal(false);
+  /** true después de "buscar de nuevo": la próxima salida ya es ubicarla a mano. */
+  readonly ampliada = signal(false);
   /** Re-resolviendo la dirección después de arrastrar el pin. */
   readonly locating = signal(false);
   readonly selected = signal<GeoAddress | null>(null);
@@ -235,7 +265,22 @@ export class AddressPickerComponent {
 
   onQueryChange(value: string): void {
     this.query.set(value);
+    this.ampliada.set(false);
     this.query$.next(value.trim());
+  }
+
+  /** Segundo intento: sin cache y con Google si el backend tiene key (ver GeocodingProxyService.buscarAmpliado). */
+  async buscarDeNuevo(): Promise<void> {
+    const q = this.query().trim();
+    if (q.length < 4) return;
+    this.ampliada.set(true);
+    this.results.set([]);
+    this.searching.set(true);
+    const res = await this.geocoding.searchAmpliado(q);
+    // si mientras tanto el usuario siguió escribiendo, este resultado ya no corresponde
+    if (this.query().trim() !== q) return;
+    this.searching.set(false);
+    this.results.set(res);
   }
 
   choose(addr: GeoAddress): void {
