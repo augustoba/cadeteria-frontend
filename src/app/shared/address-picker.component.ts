@@ -88,6 +88,9 @@ const PIN_ICON = L.divIcon({
                   class="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 border-b border-gray-100"
                 >
                   {{ r.label }}
+                  @if (r.approximate) {
+                    <span class="text-[11px] text-amber-600 whitespace-nowrap">· sin altura exacta</span>
+                  }
                 </button>
               </li>
             }
@@ -125,13 +128,16 @@ const PIN_ICON = L.divIcon({
           </button>
         </div>
         <div #mapEl class="h-40 w-full bg-gray-100"></div>
-        <p class="text-[11px] px-3 py-1.5" [class]="selected()!.approximate ? 'text-amber-600' : 'text-gray-400'">
-          @if (selected()!.approximate) {
-            Arrastrá el pin al punto exacto — la dirección de arriba se ajusta sola.
-          } @else {
-            Arrastrá el pin para corregirlo si quedó desviado.
-          }
-        </p>
+        @if (selected()!.approximate) {
+          <!-- Sin altura exacta el pin queda en cualquier punto de la calle, y el precio se calcula
+               desde el pin: con "Colombia 4695" daba 5,2 km en vez de 6,2 (2026-09-24). -->
+          <p class="text-xs px-3 py-2 bg-amber-50 border-t border-amber-200 text-amber-800">
+            ⚠️ <strong>No encontramos la altura exacta.</strong> Arrastrá el pin hasta la puerta: la distancia y el
+            precio se calculan desde ahí.
+          </p>
+        } @else {
+          <p class="text-[11px] px-3 py-1.5 text-gray-400">Arrastrá el pin para corregirlo si quedó desviado.</p>
+        }
       </div>
     }
   `,

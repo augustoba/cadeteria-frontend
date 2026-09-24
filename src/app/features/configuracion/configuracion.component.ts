@@ -232,6 +232,14 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                 <span class="text-xs text-gray-400">Se suma por cada km que supere el umbral de arriba. En 0, desactiva la cotización por distancia.</span>
               </label>
             </div>
+            <label class="flex flex-col gap-1 max-w-xs">
+              <span class="text-sm font-medium text-gray-700">Si no se puede calcular la ruta: línea recta ×</span>
+              <input type="number" min="1" step="0.05" class="input" [(ngModel)]="factorLineaRecta" name="factorLineaRecta" />
+              <span class="text-xs text-gray-400">
+                Respaldo cuando fallan los servicios de rutas. Las calles no van derecho: en Tucumán la distancia
+                real es en promedio 1,38 veces la recta (medido en 12 viajes), por eso el default es 1,4.
+              </span>
+            </label>
             <p class="text-xs text-gray-400 -mt-2">
               Ejemplo con mínimo $2000 hasta 2 km y $320/km: un viaje de 5 km cobra $2000 + 3 km × $320 = $2960.
             </p>
@@ -784,6 +792,7 @@ export class ConfiguracionComponent implements OnInit {
   precioBaseViaje: number | null = null;
   distanciaMinimaKm: number | null = null;
   precioPorKm: number | null = null;
+  factorLineaRecta: number | null = 1.4;
   recargoDineroUmbral: number | null = null;
   recargoDineroMonto: number | null = null;
   geoapifyKeys = '';
@@ -850,6 +859,7 @@ export class ConfiguracionComponent implements OnInit {
       this.precioBaseViaje = Number(v['precio_base_viaje'] ?? 0);
       this.distanciaMinimaKm = Number(v['distancia_minima_km'] ?? 2);
       this.precioPorKm = Number(v['precio_por_km'] ?? 0);
+      this.factorLineaRecta = Number(v['factor_linea_recta'] ?? 1.4);
       this.recargoDineroUmbral = Number(v['recargo_dinero_transportado_umbral'] ?? 0);
       this.recargoDineroMonto = Number(v['recargo_dinero_transportado_monto'] ?? 0);
       this.geoapifyKeys = v['geoapify_keys'] ?? '';
@@ -962,6 +972,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('precio_base_viaje', String(this.precioBaseViaje ?? 0));
     agregarSiCambio('distancia_minima_km', String(this.distanciaMinimaKm ?? 2));
     agregarSiCambio('precio_por_km', String(this.precioPorKm ?? 0));
+    agregarSiCambio('factor_linea_recta', String(this.factorLineaRecta ?? 1.4));
     agregarSiCambio('recargo_dinero_transportado_umbral', String(this.recargoDineroUmbral ?? 0));
     agregarSiCambio('recargo_dinero_transportado_monto', String(this.recargoDineroMonto ?? 0));
     agregarSiCambio('geoapify_keys', this.geoapifyKeys);

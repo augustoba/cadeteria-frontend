@@ -454,7 +454,10 @@ export class NuevoPedidoComponent implements OnInit {
       .subscribe((c) => {
         if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
-        this.precioSugeridoInfo = `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
+        this.precioSugeridoInfo =
+          c.metodo === 'DISTANCIA_ESTIMADA'
+            ? `Sugerido por distancia estimada (~${c.distanciaKm?.toFixed(1)} km, no se pudo calcular la ruta)`
+            : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
       });
   }
 

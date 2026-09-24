@@ -330,7 +330,11 @@ export class SolicitudesPedidoComponent implements OnInit {
         return;
       }
       this.precioModal[s.id] = c.precioSugerido;
-      this.toast.success(`Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`);
+      this.toast.success(
+        c.metodo === 'DISTANCIA_ESTIMADA'
+          ? `Sugerido por distancia estimada (~${c.distanciaKm?.toFixed(1)} km) — no se pudo calcular la ruta, revisalo.`
+          : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km).`,
+      );
     });
   }
 

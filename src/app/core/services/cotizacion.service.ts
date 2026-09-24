@@ -4,7 +4,8 @@ import { apiUrl } from '../config/site-config';
 
 export interface Cotizacion {
   precioSugerido: number | null;
-  metodo: 'ZONA' | 'DISTANCIA' | null;
+  /** DISTANCIA = por calle; DISTANCIA_ESTIMADA = falló el ruteo, línea recta × factor (Configuración → Tarifas). */
+  metodo: 'DISTANCIA' | 'DISTANCIA_ESTIMADA' | null;
   zonaId: string | null;
   zonaNombre: string | null;
   distanciaKm: number | null;
