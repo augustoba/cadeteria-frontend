@@ -17,10 +17,12 @@ export interface SolicitudPedido {
   clienteNombre: string;
   clienteTelefono: string;
   detalle: string | null;
-  /** Piso/depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
-  origenPisoDepto: string | null;
+  /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
+  origenPiso: string | null;
+  origenDepto: string | null;
   origenObservaciones: string | null;
-  destinoPisoDepto: string | null;
+  destinoPiso: string | null;
+  destinoDepto: string | null;
   destinoObservaciones: string | null;
   estado: EstadoSolicitudPedido;
   requiereMoto: boolean;
@@ -50,13 +52,15 @@ export interface SolicitudPedidoInput {
   clienteNombre: string;
   clienteTelefono: string;
   detalle: string | null;
-  /** Piso/depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
-  origenPisoDepto: string | null;
+  /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
+  origenPiso: string | null;
+  origenDepto: string | null;
   origenObservaciones: string | null;
-  destinoPisoDepto: string | null;
+  destinoPiso: string | null;
+  destinoDepto: string | null;
   destinoObservaciones: string | null;
   /** Token de VerificacionTelefonoService.verificarCodigo (mejora 2026-09-17) — confirma que el teléfono es real. */
-  verificacionToken: string;
+  verificacionToken: string | null;
 }
 
 export interface RevisarSolicitudInput {

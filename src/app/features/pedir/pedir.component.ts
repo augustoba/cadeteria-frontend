@@ -45,16 +45,11 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de origen</span>
               <app-address-picker (addressPicked)="onOrigenPicked($event)" />
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input class="input" [(ngModel)]="origenPiso" name="origenPiso" maxlength="20" placeholder="Piso" />
+                <input class="input" [(ngModel)]="origenDepto" name="origenDepto" maxlength="20" placeholder="Depto" />
                 <input
-                  class="input"
-                  [(ngModel)]="origenPisoDepto"
-                  name="origenPisoDepto"
-                  maxlength="50"
-                  placeholder="Piso / depto"
-                />
-                <input
-                  class="input sm:col-span-2"
+                  class="input col-span-2"
                   [(ngModel)]="origenObservaciones"
                   name="origenObservaciones"
                   maxlength="300"
@@ -67,16 +62,11 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Lugar de destino</span>
               <app-address-picker (addressPicked)="onDestinoPicked($event)" />
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input class="input" [(ngModel)]="destinoPiso" name="destinoPiso" maxlength="20" placeholder="Piso" />
+                <input class="input" [(ngModel)]="destinoDepto" name="destinoDepto" maxlength="20" placeholder="Depto" />
                 <input
-                  class="input"
-                  [(ngModel)]="destinoPisoDepto"
-                  name="destinoPisoDepto"
-                  maxlength="50"
-                  placeholder="Piso / depto"
-                />
-                <input
-                  class="input sm:col-span-2"
+                  class="input col-span-2"
                   [(ngModel)]="destinoObservaciones"
                   name="destinoObservaciones"
                   maxlength="300"
@@ -90,8 +80,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               <p class="text-xs text-gray-400">Calculando un estimado…</p>
             } @else if (precioEstimado() != null) {
               <div class="rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-3 py-2">
-                💰 Estimado: <strong>$ {{ precioEstimado() }}</strong>
-                <span class="text-xs block text-emerald-700/80 mt-0.5">Puede variar — te lo confirmamos antes de salir.</span>
+                💰 Precio del envío: <strong>$ {{ precioEstimado() }}</strong>
               </div>
             }
 
@@ -153,7 +142,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               </label>
             </div>
 
-            @if (!telefonoVerificado()) {
+            @if (verificarTelefono() && !telefonoVerificado()) {
               <div class="rounded bg-gray-50 border border-gray-200 px-3 py-2 flex flex-col gap-2">
                 @if (!codigoEnviado()) {
                   <p class="text-xs text-gray-500">Antes de enviar el pedido, confirmamos que ese teléfono es real.</p>
@@ -196,7 +185,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                   <p class="text-xs text-red-600">{{ errorVerificacion() }}</p>
                 }
               </div>
-            } @else {
+            } @else if (verificarTelefono()) {
               @if (sinVerificar()) {
                 <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
                   No pudimos mandarte el código ahora. Podés enviar el pedido igual: te vamos a contactar a ese
@@ -223,7 +212,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <button
               type="button"
               class="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-3 rounded"
-              [disabled]="enviando() || !telefonoVerificado()"
+              [disabled]="enviando() || (verificarTelefono() && !telefonoVerificado())"
               (click)="enviar()"
             >
               {{ enviando() ? 'Enviando…' : 'Pedir envío' }}
@@ -241,13 +230,13 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
           </div>
           <div class="p-4 flex flex-col gap-2">
             <p class="text-sm text-gray-700">
-              No declaraste que el envío lleve dinero ni objetos de valor. Recordá que la cadetería
-              no se hace responsable por dinero o valores que no hayan sido declarados al pedir el envío.
+              No declaraste que el envío lleve dinero ni objetos de valor.
+              <strong>Si no se declaran dinero ni valores, la cadetería no se hace responsable por ellos.</strong>
             </p>
           </div>
           <div class="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
-            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cancelarDisclaimer()">Volver</button>
-            <button type="button" class="btn bg-brand-600 hover:bg-brand-700" (click)="confirmarEnvioSinDeclarar()">✔ Confirmar y enviar</button>
+            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cancelarDisclaimer()">Cancelar</button>
+            <button type="button" class="btn bg-brand-600 hover:bg-brand-700" (click)="confirmarEnvioSinDeclarar()">Aceptar</button>
           </div>
         </div>
       </div>
@@ -295,12 +284,15 @@ export class PedirComponent {
 
   /** null = todavía no se sabe (cargando). */
   readonly disponible = signal<boolean | null>(null);
+  /** Si hay que pedir el código antes de enviar — apagado por ahora desde Configuración (2026-09-24). */
+  readonly verificarTelefono = signal(false);
   readonly mensajeNoDisponible = signal<string>('Volvé a intentar más tarde.');
 
   constructor() {
     this.svc.estado().subscribe({
       next: (r) => {
         this.disponible.set(r.disponible);
+        this.verificarTelefono.set(r.verificarTelefono);
         if (r.mensaje) this.mensajeNoDisponible.set(r.mensaje);
       },
       error: () => this.disponible.set(true), // si falla la consulta, no le bloqueamos el pedido a nadie por un error nuestro
@@ -322,9 +314,11 @@ export class PedirComponent {
   llevaValores = false;
   requiereMoto = false;
   retornaAlOrigen = false;
-  origenPisoDepto = '';
+  origenPiso = '';
+  origenDepto = '';
   origenObservaciones = '';
-  destinoPisoDepto = '';
+  destinoPiso = '';
+  destinoDepto = '';
   destinoObservaciones = '';
   clienteNombre = '';
   clienteTelefono = '';
@@ -455,7 +449,7 @@ export class PedirComponent {
       this.error.set('Completá por quién pregunta el cadete y el teléfono.');
       return;
     }
-    if (!this.telefonoVerificado() || !this.verificacionToken) {
+    if (this.verificarTelefono() && (!this.telefonoVerificado() || !this.verificacionToken)) {
       this.error.set('Verificá el teléfono antes de enviar el pedido.');
       return;
     }
@@ -493,11 +487,13 @@ export class PedirComponent {
       clienteNombre: this.clienteNombre.trim(),
       clienteTelefono: this.clienteTelefono.trim(),
       detalle: this.detalle.trim() || null,
-      origenPisoDepto: this.origenPisoDepto.trim() || null,
+      origenPiso: this.origenPiso.trim() || null,
+      origenDepto: this.origenDepto.trim() || null,
       origenObservaciones: this.origenObservaciones.trim() || null,
-      destinoPisoDepto: this.destinoPisoDepto.trim() || null,
+      destinoPiso: this.destinoPiso.trim() || null,
+      destinoDepto: this.destinoDepto.trim() || null,
       destinoObservaciones: this.destinoObservaciones.trim() || null,
-      verificacionToken: this.verificacionToken!,
+      verificacionToken: this.verificacionToken,
     };
 
     this.enviando.set(true);

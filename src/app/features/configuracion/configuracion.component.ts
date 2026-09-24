@@ -567,7 +567,16 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
             </p>
 
             <label class="flex items-center gap-2 pt-2 border-t border-gray-100">
-              <input type="checkbox" [(ngModel)]="recordarTelefonos" name="recordarTelefonos" />
+              <input type="checkbox" [(ngModel)]="verificacionTelefonoActiva" name="verificacionTelefonoActiva" />
+              <span class="text-sm text-gray-700">Pedir un código al teléfono del cliente antes de enviar el pedido</span>
+            </label>
+            <p class="text-xs text-gray-400 -mt-2">
+              Evita pedidos a nombre de números ajenos. El código sale por WhatsApp (o SMS si el gateway no está
+              conectado). Apagado: el cliente pide sin código y la solicitud igual la revisás vos antes de confirmarla.
+            </p>
+
+            <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="recordarTelefonos" name="recordarTelefonos" [disabled]="!verificacionTelefonoActiva" />
               <span class="text-sm text-gray-700">No volver a pedir el código a un teléfono que ya se verificó</span>
             </label>
             <p class="text-xs text-gray-400 -mt-2">
@@ -800,6 +809,8 @@ export class ConfiguracionComponent implements OnInit {
   pedidosPausados = false;
   pedidosPausadosMensaje = '';
   recordarTelefonos = true;
+  /** Apagado por default hasta probar el envío real del código (pendientes.md). */
+  verificacionTelefonoActiva = false;
   retencionWhatsappDias: number | null = null;
   retencionChatDias: number | null = null;
 
@@ -862,6 +873,7 @@ export class ConfiguracionComponent implements OnInit {
       this.pedidosPausados = (v['pedidos_pausados'] ?? 'false') === 'true';
       this.pedidosPausadosMensaje = v['pedidos_pausados_mensaje'] ?? 'Estamos pausados temporalmente, disculpá las molestias.';
       this.recordarTelefonos = (v['verificacion_recordar_telefonos'] ?? 'true') === 'true';
+      this.verificacionTelefonoActiva = (v['verificacion_telefono_activa'] ?? 'false') === 'true';
       this.retencionWhatsappDias = Number(v['retencion_whatsapp_dias'] ?? 0);
       this.retencionChatDias = Number(v['retencion_chat_dias'] ?? 0);
     });
@@ -972,6 +984,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('pedidos_pausados', String(this.pedidosPausados));
     agregarSiCambio('pedidos_pausados_mensaje', this.pedidosPausadosMensaje);
     agregarSiCambio('verificacion_recordar_telefonos', String(this.recordarTelefonos));
+    agregarSiCambio('verificacion_telefono_activa', String(this.verificacionTelefonoActiva));
     agregarSiCambio('retencion_whatsapp_dias', String(this.retencionWhatsappDias ?? 0));
     agregarSiCambio('retencion_chat_dias', String(this.retencionChatDias ?? 0));
 

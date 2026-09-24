@@ -24,10 +24,12 @@ export interface Pedido {
   /** Declarado por el cliente al pedir — no afecta el tope de 5.2, solo informativo. */
   llevaValores: boolean;
   detalle: string | null;
-  /** Piso/depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
-  origenPisoDepto: string | null;
+  /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
+  origenPiso: string | null;
+  origenDepto: string | null;
   origenObservaciones: string | null;
-  destinoPisoDepto: string | null;
+  destinoPiso: string | null;
+  destinoDepto: string | null;
   destinoObservaciones: string | null;
   requiereMoto: boolean;
   estado: Lookup;
@@ -124,10 +126,12 @@ export interface PedidoInput {
   /** Transporta objetos de valor (no dinero) — solo informativo. */
   llevaValores: boolean;
   detalle: string | null;
-  /** Piso/depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
-  origenPisoDepto: string | null;
+  /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
+  origenPiso: string | null;
+  origenDepto: string | null;
   origenObservaciones: string | null;
-  destinoPisoDepto: string | null;
+  destinoPiso: string | null;
+  destinoDepto: string | null;
   destinoObservaciones: string | null;
   requiereMoto: boolean;
   programado: boolean;

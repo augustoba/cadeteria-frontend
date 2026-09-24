@@ -496,8 +496,12 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 <div>
                   <div class="text-xs text-gray-400">Origen</div>
                   <div class="font-medium text-gray-800">{{ p.origenDireccion }}</div>
-                  @if (p.origenPisoDepto) {
-                    <div class="text-gray-700">Piso/depto: {{ p.origenPisoDepto }}</div>
+                  @if (p.origenPiso || p.origenDepto) {
+                    <div class="text-gray-700">
+                      @if (p.origenPiso) { Piso {{ p.origenPiso }} }
+                      @if (p.origenPiso && p.origenDepto) { · }
+                      @if (p.origenDepto) { Depto {{ p.origenDepto }} }
+                    </div>
                   }
                   @if (p.origenObservaciones) {
                     <div class="text-xs text-gray-500">📝 {{ p.origenObservaciones }}</div>
@@ -519,8 +523,12 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 <div>
                   <div class="text-xs text-gray-400">Destino</div>
                   <div class="font-medium text-gray-800">{{ p.destinoDireccion }}</div>
-                  @if (p.destinoPisoDepto) {
-                    <div class="text-gray-700">Piso/depto: {{ p.destinoPisoDepto }}</div>
+                  @if (p.destinoPiso || p.destinoDepto) {
+                    <div class="text-gray-700">
+                      @if (p.destinoPiso) { Piso {{ p.destinoPiso }} }
+                      @if (p.destinoPiso && p.destinoDepto) { · }
+                      @if (p.destinoDepto) { Depto {{ p.destinoDepto }} }
+                    </div>
                   }
                   @if (p.destinoObservaciones) {
                     <div class="text-xs text-gray-500">📝 {{ p.destinoObservaciones }}</div>

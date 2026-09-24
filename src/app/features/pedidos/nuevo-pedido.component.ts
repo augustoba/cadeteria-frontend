@@ -110,14 +110,9 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               @for (k of [formKey()]; track k) {
                 <app-address-picker (addressPicked)="onOrigenPicked($event)" />
               }
-              <div class="grid grid-cols-3 gap-2">
-                <input
-                  class="input"
-                  [(ngModel)]="origenPisoDepto"
-                  name="origenPisoDepto"
-                  maxlength="50"
-                  placeholder="Piso / depto (opcional)"
-                />
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input class="input" [(ngModel)]="origenPiso" name="origenPiso" maxlength="20" placeholder="Piso (opcional)" />
+                <input class="input" [(ngModel)]="origenDepto" name="origenDepto" maxlength="20" placeholder="Depto (opcional)" />
                 <input
                   class="input col-span-2"
                   [(ngModel)]="origenObservaciones"
@@ -133,14 +128,9 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               @for (k of [formKey()]; track k) {
                 <app-address-picker #destinoPickerRef (addressPicked)="onDestinoPicked($event)" />
               }
-              <div class="grid grid-cols-3 gap-2">
-                <input
-                  class="input"
-                  [(ngModel)]="destinoPisoDepto"
-                  name="destinoPisoDepto"
-                  maxlength="50"
-                  placeholder="Piso / depto (opcional)"
-                />
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <input class="input" [(ngModel)]="destinoPiso" name="destinoPiso" maxlength="20" placeholder="Piso (opcional)" />
+                <input class="input" [(ngModel)]="destinoDepto" name="destinoDepto" maxlength="20" placeholder="Depto (opcional)" />
                 <input
                   class="input col-span-2"
                   [(ngModel)]="destinoObservaciones"
@@ -235,7 +225,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
               placeholder="Qué se lleva, cómo va embalado, a quién preguntar…"
             ></textarea>
             <span class="text-xs text-gray-400">
-              El cadete ve el detalle, el piso/depto y las observaciones recién cuando acepta el viaje.
+              El cadete ve el detalle, el piso, el depto y las observaciones recién cuando acepta el viaje.
             </span>
           </label>
         </div>
@@ -303,9 +293,11 @@ export class NuevoPedidoComponent implements OnInit {
   montoDeclarado: number | null = null;
   llevaValores = false;
   detalle = '';
-  origenPisoDepto = '';
+  origenPiso = '';
+  origenDepto = '';
   origenObservaciones = '';
-  destinoPisoDepto = '';
+  destinoPiso = '';
+  destinoDepto = '';
   destinoObservaciones = '';
 
   readonly error = signal<string | null>(null);
@@ -520,9 +512,11 @@ export class NuevoPedidoComponent implements OnInit {
       montoDeclarado: this.montoDeclarado,
       llevaValores: this.llevaValores,
       detalle: this.detalle || null,
-      origenPisoDepto: this.origenPisoDepto.trim() || null,
+      origenPiso: this.origenPiso.trim() || null,
+      origenDepto: this.origenDepto.trim() || null,
       origenObservaciones: this.origenObservaciones.trim() || null,
-      destinoPisoDepto: this.destinoPisoDepto.trim() || null,
+      destinoPiso: this.destinoPiso.trim() || null,
+      destinoDepto: this.destinoDepto.trim() || null,
       destinoObservaciones: this.destinoObservaciones.trim() || null,
       requiereMoto: this.requiereMoto,
       programado: this.programado,
@@ -559,7 +553,8 @@ export class NuevoPedidoComponent implements OnInit {
     this.montoDeclarado = null;
     this.llevaValores = false;
     this.detalle = '';
-    this.destinoPisoDepto = '';
+    this.destinoPiso = '';
+    this.destinoDepto = '';
     this.destinoObservaciones = '';
     this.destinoPickerRef()?.setValue(null);
   }
@@ -582,9 +577,11 @@ export class NuevoPedidoComponent implements OnInit {
     this.montoDeclarado = null;
     this.llevaValores = false;
     this.detalle = '';
-    this.origenPisoDepto = '';
+    this.origenPiso = '';
+    this.origenDepto = '';
     this.origenObservaciones = '';
-    this.destinoPisoDepto = '';
+    this.destinoPiso = '';
+    this.destinoDepto = '';
     this.destinoObservaciones = '';
     this.formKey.update((k) => k + 1);
   }

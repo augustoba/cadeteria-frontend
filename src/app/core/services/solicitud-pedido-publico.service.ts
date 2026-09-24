@@ -14,7 +14,8 @@ export class SolicitudPedidoPublicoService {
 
   /** Si está pausado o fuera de horario, no muestra el formulario (mejora 2026-09-17). */
   estado() {
-    return this.http.get<{ disponible: boolean; mensaje: string | null }>(apiUrl('/publico/solicitudes-pedido/estado'));
+    /** verificarTelefono: si /pedir tiene que pedir el código antes de enviar (Configuración). */
+    return this.http.get<{ disponible: boolean; mensaje: string | null; verificarTelefono: boolean }>(apiUrl('/publico/solicitudes-pedido/estado'));
   }
 
   verCotizacion(token: string) {

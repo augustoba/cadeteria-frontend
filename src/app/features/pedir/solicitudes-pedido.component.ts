@@ -72,12 +72,14 @@ const ESTADO_CLASES: Record<string, string> = {
               <div class="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
                 <span>
                   📍 Origen: {{ s.origenDireccion }}
-                  @if (s.origenPisoDepto) { <strong> — {{ s.origenPisoDepto }}</strong> }
+                  @if (s.origenPiso) { <strong> — Piso {{ s.origenPiso }}</strong> }
+                  @if (s.origenDepto) { <strong> — Depto {{ s.origenDepto }}</strong> }
                   @if (s.origenObservaciones) { <span class="block text-xs text-gray-500">📝 {{ s.origenObservaciones }}</span> }
                 </span>
                 <span>
                   🏁 Destino: {{ s.destinoDireccion }}
-                  @if (s.destinoPisoDepto) { <strong> — {{ s.destinoPisoDepto }}</strong> }
+                  @if (s.destinoPiso) { <strong> — Piso {{ s.destinoPiso }}</strong> }
+                  @if (s.destinoDepto) { <strong> — Depto {{ s.destinoDepto }}</strong> }
                   @if (s.destinoObservaciones) { <span class="block text-xs text-gray-500">📝 {{ s.destinoObservaciones }}</span> }
                 </span>
                 <span>{{ s.llevaDinero ? '💵 Lleva dinero' + (s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '') : 'No lleva dinero' }}</span>
