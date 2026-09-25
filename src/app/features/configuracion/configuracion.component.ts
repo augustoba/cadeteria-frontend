@@ -501,6 +501,33 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                   intento vuelve a probar los servicios gratuitos.
                 </span>
               </label>
+              <!-- Ubicaciones de Google en la cache de direcciones (2026-09-25) -->
+              <div class="sm:col-span-2 flex flex-col gap-2 rounded border border-gray-200 p-3">
+                <span class="text-sm font-medium text-gray-700">Direcciones encontradas con Google</span>
+                <label class="flex items-center gap-2">
+                  <span class="text-sm text-gray-700">Borrarlas después de</span>
+                  <input type="number" min="0" max="365" step="1" class="input w-20" [(ngModel)]="googleCacheDias" name="googleCacheDias" />
+                  <span class="text-sm text-gray-700">días</span>
+                </label>
+                <span class="text-xs text-gray-400 -mt-1">
+                  Las condiciones de Google permiten guardarlas hasta <strong>30 días</strong> (a septiembre de 2026);
+                  si las cambian, se ajusta acá. En 0 no se guardan. Lo que ubica a mano el admin o un cadete no se
+                  borra nunca, y si confirma una dirección que vino de Google, deja de vencer.
+                </span>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" [(ngModel)]="googleLinkVence" name="googleLinkVence" />
+                  <span class="text-sm text-gray-700">Borrar también las ubicadas con un link de Google Maps</span>
+                </label>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" [(ngModel)]="googleCachePausarBorrado" name="googleCachePausarBorrado" />
+                  <span class="text-sm text-amber-700">No borrar (solo para pruebas)</span>
+                </label>
+                @if (googleCachePausarBorrado) {
+                  <span class="text-xs text-amber-700 -mt-1">
+                    ⚠️ Mientras esté tildado no se borra nada y se siguen usando las vencidas. No dejarlo así en producción.
+                  </span>
+                }
+              </div>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">GraphHopper — API keys (distancia)</span>
                 <textarea class="input" rows="2" [(ngModel)]="graphhopperKey" name="graphhopperKey" placeholder="Sacalas gratis en graphhopper.com — una por línea"></textarea>
@@ -907,6 +934,9 @@ export class ConfiguracionComponent implements OnInit {
   recargoDineroMonto: number | null = null;
   geoapifyKeys = '';
   googleGeocodingKeys = '';
+  googleCacheDias: number | null = 30;
+  googleLinkVence = false;
+  googleCachePausarBorrado = false;
   graphhopperKey = '';
   openRouteServiceKey = '';
   openRouteServiceUrl = '';
@@ -975,6 +1005,9 @@ export class ConfiguracionComponent implements OnInit {
       this.recargoDineroMonto = Number(v['recargo_dinero_transportado_monto'] ?? 0);
       this.geoapifyKeys = v['geoapify_keys'] ?? '';
       this.googleGeocodingKeys = v['google_geocoding_keys'] ?? '';
+      this.googleCacheDias = Number(v['google_cache_dias'] ?? 30);
+      this.googleLinkVence = (v['google_link_vence'] ?? 'false') === 'true';
+      this.googleCachePausarBorrado = (v['google_cache_pausar_borrado'] ?? 'false') === 'true';
       this.graphhopperKey = v['graphhopper_key'] ?? '';
       this.openRouteServiceKey = v['open_route_service_key'] ?? '';
       this.openRouteServiceUrl = v['open_route_service_url'] ?? '';
@@ -1106,6 +1139,9 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('recargo_dinero_transportado_monto', String(this.recargoDineroMonto ?? 0));
     agregarSiCambio('geoapify_keys', this.geoapifyKeys);
     agregarSiCambio('google_geocoding_keys', this.googleGeocodingKeys);
+    agregarSiCambio('google_cache_dias', String(this.googleCacheDias ?? 30));
+    agregarSiCambio('google_link_vence', String(this.googleLinkVence));
+    agregarSiCambio('google_cache_pausar_borrado', String(this.googleCachePausarBorrado));
     agregarSiCambio('graphhopper_key', this.graphhopperKey);
     agregarSiCambio('open_route_service_key', this.openRouteServiceKey);
     agregarSiCambio('open_route_service_url', this.openRouteServiceUrl);

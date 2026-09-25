@@ -40,6 +40,23 @@ export class GeocodingPublicoService {
     }
   }
 
+  /**
+   * Link de Google Maps pegado en el buscador (largo, o corto de "Compartir" en la app) — el
+   * backend saca las coordenadas (ver LinkGoogleMapsService). No gasta cupo de Google.
+   */
+  async resolverLink(url: string): Promise<{ lat: number | null; lng: number | null; error: string | null }> {
+    try {
+      return await firstValueFrom(
+        this.http.get<{ lat: number | null; lng: number | null; error: string | null }>(
+          apiUrl('/publico/direcciones/link'),
+          { params: { url } },
+        ),
+      );
+    } catch {
+      return { lat: null, lng: null, error: 'No pudimos leer ese link. Probá de nuevo.' };
+    }
+  }
+
   async reverse(lat: number, lng: number): Promise<GeoAddress | null> {
     try {
       return await firstValueFrom(

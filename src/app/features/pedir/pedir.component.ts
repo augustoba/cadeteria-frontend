@@ -511,6 +511,8 @@ export class PedirComponent {
       destinoDepto: this.destinoDepto.trim() || null,
       destinoObservaciones: this.destinoObservaciones.trim() || null,
       verificacionToken: this.verificacionToken,
+      origenFuente: this.origenPicked!.fuente,
+      destinoFuente: this.destinoPicked!.fuente,
     };
 
     this.enviando.set(true);

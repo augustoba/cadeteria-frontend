@@ -63,6 +63,12 @@ export interface SolicitudPedidoInput {
   destinoObservaciones: string | null;
   /** Token de VerificacionTelefonoService.verificarCodigo (mejora 2026-09-17) — confirma que el teléfono es real. */
   verificacionToken: string | null;
+  /**
+   * De dónde salió el pin (2026-09-25): "manual" o "google_link" se aprenden en la cache de
+   * direcciones del backend al confirmar el pedido; el nombre de un buscador o null, no.
+   */
+  origenFuente: string | null;
+  destinoFuente: string | null;
 }
 
 export interface RevisarSolicitudInput {

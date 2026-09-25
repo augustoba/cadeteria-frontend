@@ -532,6 +532,8 @@ export class NuevoPedidoComponent implements OnInit {
       programado: this.programado,
       fechaProgramada,
       paradasAdicionales: paradasAdicionales.length ? paradasAdicionales : null,
+      origenFuente: this.origenPicked.fuente,
+      destinoFuente: this.destinoPicked.fuente,
     };
 
     this.pedidos.crear(input, () => {

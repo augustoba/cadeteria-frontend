@@ -142,6 +142,12 @@ export interface PedidoInput {
   fechaProgramada: string | null;
   /** Paradas intermedias, en orden — null o vacío si el pedido es simple. */
   paradasAdicionales: ParadaInput[] | null;
+  /**
+   * De dónde salió el pin (2026-09-25): "manual" o "google_link" se aprenden en la cache de
+   * direcciones del backend al confirmar el pedido; el nombre de un buscador o null, no.
+   */
+  origenFuente: string | null;
+  destinoFuente: string | null;
 }
 
 export interface ParadaInput {
