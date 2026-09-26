@@ -9,6 +9,7 @@ import { PedidoService } from '../core/services/pedido.service';
 import { RealtimeService } from '../core/services/realtime.service';
 import { ThemeService } from '../core/services/theme.service';
 import { ToastService } from '../core/services/toast.service';
+import { SonidosService } from '../core/services/sonidos.service';
 import { OnboardingService } from '../core/services/onboarding.service';
 import { GUIAS, guiaVista, marcarGuiaVista } from '../core/guias';
 import { TourComponent, TourStep } from '../shared/tour.component';
@@ -42,7 +43,7 @@ interface AlertaAdminWs {
   tipo: string;
   cadeteNombre?: string;
   cadeteApellido?: string;
-  pedido?: { numero: number; origenDireccion: string };
+  pedido?: { numero: number; origenDireccion: string; reclamoTipo?: string | null };
   minutosSinUbicacion?: number;
   /** Solo para tipo === 'RECLAMO_CLIENTE'. */
   detalle?: string;
@@ -280,6 +281,8 @@ export class ShellComponent implements OnInit {
   private readonly cadetes = inject(CadeteService);
   private readonly realtime = inject(RealtimeService);
   private readonly toast = inject(ToastService);
+  /** Un sonido distinto por tipo de aviso (2026-09-26). */
+  private readonly sonidos = inject(SonidosService);
   private readonly pedidos = inject(PedidoService);
   readonly chat = inject(ChatService);
   readonly theme = inject(ThemeService);
@@ -360,7 +363,7 @@ export class ShellComponent implements OnInit {
     this.realtime.subscribe('/queue/admin/chat', (body) => {
       const msj = body as MensajeChatWs;
       if (msj.autor !== 'CADETE') return;
-      this.reproducirBeep();
+      this.sonidos.reproducir('mensaje');
       this.toast.info(`💬 Nuevo mensaje de ${this.cadetes.nombreDe(msj.cadeteId)}`);
     });
 
@@ -373,35 +376,40 @@ export class ShellComponent implements OnInit {
         const mensaje =
           `${alerta.cadeteNombre} ${alerta.cadeteApellido} rechazó el pedido ${alerta.pedido.numero} ` +
           `(origen: ${alerta.pedido.origenDireccion})`;
+        this.sonidos.reproducir('alerta');
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'INACTIVIDAD_SOSPECHOSA' && alerta.pedido) {
         const mensaje =
           `⚠️ ${alerta.cadeteNombre} ${alerta.cadeteApellido} no manda ubicación hace ${alerta.minutosSinUbicacion} ` +
           `min en el pedido ${alerta.pedido.numero} — puede que se haya quedado sin batería o abandonó el viaje.`;
+        this.sonidos.reproducir('alerta');
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'RECLAMO_CLIENTE' && alerta.pedido) {
-        this.reproducirBeep();
+        // El problema con la entrega (y "sigue el problema") suena como alarma; las demoras, más suave.
+        this.sonidos.reproducir(alerta.pedido.reclamoTipo === 'PROBLEMA_ENTREGA' ? 'reclamo-problema' : 'reclamo-demora');
         const mensaje = `📣 ${alerta.detalle} Cadete: ${alerta.cadeteNombre} ${alerta.cadeteApellido} (ya se le avisó).`;
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'PEDIDO_NUEVO' && alerta.pedido) {
-        this.reproducirBeep();
+        this.sonidos.reproducir('pedido-nuevo');
         this.toast.info(`🆕 Pedido nuevo Nº ${alerta.pedido.numero} sin asignar (${alerta.pedido.origenDireccion})`);
       } else if (alerta.tipo === 'SOLICITUD_PEDIDO_NUEVA') {
-        this.reproducirBeep();
+        this.sonidos.reproducir('pedido-web');
         const mensaje = `📩 ${alerta.clienteNombre} cargó un pedido desde /pedir (origen: ${alerta.origenDireccion}) — revisalo en "Pedidos web".`;
         this.toast.info(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'WHATSAPP_CHIP_BANEADO') {
         const mensaje = `🚫 El chip de WhatsApp ${alerta.chipId} (${alerta.numero || 'sin número'}) fue baneado — revisalo en Configuración → "Gateway WhatsApp".`;
+        this.sonidos.reproducir('alerta');
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'API_KEY_POOL_AGOTADO' && alerta.proveedor) {
         const mensaje =
           `🚫 Se quedaron sin cupo todas las cuentas cargadas de ${this.nombreProveedor(alerta.proveedor)} — ` +
           `revisalo en Configuración y agregá una cuenta nueva.`;
+        this.sonidos.reproducir('alerta');
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'API_KEY_POOL_BAJO' && alerta.proveedor) {
@@ -412,6 +420,7 @@ export class ShellComponent implements OnInit {
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'SMS_GATEWAY_CAIDO') {
         const mensaje = '📵 El gateway de SMS no está respondiendo hace varios envíos seguidos — revisá que el celular/servicio esté funcionando.';
+        this.sonidos.reproducir('alerta');
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       }
@@ -434,25 +443,6 @@ export class ShellComponent implements OnInit {
 
   private cargarSmsFallidos(): void {
     this.pedidos.smsFallidos().subscribe((r) => this.smsFallidosCount.set(r.cantidad));
-  }
-
-  /** Beep corto vía Web Audio — no depende de ningún archivo de sonido (spec: aviso sonoro de pedido nuevo). */
-  private reproducirBeep(): void {
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.4);
-    } catch {
-      // Autoplay bloqueado u otro error de audio — no es crítico, ya se ve el toast.
-    }
   }
 
   logout(): void {

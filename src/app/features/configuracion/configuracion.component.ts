@@ -1,3 +1,4 @@
+import { SonidosService } from '../../core/services/sonidos.service';
 import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -628,7 +629,23 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
           </section>
 
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
-            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Reclamos de clientes</h2>
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Sonidos del panel</h2>
+            <p class="text-xs text-gray-400 -mt-2">
+              Cada aviso suena distinto, para saber qué pasó sin mirar la pantalla. Tocá para escucharlos.
+            </p>
+            <div class="flex flex-wrap gap-2">
+              @for (t of sonidos.tipos; track t.tipo) {
+                <button
+                  type="button"
+                  class="text-xs border border-gray-300 rounded px-2 py-1 hover:bg-gray-50"
+                  (click)="sonidos.reproducir(t.tipo)"
+                >
+                  ▶ {{ t.nombre }}
+                </button>
+              }
+            </div>
+
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-4">Reclamos de clientes</h2>
             <p class="text-xs text-gray-400 -mt-2">
               Cuando el cliente reporta un problema con la entrega, el cadete no recibe pedidos hasta que el reclamo se
               cierre. A los minutos de abajo se le escribe al cliente (WhatsApp, o SMS si el gateway no está) y, si no
@@ -920,6 +937,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
 })
 export class ConfiguracionComponent implements OnInit {
   private readonly config = inject(ConfiguracionService);
+  readonly sonidos = inject(SonidosService);
   private readonly seguridad = inject(SeguridadService);
   private readonly saludSvc = inject(SaludService);
   private readonly auth = inject(AuthService);
