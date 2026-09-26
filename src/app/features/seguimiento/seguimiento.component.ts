@@ -599,9 +599,9 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
       error: (e) => {
         this.error.set(true);
         this.cargando.set(false);
-        // Link vencido (400) o inexistente (404): se deja de mostrar el pedido y de consultar. Un
+        // Link vencido (410) o inexistente (404): se deja de mostrar el pedido y de consultar. Un
         // corte de conexión no: el próximo intervalo vuelve a probar.
-        if (e?.status === 400 || e?.status === 404) {
+        if (e?.status === 410 || e?.status === 404 || e?.status === 400) {
           if (e?.error?.message) this.mensajeError.set(e.error.message);
           this.seguimiento.set(null);
           if (this.intervaloActualizacion != null) clearInterval(this.intervaloActualizacion);

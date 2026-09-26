@@ -112,6 +112,8 @@ export interface CadeteInput {
   turnoFin: string | null;
   modalidadPago: 'SEMANAL' | 'PORCENTAJE';
   notasInternas: string | null;
+  /** El admin confirma que verificó que es mayor de 18 — obligatorio al crear (2026-09-26). */
+  mayorDeEdad?: boolean;
 }
 
 /** Panorama completo de un cadete (estadísticas de todo su historial, no de un rango). */

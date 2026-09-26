@@ -10,6 +10,7 @@ import { ParadaInput, PedidoInput } from '../../core/models/pedido.model';
 import { ClienteAviso } from '../../core/models/cliente.model';
 import { AvisoClienteComponent } from '../../shared/aviso-cliente.component';
 import { AddressPickerComponent, PickedAddress } from '../../shared/address-picker.component';
+import * as V from '../../core/utils/validaciones';
 
 @Component({
   selector: 'app-nuevo-pedido',
@@ -564,6 +565,15 @@ export class NuevoPedidoComponent implements OnInit {
 
     if (!this.clienteNombre || !this.clienteTelefono) {
       this.error.set('Completá el nombre y teléfono del cliente.');
+      return;
+    }
+    // Mismas reglas que el backend (core/utils/validaciones.ts).
+    const mal = V.problemas([
+      [!V.TELEFONO.test(this.clienteTelefono), V.MSJ.telefono],
+      [!V.NOMBRE_CLIENTE.test(this.clienteNombre.trim()), V.MSJ.nombreCliente],
+    ]);
+    if (mal) {
+      this.error.set(mal);
       return;
     }
     if (!this.origenPicked) {

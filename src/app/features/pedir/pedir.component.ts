@@ -5,6 +5,7 @@ import { SolicitudPedidoInput } from '../../core/models/solicitud-pedido.model';
 import { CotizacionService } from '../../core/services/cotizacion.service';
 import { VerificacionTelefonoService } from '../../core/services/verificacion-telefono.service';
 import { AddressPickerComponent, PickedAddress } from '../../shared/address-picker.component';
+import * as V from '../../core/utils/validaciones';
 
 /**
  * Página pública "/pedir" (sin login) — el cliente carga su propio pedido en vez de
@@ -508,6 +509,10 @@ export class PedirComponent {
     }
     if (!this.clienteNombre.trim()) {
       this.fallar('Completá por quién pregunta el cadete.');
+      return;
+    }
+    if (!V.NOMBRE_CLIENTE.test(this.clienteNombre.trim())) {
+      this.fallar(V.MSJ.nombreCliente);
       return;
     }
     if (this.llevaDinero && !(Number(this.montoDeclarado) > 0)) {

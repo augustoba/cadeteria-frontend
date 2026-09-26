@@ -38,6 +38,11 @@ function messageFor(err: HttpErrorResponse): string {
   if (body && typeof body === 'object' && body.message) return body.message;
   if (err.status === 404) return 'No se encontró lo que buscabas.';
   if (err.status === 403) return 'No tenés permiso para hacer eso.';
+  if (err.status === 409) return 'Los datos cambiaron mientras tanto. Actualizá y probá de nuevo.';
+  if (err.status === 410) return 'Este link ya venció.';
+  if (err.status === 413) return 'El archivo es demasiado grande.';
+  if (err.status === 429) return 'Demasiados intentos seguidos. Esperá un momento y probá de nuevo.';
+  if (err.status === 503) return 'Un servicio externo no está disponible en este momento. Probá más tarde.';
   if (err.status >= 500) return 'Hubo un error en el servidor. Probá de nuevo.';
   return 'Algo salió mal. Probá de nuevo.';
 }

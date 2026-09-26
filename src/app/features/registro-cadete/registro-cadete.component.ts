@@ -5,6 +5,7 @@ import { Lookup } from '../../core/models/lookup.model';
 import { CorreccionSolicitud, ObservacionSolicitud } from '../../core/models/solicitud-cadete.model';
 import { SolicitudCadetePublicaService } from '../../core/services/solicitud-cadete.service';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
+import * as V from '../../core/utils/validaciones';
 
 /** Formulario público de alta de cadete — link de un solo uso que le pasa el admin (ronda 7). */
 @Component({
@@ -74,7 +75,15 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">DNI</span>
-                <input class="input" [class.input-error]="obs('dni')" [(ngModel)]="dni" name="dni" inputmode="numeric" placeholder="Ej: 30111222" />
+                <input
+                  class="input"
+                  [class.input-error]="obs('dni')"
+                  [(ngModel)]="dni"
+                  name="dni"
+                  inputmode="numeric"
+                  maxlength="10"
+                  placeholder="Ej: 30111222"
+                />
                 @if (obs('dni'); as m) {
                   <span class="text-xs text-red-600">⚠ {{ m }}</span>
                 }
@@ -131,7 +140,13 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
                 </label>
                 <label class="flex flex-col gap-1">
                   <span class="text-sm font-medium text-gray-700">Patente</span>
-                  <input class="input" [(ngModel)]="vehiculoPatente" name="vehiculoPatente" />
+                  <input
+                    class="input uppercase"
+                    [(ngModel)]="vehiculoPatente"
+                    name="vehiculoPatente"
+                    maxlength="9"
+                    placeholder="123ABC o A123BCD"
+                  />
                 </label>
               }
             </div>
@@ -192,6 +207,15 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
                 </div>
               }
             </div>
+
+            <!-- No se puede dar de alta a un menor (2026-09-26): queda guardado cuándo lo declaró. -->
+            <label class="flex items-start gap-2 text-sm text-gray-700 border-t border-gray-200 pt-4">
+              <input type="checkbox" class="mt-0.5" [(ngModel)]="mayorDeEdad" name="mayorDeEdad" />
+              <span>
+                <strong>Declaro que soy mayor de 18 años.</strong>
+                <span class="block text-xs text-gray-500">Es obligatorio para trabajar como cadete; queda registrada la fecha y hora de esta declaración.</span>
+              </span>
+            </label>
 
             <button type="button" class="btn bg-emerald-600 hover:bg-emerald-700 self-end" [disabled]="enviando()" (click)="enviar()">
               {{ enviando() ? 'Enviando…' : enCorreccion() ? 'Enviar corrección' : 'Enviar formulario' }}
@@ -271,6 +295,7 @@ export class RegistroCadeteComponent implements OnInit {
   fotoCarnetDorsoUrl: string | null = null;
   fotoTarjetaVerdeUrl: string | null = null;
   fotoTarjetaVerdeDorsoUrl: string | null = null;
+  mayorDeEdad = false;
 
   /** BICI no necesita marca/patente/foto de vehículo ni tarjeta verde — eso es de un motor. */
   esMoto(): boolean {
@@ -329,8 +354,21 @@ export class RegistroCadeteComponent implements OnInit {
       this.error.set('Elegí el tipo de vehículo.');
       return;
     }
-    if (!/^[0-9]{6,8}$/.test(this.dni.replace(/[.\s]/g, ''))) {
-      this.error.set('El DNI tiene que ser solo números, hasta 8 dígitos (ej: 30111222).');
+    // Mismas reglas que el backend (core/utils/validaciones.ts).
+    const mal = V.problemas([
+      [!V.NOMBRE_PERSONA.test(this.nombre), V.MSJ.nombre],
+      [!V.NOMBRE_PERSONA.test(this.apellido), V.MSJ.apellido],
+      [!V.DNI.test(this.dni), V.MSJ.dni],
+      [!V.TELEFONO.test(this.telefono), V.MSJ.telefono],
+      [!V.EMAIL.test(this.email.trim()), V.MSJ.email],
+      [this.esMoto() && !this.vehiculoPatente.trim(), 'Para moto falta la patente (123ABC o A123BCD).'],
+      [this.esMoto() && !V.vacioO(V.PATENTE_MOTO, this.vehiculoPatente), V.MSJ.patente],
+      [this.esMoto() && !V.vacioO(V.MARCA_MODELO, this.vehiculoMarca), V.MSJ.marca],
+      [this.esMoto() && !V.vacioO(V.MARCA_MODELO, this.vehiculoModelo), V.MSJ.modelo],
+      [this.esMoto() && !V.vacioO(V.COLOR, this.vehiculoColor), V.MSJ.color],
+    ]);
+    if (mal) {
+      this.error.set(mal);
       return;
     }
     if (!this.fotoUrl || !this.fotoCarnetUrl || !this.fotoCarnetDorsoUrl) {
@@ -339,6 +377,10 @@ export class RegistroCadeteComponent implements OnInit {
     }
     if (this.esMoto() && (!this.fotoVehiculoUrl || !this.fotoTarjetaVerdeUrl || !this.fotoTarjetaVerdeDorsoUrl)) {
       this.error.set('Para moto faltan: foto del vehículo y las fotos de frente y dorso de la tarjeta verde.');
+      return;
+    }
+    if (!this.mayorDeEdad) {
+      this.error.set('Tenés que declarar que sos mayor de 18 años para anotarte.');
       return;
     }
 
@@ -352,7 +394,7 @@ export class RegistroCadeteComponent implements OnInit {
         email: this.email,
         tipoVehiculoId: this.tipoVehiculoId,
         vehiculoColor: this.esMoto() ? this.vehiculoColor || null : null,
-        vehiculoPatente: this.esMoto() ? this.vehiculoPatente || null : null,
+        vehiculoPatente: this.esMoto() ? V.normalizarPatente(this.vehiculoPatente) || null : null,
         vehiculoMarca: this.esMoto() ? this.vehiculoMarca || null : null,
         vehiculoModelo: this.esMoto() ? this.vehiculoModelo || null : null,
         fotoUrl: this.fotoUrl,
@@ -361,6 +403,7 @@ export class RegistroCadeteComponent implements OnInit {
         fotoCarnetDorsoUrl: this.fotoCarnetDorsoUrl,
         fotoTarjetaVerdeUrl: this.esMoto() ? this.fotoTarjetaVerdeUrl : null,
         fotoTarjetaVerdeDorsoUrl: this.esMoto() ? this.fotoTarjetaVerdeDorsoUrl : null,
+        mayorDeEdad: this.mayorDeEdad,
       })
       .subscribe({
         next: () => {

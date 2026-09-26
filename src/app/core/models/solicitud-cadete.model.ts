@@ -73,6 +73,8 @@ export interface SolicitudCadeteForm {
   fotoCarnetDorsoUrl: string | null;
   fotoTarjetaVerdeUrl: string | null;
   fotoTarjetaVerdeDorsoUrl: string | null;
+  /** Tildó "Soy mayor de 18 años" (2026-09-26) — el backend no acepta el formulario sin esto. */
+  mayorDeEdad: boolean;
 }
 
 export interface SolicitudCadete {
@@ -106,4 +108,6 @@ export interface SolicitudCadete {
   correcciones: number;
   /** null = ese DNI nunca estuvo registrado. */
   cadeteExistente: CadeteExistente | null;
+  /** Cuándo declaró ser mayor de 18 (null en solicitudes anteriores a la casilla). */
+  mayorEdadDeclaradaEn: string | null;
 }

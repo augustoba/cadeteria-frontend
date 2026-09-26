@@ -6,6 +6,7 @@ import { CadeteService } from '../../core/services/cadete.service';
 import { LookupService } from '../../core/services/lookup.service';
 import { CadeteEstadoLog, CadeteInput, MovimientoCredito } from '../../core/models/cadete.model';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
+import * as V from '../../core/utils/validaciones';
 
 @Component({
   selector: 'app-cadete-form',
@@ -38,7 +39,7 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-sm font-medium text-gray-700">DNI</span>
-            <input class="input" [(ngModel)]="dni" name="dni" />
+            <input class="input" [(ngModel)]="dni" name="dni" inputmode="numeric" maxlength="10" placeholder="Ej: 30111222" />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-sm font-medium text-gray-700">Teléfono</span>
@@ -75,10 +76,20 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Patente</span>
-              <input class="input" [(ngModel)]="vehiculoPatente" name="vehiculoPatente" />
+              <input class="input uppercase" [(ngModel)]="vehiculoPatente" name="vehiculoPatente" maxlength="9" placeholder="123ABC o A123BCD" />
             </label>
           }
         </div>
+
+        @if (!editId) {
+          <label class="flex items-start gap-2 text-sm text-gray-700">
+            <input type="checkbox" class="mt-0.5" [(ngModel)]="mayorDeEdad" name="mayorDeEdad" />
+            <span>
+              <strong>Verifiqué que es mayor de 18 años</strong> (con el DNI).
+              <span class="block text-xs text-gray-500">No se puede dar de alta a un menor; queda registrado quién lo confirmó y cuándo.</span>
+            </span>
+          </label>
+        }
 
         <div class="grid sm:grid-cols-2 gap-4">
           <label class="flex flex-col gap-1">
@@ -340,6 +351,7 @@ export class CadeteFormComponent implements OnInit {
   cbu: string | null = null;
   aliasCbu: string | null = null;
   notasInternas = '';
+  mayorDeEdad = false;
 
   readonly movimientosCredito = signal<MovimientoCredito[]>([]);
   readonly historialEstado = signal<CadeteEstadoLog[]>([]);
@@ -409,6 +421,24 @@ export class CadeteFormComponent implements OnInit {
       this.error.set('Completá la contraseña.');
       return;
     }
+    // Mismas reglas que el backend (core/utils/validaciones.ts).
+    const mal = V.problemas([
+      [!V.NOMBRE_PERSONA.test(this.nombre), V.MSJ.nombre],
+      [!V.NOMBRE_PERSONA.test(this.apellido), V.MSJ.apellido],
+      [!V.DNI.test(this.dni), V.MSJ.dni],
+      [!V.TELEFONO.test(this.telefono), V.MSJ.telefono],
+      [!/^[0-9]{7,8}$/.test(this.username.trim()), V.MSJ.usuarioDni],
+      [!!this.password && (this.password.length < V.PASSWORD_MIN || this.password.length > V.PASSWORD_MAX), V.MSJ.password],
+      [this.esMoto() && !V.vacioO(V.PATENTE_MOTO, this.vehiculoPatente), V.MSJ.patente],
+      [this.esMoto() && !V.vacioO(V.MARCA_MODELO, this.vehiculoMarca), V.MSJ.marca],
+      [this.esMoto() && !V.vacioO(V.MARCA_MODELO, this.vehiculoModelo), V.MSJ.modelo],
+      [this.esMoto() && !V.vacioO(V.COLOR, this.vehiculoColor), V.MSJ.color],
+      [!this.editId && !this.mayorDeEdad, 'Confirmá que el cadete es mayor de 18 años: no se puede dar de alta a un menor.'],
+    ]);
+    if (mal) {
+      this.error.set(mal);
+      return;
+    }
 
     const input: CadeteInput = {
       nombre: this.nombre,
@@ -418,7 +448,7 @@ export class CadeteFormComponent implements OnInit {
       fotoUrl: this.fotoUrl,
       tipoVehiculoId: this.tipoVehiculoId,
       vehiculoColor: this.esMoto() ? this.vehiculoColor || null : null,
-      vehiculoPatente: this.esMoto() ? this.vehiculoPatente || null : null,
+      vehiculoPatente: this.esMoto() ? V.normalizarPatente(this.vehiculoPatente) || null : null,
       vehiculoMarca: this.esMoto() ? this.vehiculoMarca || null : null,
       vehiculoModelo: this.esMoto() ? this.vehiculoModelo || null : null,
       vehiculoAnio: this.esMoto() ? this.vehiculoAnio : null,
@@ -437,6 +467,7 @@ export class CadeteFormComponent implements OnInit {
       turnoInicio: this.turnoInicio || null,
       turnoFin: this.turnoFin || null,
       notasInternas: this.notasInternas || null,
+      mayorDeEdad: this.editId ? undefined : this.mayorDeEdad,
     };
 
     const onSuccess = () => this.router.navigateByUrl('/cadetes');

@@ -103,6 +103,11 @@ const ESTADO_CLASES: Record<string, string> = {
                 <span class="text-xs text-gray-400">Creado {{ s.creadoEn | date: 'short' }}</span>
               </div>
 
+              @if (s.mayorEdadDeclaradaEn) {
+                <p class="text-xs text-gray-500">✔ Declaró ser mayor de 18 años el {{ s.mayorEdadDeclaradaEn | date: 'dd/MM/yyyy HH:mm' }}.</p>
+              } @else if (s.estado === 'EN_REVISION') {
+                <p class="text-xs text-amber-700">⚠ Esta solicitud es anterior a la declaración de mayoría de edad: verificalo con el DNI.</p>
+              }
               @if (s.estado === 'EN_REVISION' || s.estado === 'A_CORREGIR') {
                 <!-- ¿Ya estuvo registrado? (2026-09-25): alguien que vuelve tiene que verse, con el motivo de su baja. -->
                 @if (s.cadeteExistente; as c) {
