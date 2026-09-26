@@ -341,6 +341,21 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
         <div class="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden" (click)="$event.stopPropagation()">
           <div class="p-5 flex flex-col gap-2 text-sm text-gray-700">
             <p class="font-semibold text-gray-800">Nota</p>
+            @if (seguimiento()?.estado === 'Finalizado') {
+              <!-- Problema con la entrega (2026-09-25): el cliente cuenta qué pasó y le llega al cadete. -->
+              <label class="flex flex-col gap-1">
+                <span class="font-medium text-gray-700">¿Qué pasó con la entrega?</span>
+                <textarea
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                  rows="3"
+                  maxlength="300"
+                  placeholder="Ej: llegó el paquete abierto, faltaba algo, lo dejaron en otro lugar…"
+                  [(ngModel)]="detalleReclamo"
+                  name="detalleReclamo"
+                ></textarea>
+                <span class="text-xs text-gray-400 text-right">{{ detalleReclamo.length }}/300</span>
+              </label>
+            }
             <p>Al apretar <strong>Continuar</strong> se le envía una notificación al cadete para que se comunique con usted.</p>
             <p>¿Desea continuar?</p>
           </div>
@@ -350,7 +365,8 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
             </button>
             <button
               type="button"
-              class="px-4 py-2 rounded text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white"
+              class="px-4 py-2 rounded text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50"
+              [disabled]="seguimiento()?.estado === 'Finalizado' && detalleReclamo.trim().length < 5"
               (click)="confirmandoReclamo.set(false); reclamar()"
             >
               Continuar
@@ -389,6 +405,8 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
   readonly enviandoReclamo = signal(false);
   /** Antes de avisar al cadete se pide confirmación (2026-09-25). */
   readonly confirmandoReclamo = signal(false);
+  /** Lo que pasó, al reportar un problema con la entrega. */
+  detalleReclamo = '';
   readonly mensajeReclamo = signal<string | null>(null);
 
   textoReclamo(estado: string, retirado: boolean): string {
@@ -398,7 +416,8 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
 
   reclamar(): void {
     this.enviandoReclamo.set(true);
-    this.seguimientoSvc.reclamo(this.token).subscribe({
+    const texto = this.seguimiento()?.estado === 'Finalizado' ? this.detalleReclamo.trim() : null;
+    this.seguimientoSvc.reclamo(this.token, texto).subscribe({
       next: (r) => {
         this.enviandoReclamo.set(false);
         this.mensajeReclamo.set(r.mensaje);
