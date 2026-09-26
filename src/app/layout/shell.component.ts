@@ -44,6 +44,8 @@ interface AlertaAdminWs {
   cadeteApellido?: string;
   pedido?: { numero: number; origenDireccion: string };
   minutosSinUbicacion?: number;
+  /** Solo para tipo === 'RECLAMO_CLIENTE'. */
+  detalle?: string;
   /** Solo para tipo === 'SOLICITUD_PEDIDO_NUEVA'. */
   solicitudId?: string;
   clienteNombre?: string;
@@ -377,6 +379,11 @@ export class ShellComponent implements OnInit {
         const mensaje =
           `⚠️ ${alerta.cadeteNombre} ${alerta.cadeteApellido} no manda ubicación hace ${alerta.minutosSinUbicacion} ` +
           `min en el pedido ${alerta.pedido.numero} — puede que se haya quedado sin batería o abandonó el viaje.`;
+        this.toast.error(mensaje);
+        this.agregarAlertaSesion(mensaje);
+      } else if (alerta.tipo === 'RECLAMO_CLIENTE' && alerta.pedido) {
+        this.reproducirBeep();
+        const mensaje = `📣 ${alerta.detalle} Cadete: ${alerta.cadeteNombre} ${alerta.cadeteApellido} (ya se le avisó).`;
         this.toast.error(mensaje);
         this.agregarAlertaSesion(mensaje);
       } else if (alerta.tipo === 'PEDIDO_NUEVO' && alerta.pedido) {

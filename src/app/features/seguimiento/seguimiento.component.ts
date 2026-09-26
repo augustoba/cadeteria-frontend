@@ -215,6 +215,24 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
               </div>
             }
 
+            <!-- Reclamo (2026-09-25): el texto del botón según el momento; avisa al cadete y al panel. -->
+            @if (s.cadete && (s.estado === 'En curso' || s.estado === 'Finalizado')) {
+              @if (mensajeReclamo()) {
+                <div class="rounded border border-amber-200 bg-amber-50 text-amber-900 text-sm px-3 py-2">
+                  📣 {{ mensajeReclamo() }}
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  class="border border-amber-400 text-amber-800 bg-amber-50 hover:bg-amber-100 text-sm font-medium px-3 py-2 rounded"
+                  [disabled]="enviandoReclamo()"
+                  (click)="confirmandoReclamo.set(true)"
+                >
+                  {{ enviandoReclamo() ? 'Avisando…' : textoReclamo(s.estado, s.retirado) }}
+                </button>
+              }
+            }
+
             <!-- Desde "En camino" (2026-09-25): constancia de quién lleva el pedido; al entregar suma quién recibió. -->
             @if (s.comprobanteDisponible) {
               <button
@@ -317,6 +335,30 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
         }
       </div>
     </div>
+
+    @if (confirmandoReclamo()) {
+      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="confirmandoReclamo.set(false)">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden" (click)="$event.stopPropagation()">
+          <div class="p-5 flex flex-col gap-2 text-sm text-gray-700">
+            <p class="font-semibold text-gray-800">Nota</p>
+            <p>Al apretar <strong>Continuar</strong> se le envía una notificación al cadete para que se comunique con usted.</p>
+            <p>¿Desea continuar?</p>
+          </div>
+          <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
+            <button type="button" class="px-4 py-2 rounded text-sm font-medium bg-gray-200 hover:bg-gray-300 text-gray-700" (click)="confirmandoReclamo.set(false)">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 rounded text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white"
+              (click)="confirmandoReclamo.set(false); reclamar()"
+            >
+              Continuar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [
     `
@@ -343,6 +385,27 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
   readonly cargando = signal(true);
   /** Qué dato se acaba de copiar ("alias" / "cbu"), para mostrar "✓ Copiado" un momento. */
   readonly copiado = signal<string | null>(null);
+
+  readonly enviandoReclamo = signal(false);
+  /** Antes de avisar al cadete se pide confirmación (2026-09-25). */
+  readonly confirmandoReclamo = signal(false);
+  readonly mensajeReclamo = signal<string | null>(null);
+
+  textoReclamo(estado: string, retirado: boolean): string {
+    if (estado === 'Finalizado') return '⚠️ Reportar un problema con la entrega';
+    return retirado ? '⚠️ Reportar demora en la entrega' : '⚠️ El cadete no llegó a retirar';
+  }
+
+  reclamar(): void {
+    this.enviandoReclamo.set(true);
+    this.seguimientoSvc.reclamo(this.token).subscribe({
+      next: (r) => {
+        this.enviandoReclamo.set(false);
+        this.mensajeReclamo.set(r.mensaje);
+      },
+      error: () => this.enviandoReclamo.set(false),
+    });
+  }
 
   soloDigitos(tel: string): string {
     return tel.replace(/\D/g, '');

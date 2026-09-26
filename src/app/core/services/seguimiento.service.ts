@@ -38,4 +38,9 @@ export class SeguimientoService {
   pushSubscribe(token: string, sub: { endpoint: string; p256dh: string; auth: string }) {
     return this.http.post(apiUrl(`/publico/pedidos/${token}/push-subscribe`), sub);
   }
+
+  /** Reclamo del cliente (2026-09-25): el backend decide el tipo según el estado y avisa al cadete. */
+  reclamo(token: string) {
+    return this.http.post<{ avisado: boolean; mensaje: string }>(apiUrl(`/publico/pedidos/${token}/reclamo`), {});
+  }
 }
