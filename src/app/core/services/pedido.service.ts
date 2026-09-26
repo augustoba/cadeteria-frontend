@@ -9,6 +9,19 @@ import { CollectionStore } from '../state/collection-store';
 /** "finalizados" ya no pasa por acá — tiene su propio endpoint paginado, ver `finalizadosPagina()`. */
 export type TipoListaPedidos = 'activos' | 'programados';
 
+/** Una dirección que el cliente ya usó, con los datos de la última vez. */
+export interface DireccionFrecuente {
+  direccion: string;
+  lat: number;
+  lng: number;
+  piso: string | null;
+  depto: string | null;
+  observaciones: string | null;
+  vecesOrigen: number;
+  vecesDestino: number;
+  ultimaVez: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PedidoService {
   private readonly http = inject(HttpClient);
@@ -118,6 +131,13 @@ export class PedidoService {
         map((res) => (res.status === 204 ? null : res.body?.nombre ?? null)),
         catchError(() => of(null)),
       );
+  }
+
+  /** Direcciones que ese teléfono ya usó (2026-09-25), las más usadas primero — [] si nunca pidió. */
+  direccionesCliente(telefono: string) {
+    return this.http
+      .get<DireccionFrecuente[]>(apiUrl('/admin/pedidos/cliente/direcciones'), { params: { telefono } })
+      .pipe(catchError(() => of([] as DireccionFrecuente[])));
   }
 
   /** Cierre manual: para cuando el cadete no puede finalizar el viaje el mismo (sin internet). */

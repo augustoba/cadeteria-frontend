@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { PedidoService } from '../../core/services/pedido.service';
+import { DireccionFrecuente, PedidoService } from '../../core/services/pedido.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { CotizacionService } from '../../core/services/cotizacion.service';
 import { ParadaInput, PedidoInput } from '../../core/models/pedido.model';
@@ -83,6 +83,26 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 
         <app-aviso-cliente [aviso]="clienteAviso()" />
 
+        <!-- Direcciones de siempre del cliente (2026-09-25): un clic y queda cargada, sin buscar. -->
+        @if (direccionesCliente().length) {
+          <div class="rounded border border-brand-200 bg-brand-50 px-3 py-2 flex flex-col gap-1.5">
+            <span class="text-xs font-semibold text-gray-600">📍 Direcciones que ya usó este cliente</span>
+            @for (d of direccionesCliente(); track d.direccion) {
+              <div class="flex items-center gap-2 flex-wrap text-sm">
+                <span class="flex-1 min-w-0 truncate text-gray-800" [title]="d.direccion">
+                  {{ d.direccion }}
+                  @if (d.piso || d.depto) {
+                    <span class="text-gray-500">— {{ d.piso ? 'piso ' + d.piso : '' }} {{ d.depto ? 'depto ' + d.depto : '' }}</span>
+                  }
+                  <span class="text-xs text-gray-400">({{ d.vecesOrigen + d.vecesDestino }} {{ d.vecesOrigen + d.vecesDestino === 1 ? 'vez' : 'veces' }})</span>
+                </span>
+                <button type="button" class="btn-dir" (click)="usarDireccion(d, 'origen')">Usar como origen</button>
+                <button type="button" class="btn-dir" (click)="usarDireccion(d, 'destino')">Usar como destino</button>
+              </div>
+            }
+          </div>
+        }
+
         <div class="grid sm:grid-cols-3 gap-4 items-end">
           <label class="flex flex-col gap-1">
             <span class="text-sm font-medium text-gray-700">¿Pedido programado?</span>
@@ -108,7 +128,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Dirección origen</span>
               @for (k of [formKey()]; track k) {
-                <app-address-picker (addressPicked)="onOrigenPicked($event)" />
+                <app-address-picker #origenPickerRef (addressPicked)="onOrigenPicked($event)" />
               }
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <input class="input" [(ngModel)]="origenPiso" name="origenPiso" maxlength="20" placeholder="Piso (opcional)" />
@@ -257,6 +277,18 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
         padding: 0.5rem 1rem;
         border-radius: 0.25rem;
       }
+      .btn-dir {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.6rem;
+        border-radius: 0.25rem;
+        color: var(--color-brand-700);
+        background: white;
+        border: 1px solid var(--color-brand-200);
+      }
+      .btn-dir:hover {
+        background: var(--color-brand-100);
+      }
       .btn:disabled {
         opacity: 0.6;
       }
@@ -311,6 +343,8 @@ export class NuevoPedidoComponent implements OnInit {
   readonly guardadoAviso = signal<string | null>(null);
   readonly formKey = signal(0);
   private readonly destinoPickerRef = viewChild<AddressPickerComponent>('destinoPickerRef');
+  private readonly origenPickerRef = viewChild<AddressPickerComponent>('origenPickerRef');
+  readonly direccionesCliente = signal<DireccionFrecuente[]>([]);
 
   /** Mejora 77 — franja horaria de atención configurable, solo avisa, no bloquea la carga. */
   readonly fueraDeHorario = computed(() => {
@@ -345,6 +379,16 @@ export class NuevoPedidoComponent implements OnInit {
         }
       });
 
+    // Direcciones de siempre de ese teléfono (2026-09-25).
+    this.telefono$
+      .pipe(
+        debounceTime(500),
+        distinctUntilChanged(),
+        filter((t) => t.replace(/\D/g, '').length >= 6),
+        switchMap((t) => this.pedidos.direccionesCliente(t.trim())),
+      )
+      .subscribe((lista) => this.direccionesCliente.set(lista));
+
     // Aviso si el teléfono está marcado como problemático, y sugerencia de tarifa especial (ronda 4, puntos 44/58).
     this.telefono$
       .pipe(
@@ -369,7 +413,27 @@ export class NuevoPedidoComponent implements OnInit {
     this.clienteTelefono = valor;
     this.autocompletado = false;
     this.clienteAviso.set(null);
+    this.direccionesCliente.set([]);
     this.telefono$.next(valor);
+  }
+
+  /** Carga una dirección habitual del cliente en origen o destino, con su piso/depto/observaciones. */
+  usarDireccion(d: DireccionFrecuente, donde: 'origen' | 'destino'): void {
+    // fuente null: ya es una dirección conocida, no hay nada que aprender
+    const picked: PickedAddress = { address: d.direccion, lat: d.lat, lng: d.lng, approximate: false, fuente: null };
+    if (donde === 'origen') {
+      this.origenPickerRef()?.setValue(picked);
+      this.origenPiso = d.piso ?? '';
+      this.origenDepto = d.depto ?? '';
+      this.origenObservaciones = d.observaciones ?? '';
+      this.onOrigenPicked(picked);
+    } else {
+      this.destinoPickerRef()?.setValue(picked);
+      this.destinoPiso = d.piso ?? '';
+      this.destinoDepto = d.depto ?? '';
+      this.destinoObservaciones = d.observaciones ?? '';
+      this.onDestinoPicked(picked);
+    }
   }
 
   agregarParada(): void {
@@ -579,6 +643,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.clienteTelefono = '';
     this.autocompletado = false;
     this.clienteAviso.set(null);
+    this.direccionesCliente.set([]);
     this.programado = false;
     this.fecha = '';
     this.hora = '';
