@@ -29,6 +29,8 @@ export class CotizacionService {
     montoDeclarado?: number | null,
     /** El cadete vuelve al origen: suma "recargo_retorno_origen_porcentaje" (Configuración → Tarifas). */
     retornaAlOrigen = false,
+    /** Valor de los objetos de valor declarados: suma recargo igual que el dinero. */
+    montoValores?: number | null,
   ) {
     let params = new HttpParams().set('origenLat', origenLat).set('origenLng', origenLng);
     if (destinoLat != null && destinoLng != null) {
@@ -36,6 +38,9 @@ export class CotizacionService {
     }
     if (montoDeclarado != null) {
       params = params.set('montoDeclarado', montoDeclarado);
+    }
+    if (montoValores != null && montoValores > 0) {
+      params = params.set('montoValores', montoValores);
     }
     if (retornaAlOrigen) {
       params = params.set('retornaAlOrigen', true);

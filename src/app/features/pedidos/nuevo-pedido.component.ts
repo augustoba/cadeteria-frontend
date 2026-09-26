@@ -229,14 +229,22 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                 name="montoDeclarado"
               />
             </label>
-            <label class="flex items-center gap-2 mt-6" title="Objetos de valor (no dinero en efectivo) — solo informativo">
-              <input type="checkbox" [(ngModel)]="llevaValores" name="llevaValores" />
+            <label class="flex items-center gap-2 mt-6" title="Objetos de valor (no dinero en efectivo) — suma recargo igual que el dinero">
+              <input type="checkbox" [ngModel]="llevaValores" (ngModelChange)="onLlevaValoresChange($event)" name="llevaValores" />
               <span class="text-sm font-medium text-gray-700">Transporta valores</span>
             </label>
             @if (llevaValores) {
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Valor de los objetos</span>
-                <input type="number" min="0" step="0.01" class="input" [(ngModel)]="montoValores" name="montoValores" />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="input"
+                  [ngModel]="montoValores"
+                  (ngModelChange)="onMontoValoresChange($event)"
+                  name="montoValores"
+                />
               </label>
             }
           </div>
@@ -514,7 +522,15 @@ export class NuevoPedidoComponent implements OnInit {
     if (!this.origenPicked || !this.destinoPicked) return;
     if (this.precio != null && this.precioSugeridoInfo == null) return;
     this.cotizacion
-      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng, this.montoDeclarado)
+      .cotizar(
+        this.origenPicked.lat,
+        this.origenPicked.lng,
+        this.destinoPicked.lat,
+        this.destinoPicked.lng,
+        this.montoDeclarado,
+        false,
+        this.llevaValores ? this.montoValores : null,
+      )
       .subscribe((c) => {
         if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
@@ -528,6 +544,17 @@ export class NuevoPedidoComponent implements OnInit {
   /** Si ya hay origen/destino y el precio sigue siendo el sugerido (no lo tocaron a mano), recalcula al cambiar el dinero declarado. */
   onMontoDeclaradoChange(valor: number | null): void {
     this.montoDeclarado = valor;
+    this.sugerirPrecio();
+  }
+
+  /** El valor de los objetos de valor suma recargo igual que el dinero (2026-09-25). */
+  onLlevaValoresChange(valor: boolean): void {
+    this.llevaValores = valor;
+    this.sugerirPrecio();
+  }
+
+  onMontoValoresChange(valor: number | null): void {
+    this.montoValores = valor;
     this.sugerirPrecio();
   }
 

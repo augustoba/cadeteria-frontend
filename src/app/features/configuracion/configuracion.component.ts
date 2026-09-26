@@ -351,7 +351,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
             </p>
             <div class="grid sm:grid-cols-2 gap-4 max-w-sm">
               <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Recargo cada ($ de dinero declarado)</span>
+                <span class="text-sm font-medium text-gray-700">Recargo cada ($ de dinero u objetos de valor declarados)</span>
                 <input type="number" min="0" step="1" class="input" [(ngModel)]="recargoDineroUmbral" name="recargoDineroUmbral" />
                 <span class="text-xs text-gray-400">Tramo de dinero declarado por el cliente que dispara un recargo. En 0, lo desactiva.</span>
               </label>

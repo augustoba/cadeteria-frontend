@@ -49,9 +49,13 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
   template: `
     <div class="min-h-screen bg-gray-100 flex items-start sm:items-center justify-center p-4">
       <div class="bg-white rounded-lg shadow-sm w-full max-w-md overflow-hidden">
-        <div class="bg-brand-600 text-white px-5 py-4">
-          <h1 class="font-semibold text-lg">{{ nombreCadeteria() }}</h1>
-          <p class="text-white/80 text-xs mt-0.5">Seguimiento de tu pedido</p>
+        <!-- Con el logo de la cadetería (2026-09-25), el mismo del login y del alta de cadetes. -->
+        <div class="bg-brand-600 text-white px-5 py-4 flex items-center gap-3">
+          <img src="/assets/logo.jpg" alt="Logo" class="w-12 h-12 rounded-full object-cover ring-2 ring-white/30 shrink-0" />
+          <div>
+            <h1 class="font-semibold text-lg">{{ nombreCadeteria() }}</h1>
+            <p class="text-white/80 text-xs mt-0.5">Seguimiento de tu pedido</p>
+          </div>
         </div>
 
         @if (seguimiento(); as s) {

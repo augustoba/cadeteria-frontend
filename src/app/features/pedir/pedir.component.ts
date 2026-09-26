@@ -179,7 +179,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             }
 
             <label class="check flex items-center gap-3">
-              <input type="checkbox" [(ngModel)]="llevaValores" name="llevaValores" />
+              <input type="checkbox" [ngModel]="llevaValores" (ngModelChange)="onLlevaValoresChange($event)" name="llevaValores" />
               <span class="text-sm text-gray-700">¿Transporta objetos de valor?</span>
             </label>
             @if (llevaValores) {
@@ -191,7 +191,8 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
                   step="1"
                   inputmode="numeric"
                   class="input"
-                  [(ngModel)]="montoValores"
+                  [ngModel]="montoValores"
+                  (ngModelChange)="onMontoValoresChange($event)"
                   name="montoValores"
                   placeholder="Valor aproximado en $"
                 />
@@ -422,6 +423,18 @@ export class PedirComponent {
     this.actualizarEstimado();
   }
 
+  /** El valor de los objetos de valor suma recargo igual que el dinero (2026-09-25). */
+  onLlevaValoresChange(valor: boolean): void {
+    this.llevaValores = valor;
+    this.actualizarEstimado();
+  }
+
+  onMontoValoresChange(valor: number | null): void {
+    this.montoValores = valor;
+    clearTimeout(this.debounceMontoDeclarado);
+    this.debounceMontoDeclarado = setTimeout(() => this.actualizarEstimado(), 500);
+  }
+
   onRetornaAlOrigenChange(valor: boolean): void {
     this.retornaAlOrigen = valor;
     this.actualizarEstimado();
@@ -453,6 +466,7 @@ export class PedirComponent {
         this.destinoPicked.lng,
         montoDeclarado,
         this.retornaAlOrigen,
+        this.llevaValores ? this.montoValores : null,
       )
       .subscribe({
         next: (c) => {
