@@ -630,8 +630,17 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Plantillas de SMS</h2>
             <p class="text-xs text-gray-400 -mt-2">
-              Usá <code>{{ '{link}' }}</code> donde quieras que aparezca el link de seguimiento del pedido.
+              Podés usar <code>{{ '{link}' }}</code> (link de seguimiento), <code>{{ '{numero}' }}</code> (número de
+              pedido), <code>{{ '{marca}' }}</code> (nombre de la cadetería) y <code>{{ '{horas}' }}</code> (cuánto dura el link).
             </p>
+            <label class="flex flex-col gap-1 max-w-xs">
+              <span class="text-sm font-medium text-gray-700">El link de seguimiento vence a las (horas)</span>
+              <input type="number" min="0" max="720" step="1" class="input" [(ngModel)]="seguimientoVenceHoras" name="seguimientoVenceHoras" />
+              <span class="text-xs text-gray-400">
+                Contadas desde que el pedido termina (entregado, cancelado o no entregado). Después el link ya no abre.
+                En 0 no vence nunca.
+              </span>
+            </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Al aceptar el viaje</span>
               <textarea class="input" rows="2" [(ngModel)]="smsTemplateAceptado" name="smsTemplateAceptado"></textarea>
@@ -957,6 +966,7 @@ export class ConfiguracionComponent implements OnInit {
   comisionPorcentaje: number | null = null;
   creditoBajoAlertaUmbral: number | null = null;
   smsTemplateAceptado = '';
+  seguimientoVenceHoras: number | null = 2;
   smsTemplateFinalizado = '';
   smsTemplateReenvio = '';
   nombreCadeteria = '';
@@ -1027,6 +1037,7 @@ export class ConfiguracionComponent implements OnInit {
       this.comisionPorcentaje = Number(v['comision_porcentaje'] ?? 10);
       this.creditoBajoAlertaUmbral = Number(v['credito_bajo_alerta_umbral'] ?? 500);
       this.smsTemplateAceptado = v['sms_template_aceptado'] ?? 'Tu pedido esta en camino, seguilo aca: {link}';
+      this.seguimientoVenceHoras = Number(v['seguimiento_vence_horas'] ?? 2);
       this.smsTemplateFinalizado = v['sms_template_finalizado'] ?? 'Tu pedido fue entregado. Mira el detalle, descarga el comprobante y calificanos aca: {link}';
       this.smsTemplateReenvio = v['sms_template_reenvio'] ?? 'Seguí tu pedido acá: {link}';
       this.nombreCadeteria = v['nombre_cadeteria'] ?? '';
@@ -1162,6 +1173,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('comision_porcentaje', String(this.comisionPorcentaje ?? ''));
     agregarSiCambio('credito_bajo_alerta_umbral', String(this.creditoBajoAlertaUmbral ?? ''));
     agregarSiCambio('sms_template_aceptado', this.smsTemplateAceptado);
+    agregarSiCambio('seguimiento_vence_horas', String(this.seguimientoVenceHoras ?? 2));
     agregarSiCambio('sms_template_finalizado', this.smsTemplateFinalizado);
     agregarSiCambio('sms_template_reenvio', this.smsTemplateReenvio);
     agregarSiCambio('nombre_cadeteria', this.nombreCadeteria);

@@ -250,7 +250,7 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
         } @else if (cargando()) {
           <p class="text-gray-500 text-sm py-10 text-center">Cargando…</p>
         } @else {
-          <p class="text-red-600 text-sm py-10 text-center px-4">No encontramos este pedido.</p>
+          <p class="text-red-600 text-sm py-10 text-center px-4">{{ mensajeError() }}</p>
         }
       </div>
     </div>
@@ -265,6 +265,8 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
 
   readonly cargando = signal(true);
   readonly error = signal(false);
+  /** "No encontramos este pedido." o, pasadas las horas de Configuración, "Este link de seguimiento ya venció." */
+  readonly mensajeError = signal('No encontramos este pedido.');
   readonly seguimiento = signal<Seguimiento | null>(null);
   readonly nombreCadeteria = signal('Cadetería');
   readonly descargando = signal(false);
@@ -323,9 +325,16 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
         this.seguimiento.set(s);
         this.cargando.set(false);
       },
-      error: () => {
+      error: (e) => {
         this.error.set(true);
         this.cargando.set(false);
+        // Link vencido (400) o inexistente (404): se deja de mostrar el pedido y de consultar. Un
+        // corte de conexión no: el próximo intervalo vuelve a probar.
+        if (e?.status === 400 || e?.status === 404) {
+          if (e?.error?.message) this.mensajeError.set(e.error.message);
+          this.seguimiento.set(null);
+          if (this.intervaloActualizacion != null) clearInterval(this.intervaloActualizacion);
+        }
       },
     });
   }
