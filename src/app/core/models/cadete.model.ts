@@ -26,6 +26,9 @@ export interface Cadete {
   lat: number | null;
   lng: number | null;
   ubicacionActualizadaEn: string | null;
+  /** Última calle que resolvió el teléfono del cadete ("Colombia 4695, San Miguel de Tucumán"), y cuándo — null si nunca mandó. */
+  calleTelefono?: string | null;
+  calleTelefonoEn?: string | null;
   zonaActual: Lookup | null;
   montoMaximoTransportado: number | null;
   maxViajesSimultaneos: number | null;

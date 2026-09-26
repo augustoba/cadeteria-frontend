@@ -157,6 +157,14 @@ function pareceLink(texto: string): boolean {
                   @if (r.approximate) {
                     <span class="text-[11px] text-amber-600 whitespace-nowrap">· sin altura exacta</span>
                   }
+                  <!-- TEMPORAL (pruebas en la calle, 2026-09-26): muestra de dónde salió cada resultado para
+                       ver si la cache propia ya aprendió la calle. Sacarlo antes de salir: también lo ven los
+                       clientes en /pedir. -->
+                  @if (r.proveedor === 'cache') {
+                    <span class="text-[11px] font-semibold text-green-700 whitespace-nowrap">· ✅ encontrada en servicio propio</span>
+                  } @else if (r.proveedor) {
+                    <span class="text-[11px] text-gray-400 whitespace-nowrap">· {{ r.proveedor }}</span>
+                  }
                 </button>
               </li>
             }

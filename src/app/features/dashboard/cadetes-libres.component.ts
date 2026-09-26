@@ -1,8 +1,9 @@
-import { Component, EventEmitter, OnInit, Output, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, OnInit, Output, computed, effect, inject, signal } from '@angular/core';
 import { CadeteService } from '../../core/services/cadete.service';
 import { GeocodingPublicoService } from '../../core/services/geocoding-publico.service';
 import { MetricasService } from '../../core/services/metricas.service';
 import { PedidoService } from '../../core/services/pedido.service';
+import { RealtimeService } from '../../core/services/realtime.service';
 import { Cadete } from '../../core/models/cadete.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 
@@ -13,6 +14,18 @@ const ESTADOS_OCUPAN_CADETE = new Set(['PENDIENTE', 'EN_CURSO']);
 /** Metros mínimos de movimiento para volver a resolver la dirección — evita pegarle al
  * backend (y de ahí a Nominatim) en cada micro-jitter del GPS. */
 const UMBRAL_METROS = 150;
+
+/** La calle del teléfono vale si llegó hasta 3 min antes que la última posición: la APK la
+ * resuelve cada ~120 m o 2 min. Más vieja, el cadete ya puede estar en otra cuadra. */
+const CALLE_TELEFONO_VIGENCIA_MS = 3 * 60_000;
+/** Sin posición nueva hace más de esto, se avisa "hace X min" (la app puede haber dejado de mandar). */
+const UBICACION_VIEJA_MS = 2 * 60_000;
+
+function calleTelefonoVigente(c: Cadete): string | null {
+  if (!c.calleTelefono || !c.calleTelefonoEn || !c.ubicacionActualizadaEn) return null;
+  const desfase = new Date(c.ubicacionActualizadaEn).getTime() - new Date(c.calleTelefonoEn).getTime();
+  return desfase <= CALLE_TELEFONO_VIGENCIA_MS ? c.calleTelefono : null;
+}
 
 function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const r = 6371000;
@@ -88,7 +101,17 @@ function hoyIso(): string {
                   <td class="py-2 pr-3 whitespace-nowrap" [title]="c.modalidadPago === 'SEMANAL' ? 'Paga cuota semanal' : 'Paga % por viaje'">
                     {{ c.modalidadPago === 'SEMANAL' ? '💵' : '%' }}
                   </td>
-                  <td class="py-2 pr-3">{{ direccionDe(c) }}</td>
+                  <td class="py-2 pr-3">
+                    @if (deTelefono(c)) {
+                      <span title="Calle que informó el teléfono del cadete">📱</span>
+                    } @else {
+                      <span class="text-gray-400" title="Calle estimada por el mapa (el teléfono no la informó)">🗺️</span>
+                    }
+                    {{ direccionDe(c) }}
+                    @if (antiguedad(c); as hace) {
+                      <span class="text-xs text-amber-700 whitespace-nowrap" title="Sin posición nueva desde entonces">· {{ hace }}</span>
+                    }
+                  </td>
                   <td class="py-2 pr-3 whitespace-nowrap">
                     <span
                       class="px-2 py-0.5 rounded text-xs font-medium"
@@ -206,11 +229,28 @@ export class CadetesLibresComponent implements OnInit {
 
   private readonly pedidosHoy = signal<Record<string, number>>({});
 
+  /** Reloj para que "hace X min" avance solo aunque el cadete no mande nada nuevo. */
+  private readonly ahora = signal(Date.now());
+
   constructor() {
+    const reloj = setInterval(() => this.ahora.set(Date.now()), 30_000);
+    // Posición y calle en vivo: antes solo el Mapa escuchaba este tópico y acá quedaba la de
+    // cuando se abrió el panel.
+    const desuscribir = inject(RealtimeService).subscribe('/topic/admin/ubicaciones', (body) =>
+      this.cadetesSvc.aplicarActualizacion(body as Cadete),
+    );
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(reloj);
+      desuscribir();
+    });
+
     // Re-resuelve la dirección de cada cadete libre cuando se movió lo suficiente
     // (spec: "la zona ... se debe actualizar ... a medida que el cadete va dando la ubicación").
     effect(() => {
       for (const c of this.libres()) {
+        // Con la calle del teléfono no hace falta adivinarla con Nominatim (que engancha el punto
+        // a la calle más cercana de OSM y a veces da la de al lado).
+        if (calleTelefonoVigente(c)) continue;
         const anterior = this.ultimaResolucion.get(c.id);
         const seMovio = !anterior || distanciaMetros(anterior.lat, anterior.lng, c.lat!, c.lng!) > UMBRAL_METROS;
         if (!seMovio || this.resolviendo.has(c.id)) continue;
@@ -241,7 +281,20 @@ export class CadetesLibresComponent implements OnInit {
   }
 
   direccionDe(c: Cadete): string {
-    return this.direcciones()[c.id] ?? 'Ubicando…';
+    return calleTelefonoVigente(c) ?? this.direcciones()[c.id] ?? 'Ubicando…';
+  }
+
+  deTelefono(c: Cadete): boolean {
+    return calleTelefonoVigente(c) != null;
+  }
+
+  /** "hace 12 min" si la última posición es vieja, o null si está al día. */
+  antiguedad(c: Cadete): string | null {
+    if (!c.ubicacionActualizadaEn) return null;
+    const ms = this.ahora() - new Date(c.ubicacionActualizadaEn).getTime();
+    if (ms <= UBICACION_VIEJA_MS) return null;
+    const min = Math.round(ms / 60_000);
+    return min < 60 ? `hace ${min} min` : `hace ${Math.floor(min / 60)} h ${min % 60} min`;
   }
 
   pedidosHoyDe(cadeteId: string): number {
