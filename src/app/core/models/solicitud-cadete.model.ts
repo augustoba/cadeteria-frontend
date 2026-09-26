@@ -8,6 +8,52 @@ export interface GenerarLinkResponse {
 export interface TokenEstado {
   valido: boolean;
   motivo: string | null;
+  /** Si el admin pidió corregir: lo ya cargado (las fotos marcadas vienen en null) y qué corregir. */
+  correccion: CorreccionSolicitud | null;
+}
+
+/** Un dato o foto que el admin marcó mal (campo = clave, ej. "fotoCarnetUrl"). */
+export interface ObservacionSolicitud {
+  campo: string;
+  etiqueta: string;
+  motivo: string;
+}
+
+export interface CorreccionSolicitud {
+  nombre: string;
+  apellido: string;
+  dni: string;
+  telefono: string;
+  email: string;
+  tipoVehiculoId: string | null;
+  vehiculoColor: string | null;
+  vehiculoPatente: string | null;
+  vehiculoMarca: string | null;
+  vehiculoModelo: string | null;
+  fotoUrl: string | null;
+  fotoVehiculoUrl: string | null;
+  fotoCarnetUrl: string | null;
+  fotoCarnetDorsoUrl: string | null;
+  fotoTarjetaVerdeUrl: string | null;
+  fotoTarjetaVerdeDorsoUrl: string | null;
+  observaciones: ObservacionSolicitud[];
+}
+
+/** Ya hay (o hubo) un cadete con ese DNI — con su última baja para saber por qué se fue. */
+export interface CadeteExistente {
+  id: string;
+  nombre: string;
+  apellido: string;
+  username: string;
+  activo: boolean;
+  motivoUltimaBaja: string | null;
+  fechaUltimaBaja: string | null;
+}
+
+export interface ReenviarLinkResponse {
+  url: string;
+  expiraEn: string;
+  mailEnviado: boolean;
 }
 
 export interface SolicitudCadeteForm {
@@ -32,7 +78,7 @@ export interface SolicitudCadeteForm {
 export interface SolicitudCadete {
   id: string;
   token: string;
-  estado: 'PENDIENTE' | 'EN_REVISION' | 'APROBADA' | 'RECHAZADA';
+  estado: 'PENDIENTE' | 'EN_REVISION' | 'A_CORREGIR' | 'APROBADA' | 'RECHAZADA';
   creadoEn: string;
   expiraEn: string;
   enviadaEn: string | null;
@@ -55,4 +101,9 @@ export interface SolicitudCadete {
   usernamePropuesto: string | null;
   motivoRechazo: string | null;
   cadeteCreadoId: string | null;
+  /** Lo que se le pidió corregir (estado A_CORREGIR). */
+  observaciones: ObservacionSolicitud[];
+  correcciones: number;
+  /** null = ese DNI nunca estuvo registrado. */
+  cadeteExistente: CadeteExistente | null;
 }

@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Lookup } from '../../core/models/lookup.model';
+import { CorreccionSolicitud, ObservacionSolicitud } from '../../core/models/solicitud-cadete.model';
 import { SolicitudCadetePublicaService } from '../../core/services/solicitud-cadete.service';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
 
@@ -29,7 +30,9 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
           </div>
         } @else if (enviado()) {
           <div class="p-8 text-center flex flex-col gap-2">
-            <p class="text-emerald-600 font-semibold text-lg">¡Listo! Enviamos tu solicitud.</p>
+            <p class="text-emerald-600 font-semibold text-lg">
+              {{ enCorreccion() ? '¡Listo! Enviamos tu corrección.' : '¡Listo! Enviamos tu solicitud.' }}
+            </p>
             <p class="text-sm text-gray-600">
               La cadetería va a revisar tus datos. Si te aprueban, te va a llegar un mail a
               <strong>{{ email }}</strong> con tu usuario y una contraseña temporal para entrar a la app.
@@ -37,6 +40,17 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
           </div>
         } @else {
           <div class="p-5 flex flex-col gap-4">
+            @if (enCorreccion()) {
+              <div class="rounded border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-900">
+                <p class="font-semibold">Revisamos tu solicitud y hay que corregir esto:</p>
+                <ul class="list-disc pl-5 mt-1">
+                  @for (o of observaciones(); track o.campo) {
+                    <li><strong>{{ o.etiqueta }}</strong>: {{ o.motivo }}</li>
+                  }
+                </ul>
+                <p class="text-xs mt-1">Lo demás ya está cargado. Las fotos marcadas tenés que subirlas de nuevo.</p>
+              </div>
+            }
             @if (error()) {
               <div class="rounded bg-red-50 text-red-700 text-sm px-3 py-2">{{ error() }}</div>
             }
@@ -44,27 +58,49 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
             <div class="grid sm:grid-cols-2 gap-4">
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Nombre</span>
-                <input class="input" [(ngModel)]="nombre" name="nombre" />
+                <input class="input" [class.input-error]="obs('nombre')" [(ngModel)]="nombre" name="nombre" />
+                @if (obs('nombre'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Apellido</span>
-                <input class="input" [(ngModel)]="apellido" name="apellido" />
+                <input class="input" [class.input-error]="obs('nombre')" [(ngModel)]="apellido" name="apellido" />
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">DNI</span>
-                <input class="input" [(ngModel)]="dni" name="dni" inputmode="numeric" placeholder="Ej: 30111222" />
+                <input class="input" [class.input-error]="obs('dni')" [(ngModel)]="dni" name="dni" inputmode="numeric" placeholder="Ej: 30111222" />
+                @if (obs('dni'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
                 <span class="text-xs text-gray-400">Va a ser tu usuario para entrar a la app.</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Teléfono</span>
-                <input class="input" [(ngModel)]="telefono" name="telefono" />
+                <input class="input" [class.input-error]="obs('telefono')" [(ngModel)]="telefono" name="telefono" />
+                @if (obs('telefono'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Email</span>
-                <input type="email" class="input" [(ngModel)]="email" name="email" placeholder="para mandarte tu usuario y contraseña" />
+                <input
+                  type="email"
+                  class="input"
+                  [class.input-error]="obs('email')"
+                  [(ngModel)]="email"
+                  name="email"
+                  placeholder="para mandarte tu usuario y contraseña"
+                />
+                @if (obs('email'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
               </label>
             </div>
 
+            @if (obs('vehiculo'); as m) {
+              <p class="text-xs text-red-600 -mb-2">⚠ Datos del vehículo: {{ m }}</p>
+            }
             <div class="grid sm:grid-cols-3 gap-4 border-t border-gray-200 pt-4">
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Tipo de vehículo</span>
@@ -99,20 +135,32 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
               <div class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Tu foto (de frente, sin gorra ni nada que te tape la cara)</span>
                 <app-image-upload [value]="fotoUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoUrl = $event" />
+                @if (obs('fotoUrl'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
               </div>
               <div></div>
               <div class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">DNI — frente</span>
                 <app-image-upload [value]="fotoCarnetUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoCarnetUrl = $event" />
+                @if (obs('fotoCarnetUrl'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
               </div>
               <div class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">DNI — dorso</span>
                 <app-image-upload [value]="fotoCarnetDorsoUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoCarnetDorsoUrl = $event" />
+                @if (obs('fotoCarnetDorsoUrl'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
               </div>
               @if (esMoto()) {
                 <div class="flex flex-col gap-1">
                   <span class="text-sm font-medium text-gray-700">Foto del vehículo (que se vea la patente)</span>
                   <app-image-upload [value]="fotoVehiculoUrl" [credenciales]="cloudinaryCreds()" (valueChange)="fotoVehiculoUrl = $event" />
+                @if (obs('fotoVehiculoUrl'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
                 </div>
                 <div></div>
                 <div class="flex flex-col gap-1">
@@ -122,6 +170,9 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
                     [credenciales]="cloudinaryCreds()"
                     (valueChange)="fotoTarjetaVerdeUrl = $event"
                   />
+                @if (obs('fotoTarjetaVerdeUrl'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
                 </div>
                 <div class="flex flex-col gap-1">
                   <span class="text-sm font-medium text-gray-700">Tarjeta verde — dorso</span>
@@ -130,12 +181,15 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
                     [credenciales]="cloudinaryCreds()"
                     (valueChange)="fotoTarjetaVerdeDorsoUrl = $event"
                   />
+                @if (obs('fotoTarjetaVerdeDorsoUrl'); as m) {
+                  <span class="text-xs text-red-600">⚠ {{ m }}</span>
+                }
                 </div>
               }
             </div>
 
             <button type="button" class="btn bg-emerald-600 hover:bg-emerald-700 self-end" [disabled]="enviando()" (click)="enviar()">
-              {{ enviando() ? 'Enviando…' : 'Enviar formulario' }}
+              {{ enviando() ? 'Enviando…' : enCorreccion() ? 'Enviar corrección' : 'Enviar formulario' }}
             </button>
           </div>
         }
@@ -161,6 +215,10 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
         padding: 0.6rem 1.25rem;
         border-radius: 0.25rem;
       }
+      .input-error {
+        border-color: #dc2626;
+        background: #fef2f2;
+      }
       .btn:disabled {
         opacity: 0.6;
       }
@@ -179,6 +237,15 @@ export class RegistroCadeteComponent implements OnInit {
   readonly enviado = signal(false);
   readonly enviando = signal(false);
   readonly error = signal<string | null>(null);
+  /** El admin pidió corregir (2026-09-25): el formulario viene precargado y marca qué cambiar. */
+  readonly observaciones = signal<ObservacionSolicitud[]>([]);
+  enCorreccion(): boolean {
+    return this.observaciones().length > 0;
+  }
+  /** Motivo si el admin marcó ese campo; null si está bien. */
+  obs(campo: string): string | null {
+    return this.observaciones().find((o) => o.campo === campo)?.motivo ?? null;
+  }
 
   readonly tiposVehiculo = signal<Lookup[]>([]);
   readonly cloudinaryCreds = signal<{ cloudName: string; uploadPreset: string } | undefined>(undefined);
@@ -212,6 +279,7 @@ export class RegistroCadeteComponent implements OnInit {
         this.tokenValido.set(r.valido);
         this.motivoInvalido.set(r.motivo);
         this.cargando.set(false);
+        if (r.valido && r.correccion) this.precargar(r.correccion);
         if (r.valido) {
           this.service.tiposVehiculo().subscribe((t) => this.tiposVehiculo.set(t));
           this.service.cloudinaryConfig().subscribe((c) => this.cloudinaryCreds.set(c));
@@ -223,6 +291,27 @@ export class RegistroCadeteComponent implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  private precargar(c: CorreccionSolicitud): void {
+    this.nombre = c.nombre ?? '';
+    this.apellido = c.apellido ?? '';
+    this.dni = c.dni ?? '';
+    this.telefono = c.telefono ?? '';
+    this.email = c.email ?? '';
+    this.tipoVehiculoId = c.tipoVehiculoId;
+    this.vehiculoColor = c.vehiculoColor ?? '';
+    this.vehiculoPatente = c.vehiculoPatente ?? '';
+    this.vehiculoMarca = c.vehiculoMarca ?? '';
+    this.vehiculoModelo = c.vehiculoModelo ?? '';
+    // las fotos marcadas vienen en null: hay que subirlas de nuevo
+    this.fotoUrl = c.fotoUrl;
+    this.fotoVehiculoUrl = c.fotoVehiculoUrl;
+    this.fotoCarnetUrl = c.fotoCarnetUrl;
+    this.fotoCarnetDorsoUrl = c.fotoCarnetDorsoUrl;
+    this.fotoTarjetaVerdeUrl = c.fotoTarjetaVerdeUrl;
+    this.fotoTarjetaVerdeDorsoUrl = c.fotoTarjetaVerdeDorsoUrl;
+    this.observaciones.set(c.observaciones);
   }
 
   enviar(): void {

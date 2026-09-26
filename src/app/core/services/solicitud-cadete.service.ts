@@ -1,7 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { apiUrl } from '../config/site-config';
-import { GenerarLinkResponse, SolicitudCadete, SolicitudCadeteForm, TokenEstado } from '../models/solicitud-cadete.model';
+import {
+  GenerarLinkResponse,
+  ReenviarLinkResponse,
+  SolicitudCadete,
+  SolicitudCadeteForm,
+  TokenEstado,
+} from '../models/solicitud-cadete.model';
 import { Lookup } from '../models/lookup.model';
 
 /** Alta de cadete por link propio de un solo uso (ronda 7) — lado admin. */
@@ -47,6 +53,20 @@ export class SolicitudCadeteService {
 
   rechazar(id: string, motivo: string | null, onSuccess?: () => void): void {
     this.http.post(apiUrl(`/admin/solicitudes-cadete/${id}/rechazar`), { motivo }).subscribe(() => onSuccess?.());
+  }
+
+  /** Devuelve la solicitud al postulante: campo -> motivo. Le llega un mail con la lista y el link. */
+  pedirCorreccion(id: string, observaciones: Record<string, string>, onSuccess?: () => void): void {
+    this.http
+      .post(apiUrl(`/admin/solicitudes-cadete/${id}/pedir-correccion`), { observaciones })
+      .subscribe(() => onSuccess?.());
+  }
+
+  /** Renueva el vencimiento del link (y reenvía el mail si estaba a corregir). */
+  reenviarLink(id: string, onSuccess?: (r: ReenviarLinkResponse) => void): void {
+    this.http
+      .post<ReenviarLinkResponse>(apiUrl(`/admin/solicitudes-cadete/${id}/reenviar-link`), {})
+      .subscribe((r) => onSuccess?.(r));
   }
 }
 

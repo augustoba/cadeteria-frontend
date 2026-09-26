@@ -563,6 +563,8 @@ export class CadeteFichaComponent implements OnInit {
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ?? '';
+    const solapa = this.route.snapshot.queryParamMap.get('solapa') as Solapa | null;
+    if (solapa && this.solapas.some((t) => t.valor === solapa)) this.solapa.set(solapa);
     this.cargar();
   }
 
