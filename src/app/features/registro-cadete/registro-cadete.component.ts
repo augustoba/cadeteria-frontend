@@ -33,10 +33,15 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
             <p class="text-emerald-600 font-semibold text-lg">
               {{ enCorreccion() ? '¡Listo! Enviamos tu corrección.' : '¡Listo! Enviamos tu solicitud.' }}
             </p>
-            <p class="text-sm text-gray-600">
-              La cadetería va a revisar tus datos. Si te aprueban, te va a llegar un mail a
-              <strong>{{ email }}</strong> con tu usuario y una contraseña temporal para entrar a la app.
-            </p>
+            <p class="text-sm text-gray-600">La cadetería va a revisar tus datos.</p>
+            <div class="rounded border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-gray-700 text-left flex flex-col gap-1">
+              <p>📧 Te vamos a mandar un mail a <strong>{{ email }}</strong>:</p>
+              <ul class="list-disc pl-5">
+                <li><strong>cuando estés dado de alta</strong>, con tu usuario y una contraseña temporal para entrar a la app, o</li>
+                <li><strong>si hay que corregir algún dato o foto</strong>, con lo que tenés que cambiar y un link para hacerlo.</li>
+              </ul>
+              <p class="text-xs text-gray-500">Si no lo ves, revisá la carpeta de spam.</p>
+            </div>
           </div>
         } @else {
           <div class="p-5 flex flex-col gap-4">
