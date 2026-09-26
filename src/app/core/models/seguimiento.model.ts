@@ -1,5 +1,7 @@
 export interface CadeteInfoPublico {
   nombre: string;
+  apellido: string | null;
+  dni: string | null;
   fotoUrl: string | null;
   tipoVehiculo: string | null;
   vehiculoColor: string | null;
@@ -32,4 +34,10 @@ export interface Seguimiento {
   destinoLng: number | null;
   /** Minutos estimados de llegada — null si no se pudo calcular. */
   etaMinutos: number | null;
+  /** El cadete ya retiró el pedido en el origen. */
+  retirado: boolean;
+  /** Foto que sacó el cadete al retirar (desde que retiró). */
+  retiroFotoUrl: string | null;
+  /** Firma de quien recibió (solo entregado). */
+  firmaUrl: string | null;
 }

@@ -15,18 +15,18 @@ const ESTADO_TEXTO: Record<string, string> = {
   Cancelado: 'Este pedido fue cancelado.',
 };
 
-/** Stepper de progreso (ronda 11, punto 117) — complementa el texto/mapa, no los reemplaza. */
-const PASOS_PROGRESO = ['Pedido recibido', 'Cadete asignado', 'En camino', 'Entregado'];
+/**
+ * Stepper de progreso (ronda 11, punto 117; rehecho 2026-09-25). El cliente recibe el link recién
+ * cuando un cadete TOMA el pedido, así que no hay paso "cadete asignado" aparte:
+ * Recibido → En camino (el cadete va a buscarlo) → Retirado (ya lo lleva) → Entregado.
+ */
+const PASOS_PROGRESO = ['Pedido recibido', 'En camino', 'Retirado', 'Entregado'];
 
-/** Cuántos pasos del stepper ya se cumplieron según el estado — 0 = ninguno más que "recibido". */
-function pasoActual(estado: string): number {
+/** Cuántos pasos del stepper ya se cumplieron — 0 = ninguno más que "recibido". */
+function pasoActual(estado: string, retirado: boolean): number {
   switch (estado) {
-    case 'Sin asignación':
-      return 0;
-    case 'Pendiente':
-      return 1;
     case 'En curso':
-      return 2;
+      return retirado ? 2 : 1;
     case 'Finalizado':
       return 3;
     default:
@@ -78,19 +78,19 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
                     <div class="flex flex-col items-center gap-1" style="width: 4.5rem">
                       <div
                         class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                        [class]="i <= pasoActualDe(s.estado) ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-400'"
+                        [class]="i <= pasoActualDe(s.estado, s.retirado) ? 'bg-brand-600 text-white' : 'bg-gray-200 text-gray-400'"
                       >
-                        {{ i < pasoActualDe(s.estado) ? '✓' : i + 1 }}
+                        {{ i < pasoActualDe(s.estado, s.retirado) ? '✓' : i + 1 }}
                       </div>
                       <span
                         class="text-[10px] text-center leading-tight"
-                        [class]="i <= pasoActualDe(s.estado) ? 'text-brand-700 font-medium' : 'text-gray-400'"
+                        [class]="i <= pasoActualDe(s.estado, s.retirado) ? 'text-brand-700 font-medium' : 'text-gray-400'"
                       >
                         {{ paso }}
                       </span>
                     </div>
                     @if (!last) {
-                      <div class="flex-1 h-0.5 -mt-4" [class]="i < pasoActualDe(s.estado) ? 'bg-brand-600' : 'bg-gray-200'"></div>
+                      <div class="flex-1 h-0.5 -mt-4" [class]="i < pasoActualDe(s.estado, s.retirado) ? 'bg-brand-600' : 'bg-gray-200'"></div>
                     }
                   </div>
                 }
@@ -98,7 +98,11 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
             }
 
             <div class="rounded bg-brand-50 text-brand-700 text-sm px-3 py-2">
-              {{ estadoTexto(s.estado) }}
+              @if (s.estado === 'En curso') {
+                {{ s.retirado ? 'El cadete ya retiró tu pedido y va hacia el destino.' : 'Un cadete tomó tu pedido y está en camino a buscarlo.' }}
+              } @else {
+                {{ estadoTexto(s.estado) }}
+              }
               @if (s.etaMinutos != null) {
                 <span class="font-semibold"> Llega en ~{{ s.etaMinutos }} min.</span>
               }
@@ -127,45 +131,109 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
               }
             </div>
 
+            <!-- Desde que lo toma hasta que lo entrega (2026-09-25): quién es, con qué viene y cómo pagarle. -->
             @if (s.cadete) {
-              <div class="border-t border-gray-200 pt-4 flex items-center gap-3">
-                @if (s.cadete.fotoUrl) {
-                  <img [src]="optimizar(s.cadete.fotoUrl, 240)" class="w-16 h-16 rounded-full object-cover border border-gray-200" />
-                } @else {
-                  <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-2xl">🏍️</div>
-                }
-                <div class="text-sm">
-                  <div class="font-semibold text-gray-700">{{ s.cadete.nombre }}</div>
-                  @if (s.cadete.tipoVehiculo) {
-                    <div class="text-gray-500">
-                      {{ s.cadete.tipoVehiculo }}
-                      {{ s.cadete.vehiculoColor ? '· ' + s.cadete.vehiculoColor : '' }}
-                      {{ s.cadete.vehiculoPatente ? '· ' + s.cadete.vehiculoPatente : '' }}
+              <div class="border-t border-gray-200 pt-4 flex flex-col gap-3">
+                <h2 class="text-sm font-medium text-gray-700">Tu cadete</h2>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="flex flex-col items-center gap-1">
+                    @if (s.cadete.fotoUrl) {
+                      <a [href]="s.cadete.fotoUrl" target="_blank" rel="noopener">
+                        <img [src]="optimizar(s.cadete.fotoUrl, 400)" alt="Foto del cadete" class="w-28 h-28 rounded-full object-cover border border-gray-200" />
+                      </a>
+                    } @else {
+                      <div class="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center text-4xl">🧑</div>
+                    }
+                    <span class="font-semibold text-gray-800 text-center">{{ s.cadete.nombre }} {{ s.cadete.apellido }}</span>
+                    @if (s.cadete.dni) {
+                      <span class="text-xs text-gray-500">DNI {{ s.cadete.dni }}</span>
+                    }
+                  </div>
+                  <div class="flex flex-col items-center gap-1">
+                    @if (s.cadete.fotoVehiculoUrl) {
+                      <a [href]="s.cadete.fotoVehiculoUrl" target="_blank" rel="noopener">
+                        <img [src]="optimizar(s.cadete.fotoVehiculoUrl, 400)" alt="Foto del vehículo" class="w-28 h-28 rounded object-cover border border-gray-200" />
+                      </a>
+                    } @else {
+                      <div class="w-28 h-28 rounded bg-gray-100 flex items-center justify-center text-4xl">
+                        {{ s.cadete.tipoVehiculo === 'Bici' ? '🚲' : '🏍️' }}
+                      </div>
+                    }
+                    <span class="text-sm text-gray-600 text-center">
+                      {{ s.cadete.tipoVehiculo }}{{ s.cadete.vehiculoColor ? ' ' + s.cadete.vehiculoColor : '' }}
+                    </span>
+                    @if (s.cadete.vehiculoPatente) {
+                      <span class="font-mono text-sm font-semibold text-gray-800 border border-gray-300 rounded px-2">{{ s.cadete.vehiculoPatente }}</span>
+                    }
+                  </div>
+                </div>
+
+                <div class="rounded bg-gray-50 border border-gray-200 text-sm px-3 py-2 flex flex-col gap-1">
+                  <span class="text-gray-700">
+                    💵 {{ s.estado === 'Finalizado' ? 'Total del envío' : 'A pagar' }}: <strong>$ {{ s.precio }}</strong>
+                    @if (s.estado !== 'Finalizado') {
+                      <span class="text-gray-500"> — en efectivo{{ s.cadete.cbu || s.cadete.aliasCbu ? ' o por transferencia' : '' }}.</span>
+                    }
+                  </span>
+                  @if (s.cadete.aliasCbu) {
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-500">Alias:</span>
+                      <span class="font-mono font-medium text-gray-800 break-all">{{ s.cadete.aliasCbu }}</span>
+                      <button type="button" class="btn-copiar" (click)="copiar(s.cadete.aliasCbu, 'alias')">
+                        {{ copiado() === 'alias' ? '✓ Copiado' : 'Copiar' }}
+                      </button>
+                    </div>
+                  }
+                  @if (s.cadete.cbu) {
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-500">CBU:</span>
+                      <span class="font-mono font-medium text-gray-800 break-all">{{ s.cadete.cbu }}</span>
+                      <button type="button" class="btn-copiar" (click)="copiar(s.cadete.cbu, 'cbu')">
+                        {{ copiado() === 'cbu' ? '✓ Copiado' : 'Copiar' }}
+                      </button>
                     </div>
                   }
                 </div>
-                @if (s.cadete.fotoVehiculoUrl) {
-                  <img
-                    [src]="optimizar(s.cadete.fotoVehiculoUrl, 160)"
-                    class="w-14 h-14 rounded object-cover border border-gray-200 ml-auto"
-                  />
-                }
               </div>
-              @if (s.cadete.cbu || s.cadete.aliasCbu) {
-                <div class="rounded bg-gray-50 text-sm px-3 py-2 flex flex-col gap-0.5">
-                  <span class="text-gray-500 text-xs">¿Preferís pagar por transferencia?</span>
-                  @if (s.cadete.aliasCbu) {
-                    <div><span class="text-gray-500">Alias:</span> {{ s.cadete.aliasCbu }}</div>
+            }
+
+            <!-- Desde "En camino" (2026-09-25): constancia de quién lleva el pedido; al entregar suma quién recibió. -->
+            @if (s.comprobanteDisponible) {
+              <button
+                type="button"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2 rounded"
+                [disabled]="descargando()"
+                (click)="descargarComprobante()"
+              >
+                {{ descargando() ? 'Generando…' : '⬇ Descargar comprobante' }}
+              </button>
+            }
+
+            <!-- Fotos del viaje (2026-09-25): la del retiro desde que retiró; al entregar, también entrega y firma. -->
+            @if (s.retiroFotoUrl || s.entregaFotoUrl || s.firmaUrl) {
+              <div class="border-t border-gray-200 pt-4 flex flex-col gap-2">
+                <h2 class="text-sm font-medium text-gray-700">Fotos del viaje</h2>
+                <div class="grid grid-cols-2 gap-3">
+                  @if (s.retiroFotoUrl) {
+                    <a [href]="s.retiroFotoUrl" target="_blank" rel="noopener" class="flex flex-col gap-1">
+                      <img [src]="optimizar(s.retiroFotoUrl, 800)" alt="Retiro" class="w-full h-32 object-cover rounded border border-gray-200 " />
+                      <span class="text-xs text-gray-500 text-center">Retiro</span>
+                    </a>
                   }
-                  @if (s.cadete.cbu) {
-                    <div><span class="text-gray-500">CBU:</span> {{ s.cadete.cbu }}</div>
+                  @if (s.entregaFotoUrl) {
+                    <a [href]="s.entregaFotoUrl" target="_blank" rel="noopener" class="flex flex-col gap-1">
+                      <img [src]="optimizar(s.entregaFotoUrl, 800)" alt="Entrega" class="w-full h-32 object-cover rounded border border-gray-200 " />
+                      <span class="text-xs text-gray-500 text-center">Entrega</span>
+                    </a>
+                  }
+                  @if (s.firmaUrl) {
+                    <a [href]="s.firmaUrl" target="_blank" rel="noopener" class="flex flex-col gap-1">
+                      <img [src]="optimizar(s.firmaUrl, 800)" alt="Firma de quien recibió" class="w-full h-32 object-cover rounded border border-gray-200 bg-white object-contain" />
+                      <span class="text-xs text-gray-500 text-center">Firma de quien recibió</span>
+                    </a>
                   }
                 </div>
-              } @else if (s.estado !== 'Cancelado') {
-                <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
-                  💵 Tené <span class="font-semibold">$ {{ s.precio }}</span> en efectivo listo para el cadete.
-                </div>
-              }
+              </div>
             }
 
             @if (s.estado === 'Finalizado') {
@@ -173,29 +241,6 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
                 <h2 class="font-medium text-gray-700">Entrega</h2>
                 @if (s.entregaReceptorNombre) {
                   <div><span class="text-gray-500">Recibió:</span> {{ s.entregaReceptorNombre }}</div>
-                }
-                @if (s.entregaFotoUrl) {
-                  @if (mostrarFoto()) {
-                    <img [src]="optimizar(s.entregaFotoUrl, 1600)" class="rounded border border-gray-200 max-h-64 object-cover" />
-                  } @else {
-                    <button
-                      type="button"
-                      class="self-start bg-gray-500 hover:bg-gray-600 text-white text-xs font-medium px-3 py-1.5 rounded"
-                      (click)="mostrarFoto.set(true)"
-                    >
-                      👁 Ver foto
-                    </button>
-                  }
-                }
-                @if (s.comprobanteDisponible) {
-                  <button
-                    type="button"
-                    class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2 rounded"
-                    [disabled]="descargando()"
-                    (click)="descargarComprobante()"
-                  >
-                    {{ descargando() ? 'Generando…' : '⬇ Descargar comprobante' }}
-                  </button>
                 }
               </div>
 
@@ -255,6 +300,20 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
       </div>
     </div>
   `,
+  styles: [
+    `
+      .btn-copiar {
+        margin-left: auto;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.15rem 0.5rem;
+        border-radius: 0.25rem;
+        color: var(--color-brand-700);
+        border: 1px solid var(--color-brand-200);
+        background: white;
+      }
+    `,
+  ],
 })
 export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
   @Input() token = '';
@@ -264,13 +323,22 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
   private intervaloActualizacion: ReturnType<typeof setInterval> | null = null;
 
   readonly cargando = signal(true);
+  /** Qué dato se acaba de copiar ("alias" / "cbu"), para mostrar "✓ Copiado" un momento. */
+  readonly copiado = signal<string | null>(null);
+
+  copiar(texto: string, cual: string): void {
+    navigator.clipboard?.writeText(texto).then(() => {
+      this.copiado.set(cual);
+      setTimeout(() => this.copiado.set(null), 2000);
+    });
+  }
+
   readonly error = signal(false);
   /** "No encontramos este pedido." o, pasadas las horas de Configuración, "Este link de seguimiento ya venció." */
   readonly mensajeError = signal('No encontramos este pedido.');
   readonly seguimiento = signal<Seguimiento | null>(null);
   readonly nombreCadeteria = signal('Cadetería');
   readonly descargando = signal(false);
-  readonly mostrarFoto = signal(false);
 
   readonly pasos = PASOS_PROGRESO;
   readonly pasoActualDe = pasoActual;
@@ -310,7 +378,6 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
       this.calificacionEnviada.set(false);
       this.estrellas.set(0);
       this.comentario = '';
-      this.mostrarFoto.set(false);
       this.cargar();
     }
   }
