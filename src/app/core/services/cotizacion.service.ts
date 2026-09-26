@@ -27,6 +27,8 @@ export class CotizacionService {
     destinoLat?: number | null,
     destinoLng?: number | null,
     montoDeclarado?: number | null,
+    /** El cadete vuelve al origen: suma "recargo_retorno_origen_porcentaje" (Configuración → Tarifas). */
+    retornaAlOrigen = false,
   ) {
     let params = new HttpParams().set('origenLat', origenLat).set('origenLng', origenLng);
     if (destinoLat != null && destinoLng != null) {
@@ -34,6 +36,9 @@ export class CotizacionService {
     }
     if (montoDeclarado != null) {
       params = params.set('montoDeclarado', montoDeclarado);
+    }
+    if (retornaAlOrigen) {
+      params = params.set('retornaAlOrigen', true);
     }
     return this.http.get<Cotizacion>(apiUrl('/publico/cotizar'), { params });
   }

@@ -366,6 +366,14 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
               primer monto, se suma el segundo. Ej. con 10.000 y 100: declarar $25.000 suma $200 (el tramo incompleto
               de $5.000 no cuenta).
             </p>
+            <label class="flex flex-col gap-1 max-w-xs">
+              <span class="text-sm font-medium text-gray-700">Recargo por volver al origen (%)</span>
+              <input type="number" min="0" max="200" step="1" class="input" [(ngModel)]="recargoRetornoOrigen" name="recargoRetornoOrigen" />
+              <span class="text-xs text-gray-400">
+                Porcentaje del precio del viaje que se suma cuando el cliente pide que el cadete vuelva al origen (no se
+                aplica sobre el recargo por dinero). Ej. con 50%: un viaje de $2960 con vuelta sale $4440. En 0, sin recargo.
+              </span>
+            </label>
           </section>
 
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
@@ -932,6 +940,7 @@ export class ConfiguracionComponent implements OnInit {
   readonly simulando = signal(false);
   recargoDineroUmbral: number | null = null;
   recargoDineroMonto: number | null = null;
+  recargoRetornoOrigen: number | null = 50;
   geoapifyKeys = '';
   googleGeocodingKeys = '';
   googleCacheDias: number | null = 30;
@@ -1003,6 +1012,7 @@ export class ConfiguracionComponent implements OnInit {
       this.factorAProbar = this.factorLineaRecta;
       this.recargoDineroUmbral = Number(v['recargo_dinero_transportado_umbral'] ?? 0);
       this.recargoDineroMonto = Number(v['recargo_dinero_transportado_monto'] ?? 0);
+      this.recargoRetornoOrigen = Number(v['recargo_retorno_origen_porcentaje'] ?? 50);
       this.geoapifyKeys = v['geoapify_keys'] ?? '';
       this.googleGeocodingKeys = v['google_geocoding_keys'] ?? '';
       this.googleCacheDias = Number(v['google_cache_dias'] ?? 30);
@@ -1137,6 +1147,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('factor_linea_recta', String(this.factorLineaRecta ?? 1.4));
     agregarSiCambio('recargo_dinero_transportado_umbral', String(this.recargoDineroUmbral ?? 0));
     agregarSiCambio('recargo_dinero_transportado_monto', String(this.recargoDineroMonto ?? 0));
+    agregarSiCambio('recargo_retorno_origen_porcentaje', String(this.recargoRetornoOrigen ?? 0));
     agregarSiCambio('geoapify_keys', this.geoapifyKeys);
     agregarSiCambio('google_geocoding_keys', this.googleGeocodingKeys);
     agregarSiCambio('google_cache_dias', String(this.googleCacheDias ?? 30));

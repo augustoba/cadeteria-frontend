@@ -324,7 +324,7 @@ export class SolicitudesPedidoComponent implements OnInit {
 
   /** Sugerencia de precio por GPS (mejora 2026-09-16) — por zona si el origen cae en una con precio cargado, si no por distancia real. */
   sugerirPrecio(s: SolicitudPedido): void {
-    this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng, this.montoModal[s.id]).subscribe((c) => {
+    this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng, this.montoModal[s.id], s.retornaAlOrigen).subscribe((c) => {
       if (c.precioSugerido == null) {
         this.toast.error('No hay "precio por km" configurado — cargalo a mano.');
         return;

@@ -44,7 +44,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
 
             <!-- Primero el celular de quien pide (2026-09-24): es el contacto del pedido y el que se verifica. -->
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Tu número de celular</span>
+              <span class="text-sm font-medium text-gray-700">Tu número de celular <span class="text-red-600">*</span></span>
               <input
                 class="input"
                 [ngModel]="clienteTelefono"
@@ -164,7 +164,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             </label>
             @if (llevaDinero) {
               <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">¿Cuánto dinero?</span>
+                <span class="text-sm font-medium text-gray-700">¿Cuánto dinero? <span class="text-red-600">*</span></span>
                 <input
                   type="number"
                   min="0"
@@ -184,7 +184,7 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             </label>
             @if (llevaValores) {
               <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">¿Cuánto valen?</span>
+                <span class="text-sm font-medium text-gray-700">¿Cuánto valen? <span class="text-red-600">*</span></span>
                 <input
                   type="number"
                   min="0"
@@ -204,12 +204,15 @@ import { AddressPickerComponent, PickedAddress } from '../../shared/address-pick
             </label>
 
             <label class="check flex items-center gap-3">
-              <input type="checkbox" [(ngModel)]="retornaAlOrigen" name="retornaAlOrigen" />
+              <input type="checkbox" [ngModel]="retornaAlOrigen" (ngModelChange)="onRetornaAlOrigenChange($event)" name="retornaAlOrigen" />
               <span class="text-sm text-gray-700">¿El cadete tiene que volver al origen?</span>
             </label>
+            @if (retornaAlOrigen) {
+              <p class="text-xs text-gray-500 -mt-3">Volver al origen tiene un recargo: ya está sumado en el precio de arriba.</p>
+            }
 
             <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">¿Por quién pregunta el cadete?</span>
+              <span class="text-sm font-medium text-gray-700">¿Por quién pregunta el cadete? <span class="text-red-600">*</span></span>
               <input class="input" [(ngModel)]="clienteNombre" name="clienteNombre" placeholder="Nombre" autocomplete="name" />
             </label>
 
@@ -419,6 +422,11 @@ export class PedirComponent {
     this.actualizarEstimado();
   }
 
+  onRetornaAlOrigenChange(valor: boolean): void {
+    this.retornaAlOrigen = valor;
+    this.actualizarEstimado();
+  }
+
   onLlevaDineroChange(valor: boolean): void {
     this.llevaDinero = valor;
     this.actualizarEstimado();
@@ -438,7 +446,14 @@ export class PedirComponent {
     this.cotizando.set(true);
     const montoDeclarado = this.llevaDinero ? this.montoDeclarado : null;
     this.cotizacion
-      .cotizar(this.origenPicked.lat, this.origenPicked.lng, this.destinoPicked.lat, this.destinoPicked.lng, montoDeclarado)
+      .cotizar(
+        this.origenPicked.lat,
+        this.origenPicked.lng,
+        this.destinoPicked.lat,
+        this.destinoPicked.lng,
+        montoDeclarado,
+        this.retornaAlOrigen,
+      )
       .subscribe({
         next: (c) => {
           this.cotizando.set(false);
@@ -451,22 +466,46 @@ export class PedirComponent {
       });
   }
 
+  /** El error se muestra arriba del formulario y el botón está abajo: en el celular no se veía. */
+  private fallar(mensaje: string): void {
+    this.error.set(mensaje);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   enviar(): void {
     this.error.set(null);
     if (!this.origenPicked) {
-      this.error.set('Buscá y marcá la dirección de origen.');
+      this.fallar('Buscá y marcá la dirección de origen.');
       return;
     }
     if (!this.destinoPicked) {
-      this.error.set('Buscá y marcá la dirección de destino.');
+      this.fallar('Buscá y marcá la dirección de destino.');
       return;
     }
-    if (!this.clienteNombre.trim() || !this.clienteTelefono.trim()) {
-      this.error.set('Completá tu número de celular y por quién pregunta el cadete.');
+    // Mismas reglas que valida el backend (SolicitudPedidoService.validarDatosDelCliente).
+    const digitos = this.clienteTelefono.replace(/\D/g, '');
+    if (!digitos) {
+      this.fallar('Completá tu número de celular.');
+      return;
+    }
+    if (digitos.length < 10 || digitos.length > 13) {
+      this.fallar('El celular tiene que tener la característica, ej: 381 555 1234.');
+      return;
+    }
+    if (!this.clienteNombre.trim()) {
+      this.fallar('Completá por quién pregunta el cadete.');
+      return;
+    }
+    if (this.llevaDinero && !(Number(this.montoDeclarado) > 0)) {
+      this.fallar('Marcaste que lleva dinero: indicá cuánto.');
+      return;
+    }
+    if (this.llevaValores && !(Number(this.montoValores) > 0)) {
+      this.fallar('Marcaste que transporta objetos de valor: indicá cuánto valen.');
       return;
     }
     if (this.verificarTelefono() && (!this.telefonoVerificado() || !this.verificacionToken)) {
-      this.error.set('Verificá el teléfono antes de enviar el pedido.');
+      this.fallar('Verificá el teléfono antes de enviar el pedido.');
       return;
     }
 
@@ -521,9 +560,9 @@ export class PedirComponent {
         this.enviando.set(false);
         this.enviado.set(true);
       },
-      error: () => {
+      error: (e) => {
         this.enviando.set(false);
-        this.error.set('No se pudo enviar el pedido — probá de nuevo.');
+        this.fallar(e?.error?.message ?? 'No se pudo enviar el pedido — probá de nuevo.');
       },
     });
   }
