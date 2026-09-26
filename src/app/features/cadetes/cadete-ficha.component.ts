@@ -6,6 +6,7 @@ import { CadeteFicha } from '../../core/models/cadete.model';
 import { TasaAceptacionChartComponent } from './tasa-aceptacion-chart.component';
 
 type RangoFicha = 'hoy' | 'semana' | 'mes' | 'todo';
+type Solapa = 'desempeno' | 'personales' | 'vehiculo' | 'incidencias' | 'historial';
 
 /** Ambas listas (incidencias, historial de altas/bajas) ya vienen ordenadas desde el más reciente
  * (ver CadeteService.ficha en el backend) — acá solo se paginan del lado del cliente, el volumen
@@ -90,6 +91,50 @@ function inicioDeMesIso(): string {
               </div>
             }
 
+            <!-- Cabecera fija (2026-09-25): la foto y los datos básicos se ven en todas las solapas. -->
+            <div class="flex items-center gap-4 flex-wrap">
+              @if (f.cadete.fotoUrl) {
+                <a [href]="f.cadete.fotoUrl" target="_blank" rel="noopener" title="Ver foto completa">
+                  <img [src]="f.cadete.fotoUrl" alt="Foto del cadete" class="w-20 h-20 rounded-full object-cover border border-gray-200" />
+                </a>
+              } @else {
+                <div class="w-20 h-20 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-2xl font-semibold text-gray-400">
+                  {{ iniciales() }}
+                </div>
+              }
+              <div class="flex flex-col gap-0.5 text-sm">
+                <span class="text-lg font-semibold text-gray-800">{{ f.cadete.nombre }} {{ f.cadete.apellido }}</span>
+                <span class="text-gray-500">DNI {{ f.cadete.dni }} · 📞 {{ f.cadete.telefono }}</span>
+                <span class="text-gray-500">
+                  🛵 {{ f.cadete.tipoVehiculo.nombre }}
+                  @if (f.cadete.vehiculoPatente) {
+                    · {{ f.cadete.vehiculoPatente }}
+                  }
+                  · {{ f.cadete.estado.nombre }}
+                  @if (!f.cadete.activo) {
+                    · <span class="text-red-600 font-medium">dado de baja</span>
+                  }
+                </span>
+              </div>
+            </div>
+
+            <div class="flex gap-1 border-b border-gray-200 overflow-x-auto">
+              @for (t of solapas; track t.valor) {
+                <button
+                  type="button"
+                  class="solapa"
+                  [class.solapa-activa]="solapa() === t.valor"
+                  (click)="solapa.set(t.valor)"
+                >
+                  {{ t.etiqueta }}
+                  @if (t.valor === 'incidencias' && f.incidencias.length) {
+                    <span class="text-xs text-gray-400">({{ f.incidencias.length }})</span>
+                  }
+                </button>
+              }
+            </div>
+
+            @if (solapa() === 'desempeno') {
             <div class="flex items-center gap-2 flex-wrap text-sm">
               <span class="text-gray-500">Estadísticas de desempeño:</span>
               @for (r of rangos; track r.valor) {
@@ -136,8 +181,95 @@ function inicioDeMesIso(): string {
                 <div class="tarjeta"><div class="valor text-gray-700">$ {{ f.estadisticas.promedioPrecioPorHora | number: '1.0-0' }}</div><div class="etiqueta">$/hora</div></div>
               </div>
             </section>
+            }
 
-            <div class="border-t border-gray-200 pt-4">
+            @if (solapa() === 'personales') {
+              <dl class="datos">
+                <div><dt>Nombre</dt><dd>{{ f.cadete.nombre }} {{ f.cadete.apellido }}</dd></div>
+                <div><dt>DNI</dt><dd>{{ f.cadete.dni }}</dd></div>
+                <div><dt>Usuario de la app</dt><dd class="font-mono">{{ f.cadete.username }}</dd></div>
+                <div><dt>Teléfono</dt><dd>{{ f.cadete.telefono }}</dd></div>
+                <div><dt>Estado</dt><dd>{{ f.cadete.estado.nombre }}{{ f.cadete.activo ? '' : ' (dado de baja)' }}</dd></div>
+                <div><dt>Zona actual</dt><dd>{{ f.cadete.zonaActual?.nombre || '—' }}</dd></div>
+                <div><dt>Modalidad de pago</dt><dd>{{ f.cadete.modalidadPago === 'SEMANAL' ? 'Cuota semanal' : 'Comisión por viaje' }}</dd></div>
+                <div><dt>CBU</dt><dd class="font-mono">{{ f.cadete.cbu || '—' }}</dd></div>
+                <div><dt>Alias</dt><dd class="font-mono">{{ f.cadete.aliasCbu || '—' }}</dd></div>
+                <div>
+                  <dt>Turno</dt>
+                  <dd>{{ f.cadete.turnoInicio && f.cadete.turnoFin ? f.cadete.turnoInicio.slice(0, 5) + ' a ' + f.cadete.turnoFin.slice(0, 5) : 'Sin turno fijo' }}</dd>
+                </div>
+                <div><dt>Versión de la app</dt><dd>{{ f.cadete.ultimaVersionApp ?? '—' }}</dd></div>
+                <div class="sm:col-span-2"><dt>Notas internas</dt><dd class="whitespace-pre-line">{{ f.cadete.notasInternas || '—' }}</dd></div>
+              </dl>
+              <h2 class="subtitulo">Documentación</h2>
+              <div class="docs">
+              @if (f.cadete.fotoUrl; as url) {
+                <a [href]="url" target="_blank" rel="noopener" class="doc">
+                  <img [src]="url" alt="Foto del cadete" />
+                  <span>Foto del cadete</span>
+                </a>
+              } @else {
+                <div class="doc doc-vacio"><span>Foto del cadete</span><em>Sin cargar</em></div>
+              }
+              @if (f.cadete.fotoCarnetUrl; as url) {
+                <a [href]="url" target="_blank" rel="noopener" class="doc">
+                  <img [src]="url" alt="DNI (frente)" />
+                  <span>DNI (frente)</span>
+                </a>
+              } @else {
+                <div class="doc doc-vacio"><span>DNI (frente)</span><em>Sin cargar</em></div>
+              }
+              @if (f.cadete.fotoCarnetDorsoUrl; as url) {
+                <a [href]="url" target="_blank" rel="noopener" class="doc">
+                  <img [src]="url" alt="DNI (dorso)" />
+                  <span>DNI (dorso)</span>
+                </a>
+              } @else {
+                <div class="doc doc-vacio"><span>DNI (dorso)</span><em>Sin cargar</em></div>
+              }
+              </div>
+            }
+
+            @if (solapa() === 'vehiculo') {
+              <dl class="datos">
+                <div><dt>Tipo</dt><dd>{{ f.cadete.tipoVehiculo.nombre }}</dd></div>
+                <div><dt>Marca</dt><dd>{{ f.cadete.vehiculoMarca || '—' }}</dd></div>
+                <div><dt>Modelo</dt><dd>{{ f.cadete.vehiculoModelo || '—' }}</dd></div>
+                <div><dt>Año</dt><dd>{{ f.cadete.vehiculoAnio ?? '—' }}</dd></div>
+                <div><dt>Color</dt><dd>{{ f.cadete.vehiculoColor || '—' }}</dd></div>
+                <div><dt>Patente</dt><dd class="font-mono">{{ f.cadete.vehiculoPatente || '—' }}</dd></div>
+              </dl>
+              <h2 class="subtitulo">Fotos</h2>
+              <div class="docs">
+              @if (f.cadete.fotoVehiculoUrl; as url) {
+                <a [href]="url" target="_blank" rel="noopener" class="doc">
+                  <img [src]="url" alt="Vehículo" />
+                  <span>Vehículo</span>
+                </a>
+              } @else {
+                <div class="doc doc-vacio"><span>Vehículo</span><em>Sin cargar</em></div>
+              }
+              @if (f.cadete.fotoTarjetaVerdeUrl; as url) {
+                <a [href]="url" target="_blank" rel="noopener" class="doc">
+                  <img [src]="url" alt="Tarjeta verde (frente)" />
+                  <span>Tarjeta verde (frente)</span>
+                </a>
+              } @else {
+                <div class="doc doc-vacio"><span>Tarjeta verde (frente)</span><em>Sin cargar</em></div>
+              }
+              @if (f.cadete.fotoTarjetaVerdeDorsoUrl; as url) {
+                <a [href]="url" target="_blank" rel="noopener" class="doc">
+                  <img [src]="url" alt="Tarjeta verde (dorso)" />
+                  <span>Tarjeta verde (dorso)</span>
+                </a>
+              } @else {
+                <div class="doc doc-vacio"><span>Tarjeta verde (dorso)</span><em>Sin cargar</em></div>
+              }
+              </div>
+            }
+
+            @if (solapa() === 'incidencias') {
+            <div>
               <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
                 Incidencias
                 <span class="text-xs font-normal normal-case text-gray-400">(todo el historial, más recientes primero)</span>
@@ -220,7 +352,10 @@ function inicioDeMesIso(): string {
               }
             </div>
 
-            <div class="border-t border-gray-200 pt-4">
+            }
+
+            @if (solapa() === 'historial') {
+            <div>
               <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
                 Historial de altas/bajas <span class="text-xs font-normal normal-case text-gray-400">(más recientes primero)</span>
               </h2>
@@ -271,6 +406,7 @@ function inicioDeMesIso(): string {
                 </div>
               }
             </div>
+            }
           </div>
         }
       }
@@ -313,6 +449,71 @@ function inicioDeMesIso(): string {
         font-size: 0.75rem;
         color: #6b7280;
       }
+      .solapa {
+        padding: 0.5rem 0.9rem;
+        font-size: 0.875rem;
+        color: #6b7280;
+        border-bottom: 2px solid transparent;
+        white-space: nowrap;
+      }
+      .solapa:hover {
+        color: #374151;
+      }
+      .solapa-activa {
+        color: var(--color-brand-700);
+        border-bottom-color: var(--color-brand-600);
+        font-weight: 600;
+      }
+      .datos {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+        gap: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+      }
+      .datos dt {
+        font-size: 0.75rem;
+        color: #9ca3af;
+      }
+      .datos dd {
+        color: #1f2937;
+        font-weight: 500;
+      }
+      .subtitulo {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+      .docs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+        gap: 0.75rem;
+      }
+      .doc {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+      }
+      .doc img {
+        width: 100%;
+        height: 8rem;
+        object-fit: cover;
+        border-radius: 0.375rem;
+        border: 1px solid #e5e7eb;
+      }
+      .doc-vacio {
+        height: 9.25rem;
+        justify-content: center;
+        align-items: center;
+        border: 1px dashed #d1d5db;
+        border-radius: 0.375rem;
+      }
+      .doc-vacio em {
+        color: #9ca3af;
+      }
     `,
   ],
 })
@@ -324,6 +525,14 @@ export class CadeteFichaComponent implements OnInit {
   readonly ficha = signal<CadeteFicha | null>(null);
   readonly rango = signal<RangoFicha>('todo');
   readonly passwordGenerada = signal<string | null>(null);
+  readonly solapa = signal<Solapa>('desempeno');
+  readonly solapas: Array<{ valor: Solapa; etiqueta: string }> = [
+    { valor: 'desempeno', etiqueta: 'Desempeño' },
+    { valor: 'personales', etiqueta: 'Datos personales' },
+    { valor: 'vehiculo', etiqueta: 'Vehículo' },
+    { valor: 'incidencias', etiqueta: 'Incidencias' },
+    { valor: 'historial', etiqueta: 'Altas y bajas' },
+  ];
 
   readonly tamanioPagina = TAMANIO_PAGINA_HISTORIAL;
   readonly paginaIncidencias = signal(0);
@@ -388,6 +597,12 @@ export class CadeteFichaComponent implements OnInit {
       case 'todo':
         return [undefined, undefined];
     }
+  }
+
+  /** Sin foto cargada: las iniciales en el círculo de la cabecera. */
+  iniciales(): string {
+    const c = this.ficha()?.cadete;
+    return c ? `${c.nombre.charAt(0)}${c.apellido.charAt(0)}`.toUpperCase() : '';
   }
 
   /** Último cambio a "baja" del historial (puede no ser el último cambio si después hubo otra alta/baja sin motivo). */
