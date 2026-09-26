@@ -28,6 +28,26 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
  * cada campo explicando qué hace y qué pasa al cambiarlo. Ninguna clave de configuración
  * ni la lógica de guardado cambia — es reorganización visual + texto.
  */
+/** Espejo de ConfiguracionSistema (backend): solo el superadmin las ve y las cambia. */
+const CLAVES_SISTEMA = new Set([
+  'cloudinary_cloud_name', 'cloudinary_upload_preset', 'open_route_service_url',
+  'google_cache_pausar_borrado', 'google_cache_dias', 'google_link_vence',
+  'frecuencia_ubicacion_seg', 'mapeo_calles_cadetes_intervalo_seg',
+  'aprender_gps_precision_max_m', 'aprender_geocoder_precision_max_m', 'reverse_respaldo_max_dia',
+  'version_minima_app', 'retencion_imagenes_pedido_dias', 'rate_limit_publico_max', 'rate_limit_publico_ventana_seg',
+  'vapid_public_key', 'vapid_private_key', 'proximo_numero_pedido',
+  'geoapify_keys', 'locationiq_keys', 'google_geocoding_keys', 'graphhopper_key', 'open_route_service_key',
+]);
+
+/** Listas de API keys por proveedor; la de la cadetería es la misma clave + "_cliente". */
+const PROVEEDORES_KEYS = [
+  { clave: 'geoapify_keys', nombre: 'Geoapify (direcciones)' },
+  { clave: 'locationiq_keys', nombre: 'LocationIQ (direcciones)' },
+  { clave: 'google_geocoding_keys', nombre: 'Google Geocoding ("buscar de nuevo")' },
+  { clave: 'graphhopper_key', nombre: 'GraphHopper (distancia)' },
+  { clave: 'open_route_service_key', nombre: 'OpenRouteService (distancia)' },
+];
+
 @Component({
   selector: 'app-configuracion',
   imports: [FormsModule, DatePipe, DecimalPipe, RouterLink],
@@ -85,6 +105,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                   sistema se la ofrezca a otro.
                 </span>
               </label>
+              @if (esSuperadmin) {
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Frecuencia de envío de ubicación del cadete (segundos)</span>
                 <input type="number" min="1" step="1" class="input" [(ngModel)]="frecuenciaUbicacionSeg" name="frecuenciaUbicacion" />
@@ -103,6 +124,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                   cuentas conectadas a la vez; subilo de nuevo antes de tener muchos cadetes reales conectados.
                 </span>
               </label>
+              }
             </div>
             <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="asignacionAutomatica" name="asignacionAutomatica" />
@@ -393,6 +415,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
         @if (categoriaActiva() === 'cadetes') {
           <section class="flex flex-col gap-4">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">App de cadetes</h2>
+            @if (esSuperadmin) {
             <label class="flex flex-col gap-1 max-w-xs">
               <span class="text-sm font-medium text-gray-700">Versión mínima requerida (código de versión)</span>
               <input type="number" min="1" step="1" class="input" [(ngModel)]="versionMinimaApp" name="versionMinimaApp" />
@@ -402,6 +425,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                 iniciar sesión y le pide que le pidas el APK actualizado.
               </span>
             </label>
+            }
             <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="fotoRetiroObligatoria" name="fotoRetiroObligatoria" />
               <span class="text-sm text-gray-700">Exigir foto del pedido al marcar "Retirado"</span>
@@ -489,6 +513,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
               por coma). Apenas una se queda sin cupo del día, se pasa sola a la siguiente sin que tengas que hacer
               nada; el estado de cada una se ve en la tabla de abajo.
             </p>
+            @if (esSuperadmin) {
             <div class="grid sm:grid-cols-2 gap-4 max-w-xl">
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Geoapify — API keys (direcciones)</span>
@@ -556,6 +581,35 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                 </span>
               </label>
             </div>
+            }
+            <!-- API keys de la cadetería (2026-09-26): el admin suma cupo pero no borra; las del sistema van primero. -->
+            <div class="flex flex-col gap-3 max-w-xl rounded border border-gray-200 p-3">
+              <span class="text-sm font-medium text-gray-700">API keys propias de la cadetería</span>
+              <span class="text-xs text-gray-400 -mt-2">
+                Se suman a las que carga el administrador del sistema (que se usan primero). Sirven para tener más
+                cupo gratis: una key por línea. Una vez guardadas no se pueden quitar desde acá; si hace falta
+                borrar alguna, pedíselo al administrador del sistema.
+              </span>
+              @for (p of proveedoresKeys; track p.clave) {
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm text-gray-700">{{ p.nombre }}</span>
+                  @if (esSuperadmin) {
+                    <textarea class="input" rows="2" [(ngModel)]="keysCliente[p.clave]" [name]="'keysCliente_' + p.clave"></textarea>
+                  } @else {
+                    @for (k of separarKeys(keysCliente[p.clave]); track k) {
+                      <code class="text-xs text-gray-600 break-all">{{ k }}</code>
+                    }
+                    <textarea
+                      class="input"
+                      rows="2"
+                      [(ngModel)]="keysClienteNuevas[p.clave]"
+                      [name]="'keysClienteNuevas_' + p.clave"
+                      placeholder="Agregar keys nuevas — una por línea"
+                    ></textarea>
+                  }
+                </label>
+              }
+            </div>
 
             <div class="flex flex-col gap-2 mt-2">
               <div class="flex items-center gap-2">
@@ -585,9 +639,9 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
                           <span
                             class="inline-block w-2 h-2 rounded-full mr-1"
                             [class.bg-emerald-500]="e.estado === 'OK'"
-                            [class.bg-red-500]="e.estado === 'AGOTADA'"
+                            [class.bg-red-500]="e.estado !== 'OK'"
                           ></span>
-                          {{ e.estado === 'OK' ? 'Con cupo' : 'Sin cupo — probamos la siguiente' }}
+                          {{ e.estado === 'OK' ? 'Con cupo' : e.estado === 'INVALIDA' ? 'Key inválida — revisala' : 'Sin cupo — probamos la siguiente' }}
                         </td>
                         <td class="py-1">
                           {{ e.restante == null ? '—' : (e.restanteEstimado ? '~' : '') + e.restante }}
@@ -606,6 +660,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
             </div>
           </section>
 
+          @if (esSuperadmin) {
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Cloudinary (subida de imágenes)</h2>
             <div class="grid sm:grid-cols-2 gap-4">
@@ -627,6 +682,7 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
               No son datos secretos: se usan desde el front para subir imágenes directo a Cloudinary con un preset unsigned.
             </p>
           </section>
+          }
 
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Sonidos del panel</h2>
@@ -941,6 +997,13 @@ export class ConfiguracionComponent implements OnInit {
   private readonly seguridad = inject(SeguridadService);
   private readonly saludSvc = inject(SaludService);
   private readonly auth = inject(AuthService);
+  /** Superadmin (2026-09-26): ve y cambia lo técnico (servidores, Cloudinary, borrado de Google, frecuencias, API keys del sistema). */
+  readonly esSuperadmin = this.auth.tienePermiso('sistema');
+  readonly proveedoresKeys = PROVEEDORES_KEYS;
+  /** Keys que agregó la cadetería, por proveedor (clave de Configuración + "_cliente"). */
+  keysCliente: Record<string, string> = {};
+  /** Lo que el admin tipea para agregar (se suma a las que ya tenía; no puede quitar). */
+  keysClienteNuevas: Record<string, string> = {};
   private readonly router = inject(Router);
 
   readonly categorias = CATEGORIAS;
@@ -1060,6 +1123,7 @@ export class ConfiguracionComponent implements OnInit {
       this.recargoDineroMonto = Number(v['recargo_dinero_transportado_monto'] ?? 0);
       this.recargoRetornoOrigen = Number(v['recargo_retorno_origen_porcentaje'] ?? 50);
       this.geoapifyKeys = v['geoapify_keys'] ?? '';
+      this.cargarKeysCliente(v);
       this.googleGeocodingKeys = v['google_geocoding_keys'] ?? '';
       this.googleCacheDias = Number(v['google_cache_dias'] ?? 30);
       this.googleLinkVence = (v['google_link_vence'] ?? 'false') === 'true';
@@ -1096,6 +1160,14 @@ export class ConfiguracionComponent implements OnInit {
     this.seguridad.accesos().subscribe((a) => this.accesos.set(a));
     this.cargarSalud();
     this.cargarEstadoApiKeys();
+  }
+
+  private cargarKeysCliente(v: Record<string, string>): void {
+    this.keysCliente = Object.fromEntries(PROVEEDORES_KEYS.map((p) => [p.clave, v[p.clave + '_cliente'] ?? '']));
+  }
+
+  separarKeys(texto: string | undefined): string[] {
+    return (texto ?? '').split(/[,\n]/).map((k) => k.trim()).filter(Boolean);
   }
 
   cargarEstadoApiKeys(): void {
@@ -1164,8 +1236,19 @@ export class ConfiguracionComponent implements OnInit {
     const v = this.config.valores();
     const cambios: Array<[string, string]> = [];
     const agregarSiCambio = (clave: string, valorNuevo: string) => {
+      // Lo técnico no le llega a un admin (el backend lo filtra) y los defaults del form lo harían "cambiar".
+      if (!this.esSuperadmin && CLAVES_SISTEMA.has(clave)) return;
       if (valorNuevo !== (v[clave] ?? '')) cambios.push([clave, valorNuevo]);
     };
+    for (const p of PROVEEDORES_KEYS) {
+      const claveCliente = p.clave + '_cliente';
+      if (this.esSuperadmin) {
+        agregarSiCambio(claveCliente, (this.keysCliente[p.clave] ?? '').trim());
+      } else {
+        const nuevas = (this.keysClienteNuevas[p.clave] ?? '').trim();
+        if (nuevas) cambios.push([claveCliente, [(v[claveCliente] ?? '').trim(), nuevas].filter(Boolean).join('\n')]);
+      }
+    }
 
     agregarSiCambio('tiempo_limite_aceptacion_seg', String(this.tiempoLimiteAceptacionSeg ?? ''));
     agregarSiCambio('frecuencia_ubicacion_seg', String(this.frecuenciaUbicacionSeg ?? ''));
@@ -1240,6 +1323,8 @@ export class ConfiguracionComponent implements OnInit {
     if (i >= cambios.length) {
       this.guardando.set(false);
       this.mensaje.set('Cambios guardados.');
+      this.keysClienteNuevas = {};
+      this.cargarKeysCliente(this.config.valores());
       return;
     }
     const [clave, valor] = cambios[i];

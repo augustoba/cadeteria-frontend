@@ -34,7 +34,9 @@ export interface SimulacionTarifa {
 export interface EstadoApiKey {
   proveedor: string;
   claveEnmascarada: string;
-  estado: 'OK' | 'AGOTADA';
+  estado: 'OK' | 'AGOTADA' | 'INVALIDA';
+  /** true = la cargó el superadmin (el admin la ve como "(del sistema)"). */
+  delSistema?: boolean;
   restante: number | null;
   restanteEstimado: boolean;
   actualizadoEn: string;
