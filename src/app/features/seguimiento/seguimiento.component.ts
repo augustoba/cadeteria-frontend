@@ -135,6 +135,15 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
               }
             </div>
 
+            <!-- Verificación del cadete (2026-09-25): antes de entregarle nada, que coincida con estos datos. -->
+            @if (s.cadete && s.estado === 'En curso') {
+              <div class="rounded border border-sky-200 bg-sky-50 text-sky-900 text-sm px-3 py-2">
+                🔒 <strong>Antes de entregar el pedido, dinero o valores</strong>, verifique que el cadete coincida con
+                estos datos (foto, nombre, DNI y patente). También puede pedirle que le muestre el QR del pedido y
+                escanearlo con la cámara: tiene que abrir esta misma página.
+              </div>
+            }
+
             <!-- Desde que lo toma hasta que lo entrega (2026-09-25): quién es, con qué viene y cómo pagarle. -->
             @if (s.cadete) {
               <div class="border-t border-gray-200 pt-4 flex flex-col gap-3">
