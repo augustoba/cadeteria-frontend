@@ -97,6 +97,16 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
           }
         </div>
         @if (activeTab() === 'activos') {
+          <!-- Ordenar (2026-09-26): lo urgente arriba. -->
+          <label class="flex items-center gap-1 text-xs text-gray-500">
+            Ordenar:
+            <select class="border border-gray-300 rounded px-1.5 py-1 text-xs" [ngModel]="orden()" (ngModelChange)="orden.set($event)" name="orden">
+              <option value="normal">Normal</option>
+              <option value="reclamos">Reclamos primero</option>
+              <option value="retiro">Demorados en retirar</option>
+              <option value="sin-asignar">Sin asignar hace más tiempo</option>
+            </select>
+          </label>
           <div class="flex gap-1 text-xs">
             <button
               type="button"
@@ -123,6 +133,31 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
       </div>
 
       <div class="p-4">
+        <!-- Reclamos abiertos (2026-09-26): pedidos YA ENTREGADOS con un problema reportado por el
+             cliente — no aparecen en "en curso", así que van acá arriba hasta que el reclamo se cierre. -->
+        @if (activeTab() === 'activos' && reclamosAbiertos().length) {
+          <div class="mb-4 rounded border border-red-300">
+            <h2 class="font-semibold text-red-700 px-3 py-2 bg-red-50 border-b border-red-200">
+              📣 Reclamos abiertos ({{ reclamosAbiertos().length }})
+              <span class="text-xs font-normal text-red-600">
+                — el cadete no recibe pedidos hasta que se cierren (se cierran solos si el cliente no responde)
+              </span>
+            </h2>
+            <app-tabla-pedidos [pedidos]="reclamosAbiertos()" [mostrarAcciones]="false" (accion)="onAccion($event)" />
+          </div>
+        }
+
+        @if (activeTab() === 'activos') {
+          <!-- Qué significa cada color (2026-09-26): para que cualquiera lo lea sin preguntar. -->
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500 mb-3">
+            <span><span class="leyenda" style="background: rgba(139, 92, 246, 0.35)"></span>Sin asignar hace rato</span>
+            <span><span class="leyenda" style="background: rgba(245, 158, 11, 0.35)"></span>Reclamo: demora en el retiro</span>
+            <span><span class="leyenda" style="background: rgba(249, 115, 22, 0.4)"></span>Reclamo: demora en la entrega</span>
+            <span><span class="leyenda" style="background: rgba(220, 38, 38, 0.35)"></span>Reclamo: problema con la entrega</span>
+            <span>Parpadea = nadie lo miró todavía</span>
+          </div>
+        }
+
         @if (pedidos.loading()) {
           <app-loading-skeleton [filas]="6" />
         } @else if (pedidos.errored()) {
@@ -932,6 +967,14 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
   `,
   styles: [
     `
+      .leyenda {
+        display: inline-block;
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 0.2rem;
+        margin-right: 0.3rem;
+        vertical-align: -0.1rem;
+      }
       .btn-action {
         color: white;
         font-size: 0.8125rem;
@@ -1000,12 +1043,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
   }
 
+  /** Orden de las tablas de activos (2026-09-26). */
+  readonly orden = signal<'normal' | 'reclamos' | 'retiro' | 'sin-asignar'>('normal');
+
   readonly pendientes = computed(() =>
-    this.pedidos.pedidos().filter((p) => !ESTADOS_EN_CURSO.has(p.estado.id) && this.coincideBusqueda(p))
+    this.ordenar(this.pedidos.pedidos().filter((p) => !ESTADOS_EN_CURSO.has(p.estado.id) && this.coincideBusqueda(p)))
   );
   readonly enCurso = computed(() =>
-    this.pedidos.pedidos().filter((p) => ESTADOS_EN_CURSO.has(p.estado.id) && this.coincideBusqueda(p))
+    this.ordenar(this.pedidos.pedidos().filter((p) => ESTADOS_EN_CURSO.has(p.estado.id) && this.coincideBusqueda(p)))
   );
+
+  /**
+   * Reclamos: problema con la entrega > demora en el retiro > demora en la entrega, el más viejo
+   * primero. Demorados en retirar: aceptados sin "Retirado", el que aceptó hace más primero. Sin
+   * asignar: el más viejo primero. El resto queda en el orden de siempre, abajo.
+   */
+  private ordenar(lista: Pedido[]): Pedido[] {
+    const orden = this.orden();
+    if (orden === 'normal') return lista;
+    const ms = (iso: string | null | undefined) => (iso ? new Date(iso).getTime() : Number.MAX_SAFE_INTEGER);
+    const clave = (p: Pedido): [number, number] => {
+      if (orden === 'reclamos') {
+        const activo = !!p.reclamoEstado && p.reclamoEstado !== 'CERRADO';
+        const peso = !activo ? 9 : p.reclamoTipo === 'PROBLEMA_ENTREGA' ? 0 : p.reclamoTipo === 'DEMORA_RETIRO' ? 1 : 2;
+        return [peso, ms(p.reclamoEn)];
+      }
+      if (orden === 'retiro') {
+        const demorado = p.estado.id === 'EN_CURSO' && !!p.aceptadoEn && !p.retiradoEn;
+        return [demorado ? 0 : 9, ms(p.aceptadoEn)];
+      }
+      return [p.estado.id === 'SIN_ASIGNAR' ? 0 : 9, ms(p.creadoEn)];
+    };
+    return [...lista].sort((a, b) => {
+      const [pa, ta] = clave(a);
+      const [pb, tb] = clave(b);
+      return pa - pb || (pa === 9 ? 0 : ta - tb);
+    });
+  }
   readonly pedidosFiltrados = computed(() => this.pedidos.pedidos().filter((p) => this.coincideBusqueda(p)));
 
   /** Filtros propios de la pestaña "Pedidos finalizados" — además de la búsqueda general de arriba. */
@@ -1174,7 +1248,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   descripcionIncidenciaModal = '';
   prioridadIncidenciaModal: PrioridadIncidencia = 'NORMAL';
 
+  /** Pedidos entregados con un reclamo sin cerrar (2026-09-26). */
+  readonly reclamosAbiertos = signal<Pedido[]>([]);
+
+  cargarReclamosAbiertos(): void {
+    this.pedidos.reclamosAbiertos().subscribe((lista) => this.reclamosAbiertos.set(lista));
+  }
+
   ngOnInit(): void {
+    this.cargarReclamosAbiertos();
     this.cadetesSvc.ensureLoaded();
     this.config.ensureLoaded();
     const tabInicial = this.activeTab();
@@ -1184,6 +1266,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.pedidos.cargar(tabInicial);
     }
     this.desuscribirPedidos = this.realtime.subscribe('/topic/admin/pedidos', (body) => {
+      // Cualquier cambio de un pedido puede abrir o cerrar un reclamo.
+      this.cargarReclamosAbiertos();
       const tab = this.activeTab();
       if (tab === 'finalizados') {
         // Paginado/filtrado en el backend, no es la lista "activos" cara — se deja como reload.
@@ -1265,10 +1349,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       | 'detalle'
       | 'incidencia'
       | 'prioritario'
-      | 'buscar-cliente';
+      | 'buscar-cliente'
+      | 'reclamo-visto'
+      | 'reclamo-cerrar';
     pedido: Pedido;
   }): void {
     const { accion, pedido } = ev;
+    if (accion === 'reclamo-visto') {
+      this.pedidos.reclamoVisto(pedido.id, () => this.cargarReclamosAbiertos());
+      return;
+    }
+    if (accion === 'reclamo-cerrar') {
+      this.pedidos.reclamoCerrar(pedido.id, () => this.cargarReclamosAbiertos());
+      return;
+    }
     if (accion === 'incidencia') {
       this.abrirNuevaIncidenciaDePedido(pedido.id);
       return;

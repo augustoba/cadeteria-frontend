@@ -628,7 +628,30 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
           </section>
 
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
-            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Plantillas de SMS</h2>
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Reclamos de clientes</h2>
+            <p class="text-xs text-gray-400 -mt-2">
+              Cuando el cliente reporta un problema con la entrega, el cadete no recibe pedidos hasta que el reclamo se
+              cierre. A los minutos de abajo se le escribe al cliente (WhatsApp, o SMS si el gateway no está) y, si no
+              responde, se cierra solo. Los reclamos por demora se cierran cuando el cadete retira o entrega.
+            </p>
+            <div class="grid sm:grid-cols-3 gap-4 max-w-2xl">
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Escribirle al cliente a los (min)</span>
+                <input type="number" min="1" max="240" class="input" [(ngModel)]="reclamoSeguimientoMin" name="reclamoSeguimientoMin" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Cerrar sin respuesta a los (min)</span>
+                <input type="number" min="1" max="240" class="input" [(ngModel)]="reclamoCierreMin" name="reclamoCierreMin" />
+                <span class="text-xs text-gray-400">Contados desde que se le escribió.</span>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">WhatsApp de atención al cliente</span>
+                <input class="input" [(ngModel)]="whatsappAtencionCliente" name="whatsappAtencionCliente" placeholder="Ej: 381 555 1234" />
+                <span class="text-xs text-gray-400">Adonde escribe el cliente si sigue el problema (puede ser el celular del dueño).</span>
+              </label>
+            </div>
+
+            <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-4">Plantillas de SMS</h2>
             <p class="text-xs text-gray-400 -mt-2">
               Podés usar <code>{{ '{link}' }}</code> (link de seguimiento), <code>{{ '{numero}' }}</code> (número de
               pedido) y <code>{{ '{marca}' }}</code> (nombre de la cadetería). El link vale hasta las 23:59 del día en que
@@ -959,6 +982,9 @@ export class ConfiguracionComponent implements OnInit {
   comisionPorcentaje: number | null = null;
   creditoBajoAlertaUmbral: number | null = null;
   smsTemplateAceptado = '';
+  reclamoSeguimientoMin: number | null = 10;
+  reclamoCierreMin: number | null = 10;
+  whatsappAtencionCliente = '';
   smsTemplateFinalizado = '';
   smsTemplateReenvio = '';
   nombreCadeteria = '';
@@ -1029,6 +1055,9 @@ export class ConfiguracionComponent implements OnInit {
       this.comisionPorcentaje = Number(v['comision_porcentaje'] ?? 10);
       this.creditoBajoAlertaUmbral = Number(v['credito_bajo_alerta_umbral'] ?? 500);
       this.smsTemplateAceptado = v['sms_template_aceptado'] ?? 'Tu pedido esta en camino, seguilo aca: {link}';
+      this.reclamoSeguimientoMin = Number(v['reclamo_seguimiento_min'] ?? 10);
+      this.reclamoCierreMin = Number(v['reclamo_cierre_min'] ?? 10);
+      this.whatsappAtencionCliente = v['whatsapp_atencion_cliente'] ?? '';
       this.smsTemplateFinalizado = v['sms_template_finalizado'] ?? 'Tu pedido fue entregado. Mira el detalle, descarga el comprobante y calificanos aca: {link}';
       this.smsTemplateReenvio = v['sms_template_reenvio'] ?? 'Seguí tu pedido acá: {link}';
       this.nombreCadeteria = v['nombre_cadeteria'] ?? '';
@@ -1164,6 +1193,9 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('comision_porcentaje', String(this.comisionPorcentaje ?? ''));
     agregarSiCambio('credito_bajo_alerta_umbral', String(this.creditoBajoAlertaUmbral ?? ''));
     agregarSiCambio('sms_template_aceptado', this.smsTemplateAceptado);
+    agregarSiCambio('reclamo_seguimiento_min', String(this.reclamoSeguimientoMin ?? 10));
+    agregarSiCambio('reclamo_cierre_min', String(this.reclamoCierreMin ?? 10));
+    agregarSiCambio('whatsapp_atencion_cliente', this.whatsappAtencionCliente.trim());
     agregarSiCambio('sms_template_finalizado', this.smsTemplateFinalizado);
     agregarSiCambio('sms_template_reenvio', this.smsTemplateReenvio);
     agregarSiCambio('nombre_cadeteria', this.nombreCadeteria);

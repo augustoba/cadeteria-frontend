@@ -133,6 +133,27 @@ export class PedidoService {
       );
   }
 
+  /** Pedidos ya entregados con un reclamo sin cerrar (cuadro "Reclamos abiertos" del dashboard). */
+  reclamosAbiertos() {
+    return this.http.get<Pedido[]>(apiUrl('/admin/pedidos/reclamos-abiertos')).pipe(catchError(() => of([] as Pedido[])));
+  }
+
+  /** "Visto": la fila del reclamo deja de parpadear. */
+  reclamoVisto(id: string, onSuccess?: () => void): void {
+    this.http.post(apiUrl(`/admin/pedidos/${id}/reclamo/visto`), {}).subscribe(() => {
+      this.store.reload();
+      onSuccess?.();
+    });
+  }
+
+  /** Cierra el reclamo (y su incidente): el cadete vuelve a recibir pedidos. */
+  reclamoCerrar(id: string, onSuccess?: () => void): void {
+    this.http.post(apiUrl(`/admin/pedidos/${id}/reclamo/cerrar`), {}).subscribe(() => {
+      this.store.reload();
+      onSuccess?.();
+    });
+  }
+
   /** Direcciones que ese teléfono ya usó (2026-09-25), las más usadas primero — [] si nunca pidió. */
   direccionesCliente(telefono: string) {
     return this.http

@@ -224,8 +224,49 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
               </div>
             }
 
+            <!-- Reclamo por problema con la entrega abierto (2026-09-26): el cliente cierra o pide contacto. -->
+            @if (s.reclamoTipo === 'PROBLEMA_ENTREGA' && (s.reclamoEstado === 'ABIERTO' || s.reclamoEstado === 'VISTO')) {
+              <div class="rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm px-3 py-3 flex flex-col gap-2">
+                <p>📣 <strong>Su reclamo está abierto.</strong> Ya le avisamos al cadete para que se comunique con usted.</p>
+                <div class="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2 rounded"
+                    [disabled]="respondiendoReclamo()"
+                    (click)="reclamoSolucionado()"
+                  >
+                    ✅ Ya se solucionó
+                  </button>
+                  <button
+                    type="button"
+                    class="border border-amber-500 text-amber-800 bg-white hover:bg-amber-100 text-sm font-medium px-3 py-2 rounded"
+                    [disabled]="respondiendoReclamo()"
+                    (click)="reclamoSigue(s.whatsappAtencion)"
+                  >
+                    Sigue el problema
+                  </button>
+                </div>
+              </div>
+            } @else if (s.reclamoTipo === 'PROBLEMA_ENTREGA' && s.reclamoEstado === 'CONTACTO') {
+              <div class="rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm px-3 py-2 flex flex-col gap-2">
+                <p>📣 Registramos que sigue el problema. Nos vamos a comunicar con usted.</p>
+                @if (s.whatsappAtencion) {
+                  <a
+                    [href]="linkWhatsappAtencion(s.whatsappAtencion)"
+                    target="_blank"
+                    rel="noopener"
+                    class="self-start bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2 rounded"
+                  >
+                    Escribirnos por WhatsApp
+                  </a>
+                }
+              </div>
+            } @else if (s.reclamoTipo === 'PROBLEMA_ENTREGA' && s.reclamoEstado === 'CERRADO') {
+              <div class="rounded border border-gray-200 bg-gray-50 text-gray-600 text-sm px-3 py-2">📣 Su reclamo está cerrado.</div>
+            }
+
             <!-- Reclamo (2026-09-25): el texto del botón según el momento; avisa al cadete y al panel. -->
-            @if (s.cadete && (s.estado === 'En curso' || s.estado === 'Finalizado')) {
+            @if (s.cadete && (s.estado === 'En curso' || (s.estado === 'Finalizado' && s.reclamoTipo !== 'PROBLEMA_ENTREGA'))) {
               @if (mensajeReclamo()) {
                 <div class="rounded border border-amber-200 bg-amber-50 text-amber-900 text-sm px-3 py-2">
                   📣 {{ mensajeReclamo() }}
@@ -412,6 +453,40 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
   readonly copiado = signal<string | null>(null);
 
   readonly enviandoReclamo = signal(false);
+  readonly respondiendoReclamo = signal(false);
+
+  reclamoSolucionado(): void {
+    this.respondiendoReclamo.set(true);
+    this.seguimientoSvc.reclamoSolucionado(this.token).subscribe({
+      next: () => {
+        this.respondiendoReclamo.set(false);
+        this.cargar();
+      },
+      error: () => this.respondiendoReclamo.set(false),
+    });
+  }
+
+  /** Marca que sigue el problema y abre el WhatsApp de atención con un mensaje ya escrito. */
+  reclamoSigue(whatsapp: string): void {
+    // Se abre la ventana antes del pedido: si se abre después, el navegador la bloquea como popup.
+    const ventana = whatsapp ? window.open(this.linkWhatsappAtencion(whatsapp), '_blank') : null;
+    this.respondiendoReclamo.set(true);
+    this.seguimientoSvc.reclamoSigue(this.token).subscribe({
+      next: () => {
+        this.respondiendoReclamo.set(false);
+        this.cargar();
+      },
+      error: () => {
+        this.respondiendoReclamo.set(false);
+        ventana?.close();
+      },
+    });
+  }
+
+  linkWhatsappAtencion(numero: string): string {
+    const texto = `Hola, sigo con un problema en la entrega de mi pedido. Este es el link del pedido: ${window.location.href}`;
+    return `https://wa.me/${this.whatsappDe(numero)}?text=${encodeURIComponent(texto)}`;
+  }
   /** Antes de avisar al cadete se pide confirmación (2026-09-25). */
   readonly confirmandoReclamo = signal(false);
   /** Lo que pasó, al reportar un problema con la entrega. */

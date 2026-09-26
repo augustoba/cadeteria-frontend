@@ -70,6 +70,12 @@ export interface Pedido {
   origenCarga: 'WEB' | 'PANEL' | null;
   /** Usuario del panel que lo cargó (solo PANEL). */
   creadoPorUsername: string | null;
+  /** Reclamo del cliente desde el seguimiento (2026-09-26). */
+  reclamoDetalle?: string | null;
+  reclamoEn?: string | null;
+  reclamoTipo?: 'DEMORA_RETIRO' | 'DEMORA_ENTREGA' | 'PROBLEMA_ENTREGA' | null;
+  /** ABIERTO (la fila parpadea) | VISTO (color fijo) | CONTACTO (pidió que lo contacten) | CERRADO. */
+  reclamoEstado?: 'ABIERTO' | 'VISTO' | 'CONTACTO' | 'CERRADO' | null;
   /** Auditoría: qué admin asignó/canceló el pedido — null si fue automático o no aplica. */
   asignadoPorUsername: string | null;
   canceladoPorUsername: string | null;

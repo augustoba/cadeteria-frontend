@@ -41,4 +41,9 @@ export interface Seguimiento {
   retiroFotoUrl: string | null;
   /** Firma de quien recibió (solo entregado). */
   firmaUrl: string | null;
+  /** Reclamo del cliente (2026-09-26). */
+  reclamoTipo: 'DEMORA_RETIRO' | 'DEMORA_ENTREGA' | 'PROBLEMA_ENTREGA' | null;
+  reclamoEstado: 'ABIERTO' | 'VISTO' | 'CONTACTO' | 'CERRADO' | null;
+  /** WhatsApp de atención al cliente (Configuración) — "" si no está. */
+  whatsappAtencion: string;
 }

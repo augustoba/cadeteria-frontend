@@ -43,4 +43,14 @@ export class SeguimientoService {
   reclamo(token: string, texto: string | null = null) {
     return this.http.post<{ avisado: boolean; mensaje: string }>(apiUrl(`/publico/pedidos/${token}/reclamo`), { texto });
   }
+
+  /** El problema con la entrega ya se solucionó: se cierra el reclamo. */
+  reclamoSolucionado(token: string) {
+    return this.http.post(apiUrl(`/publico/pedidos/${token}/reclamo/solucionado`), {});
+  }
+
+  /** Sigue el problema: queda esperando contacto; devuelve el WhatsApp de atención. */
+  reclamoSigue(token: string) {
+    return this.http.post<{ whatsappAtencion: string }>(apiUrl(`/publico/pedidos/${token}/reclamo/sigue`), {});
+  }
 }

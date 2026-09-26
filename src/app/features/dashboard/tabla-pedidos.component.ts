@@ -1,13 +1,16 @@
 import {
   Component,
+  DestroyRef,
   EventEmitter,
   HostListener,
   Input,
   OnChanges,
   Output,
   SimpleChanges,
+  inject,
   signal,
 } from '@angular/core';
+import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Pedido } from '../../core/models/pedido.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 
@@ -22,7 +25,9 @@ type Accion =
   | 'detalle'
   | 'incidencia'
   | 'prioritario'
-  | 'buscar-cliente';
+  | 'buscar-cliente'
+  | 'reclamo-visto'
+  | 'reclamo-cerrar';
 
 const TAMANO_PAGINA = 15;
 
@@ -68,6 +73,11 @@ export function claseEstadoPedido(estadoId: string): string {
               [class.bg-red-50]="p.estado.id === 'CANCELADO'"
               [class.bg-emerald-50]="p.estado.id === 'FINALIZADO'"
               [class.bg-amber-50]="p.prioritario && p.estado.id !== 'CANCELADO' && p.estado.id !== 'FINALIZADO'"
+              [class.reclamo-retiro]="reclamoActivo(p) && p.reclamoTipo === 'DEMORA_RETIRO'"
+              [class.reclamo-entrega]="reclamoActivo(p) && p.reclamoTipo === 'DEMORA_ENTREGA'"
+              [class.reclamo-problema]="reclamoActivo(p) && p.reclamoTipo === 'PROBLEMA_ENTREGA'"
+              [class.reclamo-parpadea]="p.reclamoEstado === 'ABIERTO'"
+              [class.sin-asignar-urgente]="sinAsignarHaceRato(p)"
             >
               <td class="py-2 pr-3 whitespace-nowrap" [title]="p.id">
                 <button
@@ -129,8 +139,21 @@ export function claseEstadoPedido(estadoId: string): string {
                 <span class="px-2 py-0.5 rounded text-xs font-medium" [class]="claseEstado(p)">
                   {{ p.estado.nombre }}
                 </span>
+                @if (sinAsignarHaceRato(p)) {
+                  <div class="mt-1 text-[11px] font-semibold text-violet-700">⏰ Sin asignar hace {{ minutosDesde(p.creadoEn) }} min</div>
+                }
                 @if (p.smsFallido) {
                   <span title="No se pudo avisar por SMS al cliente" class="ml-1">📵</span>
+                }
+                <!-- Reclamo del cliente (2026-09-26): qué reclamó y los botones para atenderlo. -->
+                @if (reclamoActivo(p)) {
+                  <div class="mt-1 flex items-center gap-1 flex-wrap" [title]="p.reclamoDetalle || ''">
+                    <span class="text-[11px] font-semibold" [class]="claseTextoReclamo(p)">📣 {{ textoReclamo(p) }}</span>
+                    @if (p.reclamoEstado === 'ABIERTO') {
+                      <button type="button" class="btn-reclamo" (click)="accion.emit({ accion: 'reclamo-visto', pedido: p })">Visto</button>
+                    }
+                    <button type="button" class="btn-reclamo" (click)="accion.emit({ accion: 'reclamo-cerrar', pedido: p })">Cerrar</button>
+                  </div>
                 }
               </td>
               <td class="py-2 pr-3 whitespace-nowrap">
@@ -233,6 +256,39 @@ export function claseEstadoPedido(estadoId: string): string {
   `,
   styles: [
     `
+      /* Reclamos del cliente (2026-09-26): color por tipo; parpadea hasta que alguien toca "Visto". */
+      tr.reclamo-retiro > td {
+        background-color: rgba(245, 158, 11, 0.18);
+      }
+      tr.reclamo-entrega > td {
+        background-color: rgba(249, 115, 22, 0.22);
+      }
+      tr.reclamo-problema > td {
+        background-color: rgba(220, 38, 38, 0.2);
+      }
+      /* Sin asignar hace más de N minutos (2026-09-26): violeta, parpadea hasta que se asigna. */
+      tr.sin-asignar-urgente > td {
+        background-color: rgba(139, 92, 246, 0.2);
+        animation: parpadeo-reclamo 1s ease-in-out infinite;
+      }
+      tr.reclamo-parpadea > td {
+        animation: parpadeo-reclamo 1s ease-in-out infinite;
+      }
+      /* Sin !important: un color !important le gana a la animación y no parpadearía. */
+      @keyframes parpadeo-reclamo {
+        50% {
+          background-color: transparent;
+        }
+      }
+      .btn-reclamo {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 0 0.4rem;
+        border-radius: 0.25rem;
+        border: 1px solid currentColor;
+        color: #374151;
+        background: white;
+      }
       .btn-mini {
         color: white;
         font-size: 0.8125rem;
@@ -296,6 +352,45 @@ export function claseEstadoPedido(estadoId: string): string {
   ],
 })
 export class TablaPedidosComponent implements OnChanges {
+  private readonly config = inject(ConfiguracionService);
+  /** Reloj de la tabla: sin esto, "sin asignar hace N min" no cambiaría hasta el próximo refresco. */
+  readonly ahora = signal(Date.now());
+
+  constructor() {
+    const reloj = setInterval(() => this.ahora.set(Date.now()), 30_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(reloj));
+  }
+
+  minutosDesde(iso: string | null | undefined): number {
+    return iso ? Math.floor((this.ahora() - new Date(iso).getTime()) / 60_000) : 0;
+  }
+
+  /** Sin asignar hace más de "minutos_pedido_urgente_reintentar" (Configuración, default 30). */
+  sinAsignarHaceRato(p: Pedido): boolean {
+    if (p.estado.id !== 'SIN_ASIGNAR' || !p.creadoEn) return false;
+    const limite = Number(this.config.valores()['minutos_pedido_urgente_reintentar']) || 30;
+    return this.minutosDesde(p.creadoEn) >= limite;
+  }
+
+  /** Reclamo sin cerrar (abierto, visto o esperando contacto). */
+  reclamoActivo(p: Pedido): boolean {
+    return !!p.reclamoEstado && p.reclamoEstado !== 'CERRADO';
+  }
+
+  textoReclamo(p: Pedido): string {
+    const tipo =
+      p.reclamoTipo === 'DEMORA_RETIRO'
+        ? 'Demora en el retiro'
+        : p.reclamoTipo === 'DEMORA_ENTREGA'
+          ? 'Demora en la entrega'
+          : 'Problema con la entrega';
+    return p.reclamoEstado === 'CONTACTO' ? `${tipo} — pidió que lo contacten` : tipo;
+  }
+
+  claseTextoReclamo(p: Pedido): string {
+    return p.reclamoTipo === 'PROBLEMA_ENTREGA' ? 'text-red-700' : p.reclamoTipo === 'DEMORA_ENTREGA' ? 'text-orange-700' : 'text-amber-700';
+  }
+
   @Input() pedidos: Pedido[] = [];
   @Input() mostrarAcciones = false;
   /**
