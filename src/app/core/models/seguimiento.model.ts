@@ -2,6 +2,7 @@ export interface CadeteInfoPublico {
   nombre: string;
   apellido: string | null;
   dni: string | null;
+  telefono: string | null;
   fotoUrl: string | null;
   tipoVehiculo: string | null;
   vehiculoColor: string | null;

@@ -152,6 +152,20 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
                     @if (s.cadete.dni) {
                       <span class="text-xs text-gray-500">DNI {{ s.cadete.dni }}</span>
                     }
+                    @if (s.cadete.telefono) {
+                      <!-- Teléfono del cadete (2026-09-25): tocarlo llama; WhatsApp abre el chat. -->
+                      <a [href]="'tel:' + soloDigitos(s.cadete.telefono)" class="text-sm font-medium text-brand-700 hover:underline">
+                        📞 {{ s.cadete.telefono }}
+                      </a>
+                      <a
+                        [href]="'https://wa.me/' + whatsappDe(s.cadete.telefono)"
+                        target="_blank"
+                        rel="noopener"
+                        class="text-xs font-semibold text-emerald-700 hover:underline"
+                      >
+                        Escribirle por WhatsApp
+                      </a>
+                    }
                   </div>
                   <div class="flex flex-col items-center gap-1">
                     @if (s.cadete.fotoVehiculoUrl) {
@@ -329,6 +343,17 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
   readonly cargando = signal(true);
   /** Qué dato se acaba de copiar ("alias" / "cbu"), para mostrar "✓ Copiado" un momento. */
   readonly copiado = signal<string | null>(null);
+
+  soloDigitos(tel: string): string {
+    return tel.replace(/\D/g, '');
+  }
+
+  /** wa.me necesita el número internacional: 381 555 1234 -> 549381 5551234 (celular argentino). */
+  whatsappDe(tel: string): string {
+    let d = this.soloDigitos(tel).replace(/^0/, '');
+    if (d.startsWith('54')) return d.startsWith('549') ? d : '549' + d.slice(2);
+    return '549' + d;
+  }
 
   copiar(texto: string, cual: string): void {
     navigator.clipboard?.writeText(texto).then(() => {
