@@ -46,4 +46,6 @@ export interface Seguimiento {
   reclamoEstado: 'ABIERTO' | 'VISTO' | 'CONTACTO' | 'CERRADO' | null;
   /** WhatsApp de atención al cliente (Configuración) — "" si no está. */
   whatsappAtencion: string;
+  /** Cuándo se cierra solo el reclamo si no responde — null si no se cierra solo. */
+  reclamoCierraEn: string | null;
 }

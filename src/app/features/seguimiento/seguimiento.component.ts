@@ -1,4 +1,5 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -45,7 +46,7 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
 /** Página pública de seguimiento (sin login) — el link que llega por SMS al aceptar/finalizar el viaje. */
 @Component({
   selector: 'app-seguimiento',
-  imports: [FormsModule, SeguimientoMapaComponent],
+  imports: [FormsModule, DatePipe, SeguimientoMapaComponent],
   template: `
     <div class="min-h-screen bg-gray-100 flex items-start sm:items-center justify-center p-4">
       <div class="bg-white rounded-lg shadow-sm w-full max-w-md overflow-hidden">
@@ -227,7 +228,14 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
             <!-- Reclamo por problema con la entrega abierto (2026-09-26): el cliente cierra o pide contacto. -->
             @if (s.reclamoTipo === 'PROBLEMA_ENTREGA' && (s.reclamoEstado === 'ABIERTO' || s.reclamoEstado === 'VISTO')) {
               <div class="rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm px-3 py-3 flex flex-col gap-2">
-                <p>📣 <strong>Su reclamo está abierto.</strong> Ya le avisamos al cadete para que se comunique con usted.</p>
+                <p>📣 <strong>Su reclamo está abierto.</strong> Ya le avisamos al cadete y a la cadetería para que se comuniquen con usted.</p>
+                <p class="text-xs">
+                  Cuando se resuelva, avísenos acá.
+                  @if (s.reclamoCierraEn) {
+                    Si no nos confirma si se solucionó o si sigue el problema, el reclamo se cerrará automáticamente a las
+                    <strong>{{ s.reclamoCierraEn | date: 'HH:mm' }}</strong>.
+                  }
+                </p>
                 <div class="flex gap-2 flex-wrap">
                   <button
                     type="button"
@@ -249,7 +257,8 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
               </div>
             } @else if (s.reclamoTipo === 'PROBLEMA_ENTREGA' && s.reclamoEstado === 'CONTACTO') {
               <div class="rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm px-3 py-2 flex flex-col gap-2">
-                <p>📣 Registramos que sigue el problema. Nos vamos a comunicar con usted.</p>
+                <p>📣 <strong>Registramos que sigue el problema.</strong> La cadetería se va a comunicar con usted; el reclamo
+                  queda abierto hasta que se resuelva.</p>
                 @if (s.whatsappAtencion) {
                   <a
                     [href]="linkWhatsappAtencion(s.whatsappAtencion)"
