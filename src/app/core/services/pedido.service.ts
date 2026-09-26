@@ -203,6 +203,11 @@ export class PedidoService {
     return this.http.get<{ cantidad: number }>(apiUrl('/admin/pedidos/alertas/sms-fallidos'));
   }
 
+  /** "Avisar al cliente" (2026-09-26): marca el pedido como avisado y devuelve el WhatsApp ya armado. */
+  avisoWhatsapp(id: string) {
+    return this.http.post<{ telefono: string; texto: string; avisadoEn: string }>(apiUrl(`/admin/pedidos/${id}/aviso-whatsapp`), {});
+  }
+
   /** Reenvía a mano el SMS con el link de seguimiento (ronda 3, punto 21). */
   reenviarSms(id: string, onSuccess?: () => void): void {
     this.http.post(apiUrl(`/admin/pedidos/${id}/reenviar-sms`), {}).subscribe(() => onSuccess?.());

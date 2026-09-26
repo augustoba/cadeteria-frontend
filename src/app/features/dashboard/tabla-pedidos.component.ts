@@ -10,6 +10,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Pedido } from '../../core/models/pedido.model';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
@@ -20,6 +21,7 @@ type Accion =
   | 'anular'
   | 'quitar'
   | 'finalizar'
+  | 'avisar-cliente'
   | 'reintentar-entrega'
   | 'imprimir'
   | 'detalle'
@@ -47,7 +49,7 @@ export function claseEstadoPedido(estadoId: string): string {
 
 @Component({
   selector: 'app-tabla-pedidos',
-  imports: [EmptyStateComponent],
+  imports: [EmptyStateComponent, DatePipe],
   template: `
     <div class="overflow-x-auto">
       <table class="w-full text-sm border-collapse">
@@ -164,6 +166,15 @@ export function claseEstadoPedido(estadoId: string): string {
                     </button>
                   }
                   @if (mostrarAcciones && p.estado.id === 'EN_CURSO') {
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      [class]="p.clienteAvisadoEn ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-emerald-600 hover:bg-emerald-700'"
+                      [title]="p.clienteAvisadoEn ? 'Ya se avisó — tocá para reenviar' : 'Abre la app de WhatsApp con el aviso escrito: solo apretá Enter'"
+                      (click)="accion.emit({ accion: 'avisar-cliente', pedido: p })"
+                    >
+                      {{ p.clienteAvisadoEn ? '✓ Avisado ' + (p.clienteAvisadoEn | date: 'HH:mm') : '📲 Avisar al cliente' }}
+                    </button>
                     <button type="button" class="btn-mini bg-blue-600 hover:bg-blue-700" (click)="accion.emit({ accion: 'finalizar', pedido: p })">
                       Finalizar
                     </button>

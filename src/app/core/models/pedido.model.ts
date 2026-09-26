@@ -57,6 +57,8 @@ export interface Pedido {
   motivoCancelacion: string | null;
   tokenSeguimiento: string;
   smsFallido: boolean;
+  /** Cuándo el admin tocó "Avisar al cliente" por WhatsApp Web (2026-09-26) — null si no avisó. */
+  clienteAvisadoEn?: string | null;
   /** Marca manual del admin para destacarlo en el dashboard (mejora 93). */
   prioritario: boolean;
   calificacionEstrellas: number | null;

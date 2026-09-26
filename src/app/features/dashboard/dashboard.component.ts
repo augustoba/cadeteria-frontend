@@ -1344,6 +1344,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       | 'anular'
       | 'quitar'
       | 'finalizar'
+      | 'avisar-cliente'
       | 'reintentar-entrega'
       | 'imprimir'
       | 'detalle'
@@ -1355,6 +1356,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     pedido: Pedido;
   }): void {
     const { accion, pedido } = ev;
+    if (accion === 'avisar-cliente') {
+      this.avisarClientePorWhatsapp(pedido);
+      return;
+    }
     if (accion === 'reclamo-visto') {
       this.pedidos.reclamoVisto(pedido.id, () => this.cargarReclamosAbiertos());
       return;
@@ -1436,6 +1441,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly compartiendoComprobante = signal(false);
 
   /** Mejora 71 — share sheet nativo si el navegador lo soporta (Chrome/Edge en Android y desktops recientes); si no, descarga el PDF para adjuntarlo a mano. */
+  /**
+   * "Avisar al cliente" (2026-09-26): abre la app de escritorio de WhatsApp (la cuenta de la
+   * cadetería) en el chat del cliente con el aviso "en camino" ya escrito; el admin solo aprieta
+   * Enter. No se usa WhatsApp Web a propósito: no deja abrir un chat sin recargar la pestaña y
+   * desconecta la otra pestaña donde el admin chatea con los clientes. La app y WhatsApp Web son
+   * dispositivos vinculados distintos, así que conviven con la misma cuenta. Tocarlo cuenta como avisado.
+   */
+  avisarClientePorWhatsapp(p: Pedido): void {
+    this.pedidos.avisoWhatsapp(p.id).subscribe({
+      next: (aviso) => {
+        window.location.href = `whatsapp://send?phone=${aviso.telefono}&text=${encodeURIComponent(aviso.texto)}`;
+        this.pedidos.reload();
+      },
+      error: () => this.toast.error('No se pudo armar el aviso (¿el pedido tiene teléfono del cliente?).'),
+    });
+  }
+
   compartirComprobantePorWhatsapp(p: Pedido): void {
     this.compartiendoComprobante.set(true);
     this.pedidos.comprobante(p.id).subscribe({

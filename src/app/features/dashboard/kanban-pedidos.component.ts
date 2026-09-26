@@ -8,6 +8,7 @@ type Accion =
   | 'anular'
   | 'quitar'
   | 'finalizar'
+  | 'avisar-cliente'
   | 'reintentar-entrega'
   | 'imprimir'
   | 'detalle'
@@ -90,6 +91,15 @@ const COLUMNAS: Columna[] = [
                     </button>
                   }
                   @if (col.estadoId === 'EN_CURSO') {
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      [class]="p.clienteAvisadoEn ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-emerald-600 hover:bg-emerald-700'"
+                      [title]="p.clienteAvisadoEn ? 'Ya se avisó — tocá para reenviar' : 'Abre la app de WhatsApp con el aviso escrito: solo apretá Enter'"
+                      (click)="accion.emit({ accion: 'avisar-cliente', pedido: p })"
+                    >
+                      {{ p.clienteAvisadoEn ? '✓ Avisado' : '📲 Avisar' }}
+                    </button>
                     <button type="button" class="btn-mini bg-blue-600 hover:bg-blue-700" (click)="accion.emit({ accion: 'finalizar', pedido: p })">
                       Finalizar
                     </button>
