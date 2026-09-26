@@ -27,7 +27,6 @@ export interface SolicitudCadeteForm {
   fotoCarnetDorsoUrl: string | null;
   fotoTarjetaVerdeUrl: string | null;
   fotoTarjetaVerdeDorsoUrl: string | null;
-  usernamePropuesto: string;
 }
 
 export interface SolicitudCadete {

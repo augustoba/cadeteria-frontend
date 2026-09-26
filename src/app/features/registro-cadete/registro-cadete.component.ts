@@ -52,7 +52,8 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">DNI</span>
-                <input class="input" [(ngModel)]="dni" name="dni" />
+                <input class="input" [(ngModel)]="dni" name="dni" inputmode="numeric" placeholder="Ej: 30111222" />
+                <span class="text-xs text-gray-400">Va a ser tu usuario para entrar a la app.</span>
               </label>
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Teléfono</span>
@@ -61,10 +62,6 @@ import { ImageUploadComponent } from '../../shared/image-upload.component';
               <label class="flex flex-col gap-1">
                 <span class="text-sm font-medium text-gray-700">Email</span>
                 <input type="email" class="input" [(ngModel)]="email" name="email" placeholder="para mandarte tu usuario y contraseña" />
-              </label>
-              <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Usuario que querés usar</span>
-                <input class="input" [(ngModel)]="usernamePropuesto" name="usernamePropuesto" />
               </label>
             </div>
 
@@ -191,7 +188,6 @@ export class RegistroCadeteComponent implements OnInit {
   dni = '';
   telefono = '';
   email = '';
-  usernamePropuesto = '';
   tipoVehiculoId: string | null = null;
   vehiculoColor = '';
   vehiculoPatente = '';
@@ -239,8 +235,8 @@ export class RegistroCadeteComponent implements OnInit {
       this.error.set('Elegí el tipo de vehículo.');
       return;
     }
-    if (!this.usernamePropuesto) {
-      this.error.set('Elegí un usuario.');
+    if (!/^[0-9]{6,8}$/.test(this.dni.replace(/[.\s]/g, ''))) {
+      this.error.set('El DNI tiene que ser solo números, hasta 8 dígitos (ej: 30111222).');
       return;
     }
     if (!this.fotoUrl || !this.fotoCarnetUrl || !this.fotoCarnetDorsoUrl) {
@@ -271,7 +267,6 @@ export class RegistroCadeteComponent implements OnInit {
         fotoCarnetDorsoUrl: this.fotoCarnetDorsoUrl,
         fotoTarjetaVerdeUrl: this.esMoto() ? this.fotoTarjetaVerdeUrl : null,
         fotoTarjetaVerdeDorsoUrl: this.esMoto() ? this.fotoTarjetaVerdeDorsoUrl : null,
-        usernamePropuesto: this.usernamePropuesto,
       })
       .subscribe({
         next: () => {
