@@ -213,10 +213,20 @@ function pareceLink(texto: string): boolean {
         </div>
         <div #mapEl class="h-48 w-full bg-gray-100"></div>
         @if (calleDistinta(); as distinta) {
-          <p class="text-xs px-3 py-2 bg-amber-50 border-t border-amber-200 text-amber-800">
-            ⚠️ El pin está sobre <strong>{{ distinta.pin }}</strong>, no sobre <strong>{{ distinta.tipeada }}</strong>.
-            Movelo a la calle correcta (puede haber quedado en la esquina).
-          </p>
+          @if (distinta.propia) {
+            <p class="text-xs px-3 py-2 bg-amber-50 border-t border-amber-200 text-amber-800">
+              ⚠️ Según las direcciones que ya confirmamos, el pin está sobre <strong>{{ distinta.pin }}</strong>, no sobre
+              <strong>{{ distinta.tipeada }}</strong>. Movelo a la calle correcta (puede haber quedado en la esquina).
+            </p>
+          } @else {
+            <!-- 3j (2026-09-28): OpenStreetMap engancha la calle con nombre más cercana; en barrios con
+                 calles sin nombre (Colombia 4695) decía "Camino del Perú" y parecía que no se podía
+                 confirmar. Solo informa: el pedido se guarda igual con el pin donde quedó. -->
+            <p class="text-xs px-3 py-2 bg-gray-50 border-t border-gray-200 text-gray-600">
+              El mapa marca otra calle (<strong>{{ distinta.pin }}</strong>). Si el pin está en la puerta, dejalo así: la
+              distancia y el precio salen desde el pin.
+            </p>
+          }
         } @else if (selected()!.approximate) {
           <!-- Sin altura exacta el pin queda en cualquier punto de la calle, y el precio se calcula
                desde el pin: con "Colombia 4695" daba 5,2 km en vez de 6,2 (2026-09-24). -->
@@ -275,6 +285,8 @@ export class AddressPickerComponent {
   readonly fuente = signal<string | null>(null);
   /** Calle que el reverse encontró bajo el pin (la que se muestra arriba del pin), null si no se consultó. */
   readonly callePin = signal<string | null>(null);
+  /** La calle bajo el pin salió de la base propia (lo que confirmaron cadetes o personas), no de OpenStreetMap. */
+  readonly callePinPropia = signal(false);
   readonly leyendoLink = signal(false);
   readonly errorLink = signal<string | null>(null);
   /** Lo último que se escribió que no era un link — es la dirección que queda si después se pega uno. */
@@ -293,12 +305,12 @@ export class AddressPickerComponent {
   });
 
   /** El pin quedó sobre otra calle que la escrita (típico: en la esquina). */
-  readonly calleDistinta = computed<{ pin: string; tipeada: string } | null>(() => {
+  readonly calleDistinta = computed<{ pin: string; tipeada: string; propia: boolean } | null>(() => {
     const sel = this.selected();
     const pin = this.callePin();
     if (!sel || !pin) return null;
     const tipeada = calleDe(sel.label);
-    return tipeada && !mismaCalle(tipeada, pin) ? { pin, tipeada } : null;
+    return tipeada && !mismaCalle(tipeada, pin) ? { pin, tipeada, propia: this.callePinPropia() } : null;
   });
 
   private readonly query$ = new Subject<string>();
@@ -502,6 +514,7 @@ export class AddressPickerComponent {
       return;
     }
     this.callePin.set(found.street);
+    this.callePinPropia.set(found.proveedor === 'cache');
     this.marker?.setTooltipContent(cartel(found.locality ? `${found.street} · ${found.locality}` : found.street));
     const sel = this.selected()!;
     if (sel.label === 'Ubicación de Google Maps') {
