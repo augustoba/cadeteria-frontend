@@ -12,6 +12,7 @@ import { PedidoService } from '../../core/services/pedido.service';
 import { RealtimeService } from '../../core/services/realtime.service';
 import { Cadete } from '../../core/models/cadete.model';
 import { Pedido } from '../../core/models/pedido.model';
+import { AvisosCalleCapa } from './avisos-calle-capa';
 
 /** Centro de San Miguel de Tucumán (zona Centro) — mismo punto que usa el buscador de direcciones. */
 const CENTRO_DEFAULT: [number, number] = [-26.8306, -65.2038];
@@ -44,6 +45,7 @@ function cadeteIcon(estadoId: string): L.DivIcon {
           <span class="flex items-center gap-1"><span class="dot" style="background:#f59e0b"></span> Ocupado</span>
           <span class="flex items-center gap-1"><span class="dot" style="background:#6b7280"></span> Desconectado</span>
           <span class="flex items-center gap-1"><span class="dot" style="background:#7c3aed"></span> Pedido en curso</span>
+          <span class="flex items-center gap-1" title="Avisos de la calle de los cadetes (vencen a la hora)">🚓🚧💥✊ Avisos de la calle</span>
         </div>
       </div>
       <div class="px-4 py-2 border-b border-gray-200 flex items-center gap-3 text-xs">
@@ -98,6 +100,9 @@ export class MapaComponent implements OnInit, OnDestroy {
   /** Recorrido GPS real de un pedido puntual (viene de "Ver recorrido real" en el detalle). */
   private readonly capaTrayecto = L.layerGroup();
 
+  /** "Avisos de la calle" de los cadetes (carril C, 2026-09-28), en vivo. */
+  private readonly avisosCalle = new AvisosCalleCapa(this.http, this.realtime);
+
   private desuscribirUbicaciones: (() => void) | null = null;
   private desuscribirPedidos: (() => void) | null = null;
 
@@ -139,6 +144,7 @@ export class MapaComponent implements OnInit, OnDestroy {
     this.capaCadetes.addTo(this.map);
     this.capaVerificacion.addTo(this.map);
     this.capaTrayecto.addTo(this.map);
+    this.avisosCalle.iniciar(this.map);
 
     this.dibujarVerificacion();
     this.dibujarTrayecto();
@@ -160,6 +166,7 @@ export class MapaComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.desuscribirUbicaciones?.();
     this.desuscribirPedidos?.();
+    this.avisosCalle.destruir();
     this.map?.remove();
   }
 
