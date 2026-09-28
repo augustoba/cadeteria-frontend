@@ -700,6 +700,21 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                       </a>
                     }
                   </div>
+                  @if (p.retiroFueraZona) {
+                    <div class="text-xs text-red-600 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3 -mt-2">
+                      ⚠️ Fuera de zona: marcó con "Estoy en el lugar"{{ p.retiroDistanciaM != null ? ' a ' + distanciaLegible(p.retiroDistanciaM) + ' del retiro' : ' sin ubicación' }} (con foto)
+                    </div>
+                  }
+                }
+                @for (pa of p.paradas; track pa.id) {
+                  @if (pa.fueraZona) {
+                    <div class="text-xs text-red-600 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3">
+                      ⚠️ Parada {{ pa.orden }} fuera de zona{{ pa.distanciaM != null ? ': a ' + distanciaLegible(pa.distanciaM) : '' }}
+                      @if (pa.fotoUrl) {
+                        <button type="button" class="underline" (click)="lightbox.abrir(pa.fotoUrl!)">ver foto</button>
+                      }
+                    </div>
+                  }
                 }
                 @if (p.finalizadoEn) {
                   <div class="flex items-center gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
@@ -717,6 +732,16 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                       </a>
                     }
                   </div>
+                  @if (p.entregaFueraZona) {
+                    <div class="text-xs text-red-600 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3 -mt-2">
+                      ⚠️ Fuera de zona: marcó con "Estoy en el lugar"{{ p.entregaDistanciaM != null ? ' a ' + distanciaLegible(p.entregaDistanciaM) + ' del destino' : ' sin ubicación' }} (con foto)
+                    </div>
+                  }
+                  @if (p.finalizadoPorAdmin) {
+                    <div class="text-xs text-amber-700 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3 -mt-2">
+                      🛠 Finalizado por el admin ({{ p.finalizadoPorAdmin }}): {{ p.finalizadoAdminMotivo }}
+                    </div>
+                  }
                 }
                 @if (p.canceladoEn) {
                   <div class="flex gap-2.5 pl-3 -ml-px relative">
@@ -731,6 +756,14 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   </div>
                 }
               </div>
+              @if (p.ubicacionSimulada) {
+                <div class="text-xs text-red-600 font-medium mb-1">
+                  🚫 Intentó marcar con una app de ubicación simulada (GPS falso): no lo dejó.
+                </div>
+              }
+              @if (p.ubicacionImprecisa) {
+                <div class="text-xs text-amber-700 mb-1">📡 Marcó con la ubicación imprecisa (GPS con mucho error).</div>
+              }
               @if (p.retiradoEn) {
                 <a
                   [routerLink]="['/mapa']"
@@ -954,10 +987,29 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
               <span class="text-sm font-medium text-gray-700">¿Quién lo recibió? (opcional)</span>
               <input class="input" [(ngModel)]="receptorNombreModal" name="receptorNombreModal" placeholder="Nombre de quien recibió" />
             </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-gray-700">¿Por qué lo finalizás vos? (obligatorio)</span>
+              <textarea
+                class="input"
+                rows="2"
+                maxlength="500"
+                [(ngModel)]="motivoFinalizarModal"
+                name="motivoFinalizarModal"
+                placeholder="Ej: el cadete se quedó sin batería y confirmó por teléfono que lo entregó"
+              ></textarea>
+              <span class="text-xs text-gray-400">
+                Queda guardado quién lo finalizó, cuándo y por qué, y el pedido figura "Finalizado por el admin".
+              </span>
+            </label>
           </div>
           <div class="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
             <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cerrarModalFinalizar()">Cancelar</button>
-            <button type="button" class="btn bg-blue-600 hover:bg-blue-700" (click)="confirmarFinalizar()">
+            <button
+              type="button"
+              class="btn bg-blue-600 hover:bg-blue-700"
+              [disabled]="!motivoFinalizarModal.trim()"
+              (click)="confirmarFinalizar()"
+            >
               ✔ Confirmar finalización
             </button>
           </div>
@@ -1161,6 +1213,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly pedidoAFinalizar = signal<Pedido | null>(null);
   receptorNombreModal = '';
+  motivoFinalizarModal = '';
 
   readonly pedidoAAsignar = signal<Pedido | null>(null);
   readonly sugerido = signal<Cadete | null>(null);
@@ -1397,6 +1450,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     } else if (accion === 'finalizar') {
       this.receptorNombreModal = '';
+      this.motivoFinalizarModal = '';
       this.pedidoAFinalizar.set(pedido);
     } else if (accion === 'reintentar-entrega') {
       this.pedidos.reintentarEntrega(pedido.id);
@@ -1557,6 +1611,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return claseEstadoPedido(p.estado.id);
   }
 
+  distanciaLegible(metros: number): string {
+    return metros < 1000 ? `${metros} m` : `${(metros / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`;
+  }
+
   cerrarModalFinalizar(): void {
     this.pedidoAFinalizar.set(null);
   }
@@ -1564,7 +1622,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   confirmarFinalizar(): void {
     const p = this.pedidoAFinalizar();
     if (!p) return;
-    this.pedidos.finalizar(p.id, { receptorNombre: this.receptorNombreModal.trim() || null, fotoUrl: null });
+    const motivo = this.motivoFinalizarModal.trim();
+    if (!motivo) return;
+    this.pedidos.finalizar(p.id, { receptorNombre: this.receptorNombreModal.trim() || null, fotoUrl: null, motivo });
     this.pedidoAFinalizar.set(null);
   }
 

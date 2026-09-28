@@ -161,9 +161,12 @@ export class PedidoService {
       .pipe(catchError(() => of([] as DireccionFrecuente[])));
   }
 
-  /** Cierre manual: para cuando el cadete no puede finalizar el viaje el mismo (sin internet). */
-  finalizar(id: string, req: { receptorNombre: string | null; fotoUrl: string | null }): void {
-    this.store.mutate(this.http.post(apiUrl(`/admin/pedidos/${id}/finalizar`), req));
+  /**
+   * Cierre manual: para cuando el cadete no puede finalizar el viaje el mismo (sin internet). El motivo
+   * es obligatorio (carril B, 2026-09-28): se saltea el control de "en el lugar" y queda registrado.
+   */
+  finalizar(id: string, req: { receptorNombre: string | null; fotoUrl: string | null; motivo: string }, onSuccess?: () => void): void {
+    this.store.mutate(this.http.post(apiUrl(`/admin/pedidos/${id}/finalizar`), req), onSuccess);
   }
 
   /** Vuelve a SIN_ASIGNAR un pedido "No se pudo entregar", sin anularlo ni cargarlo de cero. */

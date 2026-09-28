@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CadeteService } from '../../core/services/cadete.service';
 import { CadeteFicha } from '../../core/models/cadete.model';
 import { TasaAceptacionChartComponent } from './tasa-aceptacion-chart.component';
+import { RegistrosEnElLugarComponent } from './registros-en-el-lugar.component';
 
 type RangoFicha = 'hoy' | 'semana' | 'mes' | 'todo';
 type Solapa = 'desempeno' | 'personales' | 'vehiculo' | 'incidencias' | 'historial';
@@ -36,7 +37,7 @@ function inicioDeMesIso(): string {
  */
 @Component({
   selector: 'app-cadete-ficha',
-  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent, RegistrosEnElLugarComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-wrap gap-2">
@@ -164,6 +165,8 @@ function inicioDeMesIso(): string {
                 <div class="etiqueta">Calificación ({{ f.estadisticas.cantidadCalificaciones }})</div>
               </div>
             </div>
+
+            <app-registros-en-el-lugar [cadeteId]="f.cadete.id" />
 
             <section class="border border-gray-200 rounded p-3">
               <h2 class="font-semibold text-gray-700 mb-2">Tasa de aceptación de ofertas</h2>

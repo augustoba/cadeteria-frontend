@@ -7,6 +7,7 @@ import { CadeteMetrica, PorHora, PorOrigen, Rechazo, ResumenDia, ZonaMetrica } f
 import { PedidosPorHoraChartComponent } from './pedidos-por-hora-chart.component';
 import { EstadosPieChartComponent } from './estados-pie-chart.component';
 import { ZonasBarChartComponent } from './zonas-bar-chart.component';
+import { EnElLugarMetricasComponent } from './en-el-lugar-metricas.component';
 
 type CriterioRanking = 'calificacion' | 'finalizados' | 'km' | 'facturacion';
 
@@ -39,7 +40,15 @@ interface Delta {
 
 @Component({
   selector: 'app-metricas',
-  imports: [FormsModule, DecimalPipe, DatePipe, PedidosPorHoraChartComponent, EstadosPieChartComponent, ZonasBarChartComponent],
+  imports: [
+    FormsModule,
+    DecimalPipe,
+    DatePipe,
+    PedidosPorHoraChartComponent,
+    EstadosPieChartComponent,
+    ZonasBarChartComponent,
+    EnElLugarMetricasComponent,
+  ],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="bg-brand-600 text-white px-4 py-3 rounded-t flex items-center justify-between flex-wrap gap-2 print:hidden">
@@ -338,6 +347,8 @@ interface Delta {
             </div>
           </section>
 
+          <app-en-el-lugar-metricas [desde]="rangoAplicado()[0]" [hasta]="rangoAplicado()[1]" />
+
           <section>
             <div class="flex items-center justify-between mb-2 cursor-pointer select-none" (click)="rechazosAbierto.set(!rechazosAbierto())">
               <h2 class="font-semibold text-gray-700">Motivos de rechazo ({{ rechazos().length }})</h2>
@@ -478,8 +489,12 @@ export class MetricasComponent implements OnInit {
     this.cargar();
   }
 
+  /** El rango con el que se cargó la pantalla (los campos de fecha cambian antes de tocar "Aplicar"). */
+  readonly rangoAplicado = signal<[string, string]>([hoyIso(), hoyIso()]);
+
   cargar(): void {
     this.cargando.set(true);
+    this.rangoAplicado.set([this.desde, this.hasta]);
     this.metricasSvc.resumen(this.desde, this.hasta).subscribe((r) => this.resumen.set(r));
     this.metricasSvc.cadetes(this.desde, this.hasta).subscribe((c) => {
       this.cadetes.set(c);
