@@ -8,6 +8,7 @@ import { SeguridadService } from '../../core/services/seguridad.service';
 import { SaludService, Salud } from '../../core/services/salud.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AccesoLog } from '../../core/models/acceso-log.model';
+import { AvisoEnCaminoEditorComponent } from './aviso-en-camino-editor.component';
 
 type Categoria = 'pedidos' | 'cadetes' | 'integraciones' | 'marca' | 'sistema';
 
@@ -50,7 +51,7 @@ const PROVEEDORES_KEYS = [
 
 @Component({
   selector: 'app-configuracion',
-  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink],
+  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, AvisoEnCaminoEditorComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -748,6 +749,8 @@ const PROVEEDORES_KEYS = [
                 le llegó.
               </span>
             </label>
+
+            <app-aviso-en-camino-editor />
           </section>
         }
 
