@@ -126,10 +126,23 @@ export function claseEstadoPedido(estadoId: string): string {
                   <div>Aceptado {{ hora(p.aceptadoEn) }}</div>
                 }
                 @if (p.retiradoEn) {
-                  <div>Recibido {{ hora(p.retiradoEn) }}</div>
+                  <div>
+                    Recibido {{ hora(p.retiradoEn) }}
+                    @if (p.retiroFueraZona) {
+                      <span class="text-red-600 font-medium" title="Marcó con 'Estoy en el lugar' lejos del retiro">⚠️ fuera de zona</span>
+                    }
+                  </div>
                 }
                 @if (p.finalizadoEn) {
-                  <div>Entregado {{ hora(p.finalizadoEn) }}</div>
+                  <div>
+                    Entregado {{ hora(p.finalizadoEn) }}
+                    @if (p.entregaFueraZona) {
+                      <span class="text-red-600 font-medium" title="Marcó con 'Estoy en el lugar' lejos del destino">⚠️ fuera de zona</span>
+                    }
+                    @if (p.finalizadoPorAdmin) {
+                      <span class="text-amber-700 font-medium" [title]="'Motivo: ' + p.finalizadoAdminMotivo">🛠 por el admin</span>
+                    }
+                  </div>
                 }
               </td>
               <td class="py-2 pr-3 whitespace-nowrap text-center">

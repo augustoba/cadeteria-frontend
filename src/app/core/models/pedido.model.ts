@@ -81,6 +81,19 @@ export interface Pedido {
   /** Auditoría: qué admin asignó/canceló el pedido — null si fue automático o no aplica. */
   asignadoPorUsername: string | null;
   canceladoPorUsername: string | null;
+  /**
+   * Retirado / Entregado solo en el lugar (2026-09-28): fueraZona = el cadete usó "Estoy en el lugar"
+   * lejos del punto (con foto); distanciaM = a cuántos metros marcó. null en pedidos anteriores.
+   */
+  retiroFueraZona?: boolean | null;
+  retiroDistanciaM?: number | null;
+  entregaFueraZona?: boolean | null;
+  entregaDistanciaM?: number | null;
+  ubicacionSimulada?: boolean | null;
+  ubicacionImprecisa?: boolean | null;
+  /** Finalizado a mano desde el panel: quién y por qué. */
+  finalizadoPorAdmin?: string | null;
+  finalizadoAdminMotivo?: string | null;
 }
 
 export interface Parada {
@@ -90,6 +103,9 @@ export interface Parada {
   lat: number;
   lng: number;
   entregadoEn: string | null;
+  fueraZona?: boolean | null;
+  distanciaM?: number | null;
+  fotoUrl?: string | null;
 }
 
 export interface PuntoTrayecto {
