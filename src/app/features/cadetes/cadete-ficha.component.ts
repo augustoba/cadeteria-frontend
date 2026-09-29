@@ -5,6 +5,7 @@ import { CadeteService } from '../../core/services/cadete.service';
 import { CadeteFicha } from '../../core/models/cadete.model';
 import { TasaAceptacionChartComponent } from './tasa-aceptacion-chart.component';
 import { RegistrosEnElLugarComponent } from './registros-en-el-lugar.component';
+import { AvisosCalleCadeteComponent } from './avisos-calle-cadete.component';
 
 type RangoFicha = 'hoy' | 'semana' | 'mes' | 'todo';
 type Solapa = 'desempeno' | 'personales' | 'vehiculo' | 'incidencias' | 'historial';
@@ -37,7 +38,7 @@ function inicioDeMesIso(): string {
  */
 @Component({
   selector: 'app-cadete-ficha',
-  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent, RegistrosEnElLugarComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent, RegistrosEnElLugarComponent, AvisosCalleCadeteComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-wrap gap-2">
@@ -167,6 +168,7 @@ function inicioDeMesIso(): string {
             </div>
 
             <app-registros-en-el-lugar [cadeteId]="f.cadete.id" />
+            <app-avisos-calle-cadete [cadeteId]="f.cadete.id" />
 
             <section class="border border-gray-200 rounded p-3">
               <h2 class="font-semibold text-gray-700 mb-2">Tasa de aceptación de ofertas</h2>
@@ -202,6 +204,17 @@ function inicioDeMesIso(): string {
                   <dd>{{ f.cadete.turnoInicio && f.cadete.turnoFin ? f.cadete.turnoInicio.slice(0, 5) + ' a ' + f.cadete.turnoFin.slice(0, 5) : 'Sin turno fijo' }}</dd>
                 </div>
                 <div><dt>Versión de la app</dt><dd>{{ f.cadete.ultimaVersionApp ?? '—' }}</dd></div>
+                <div>
+                  <dt>Mayor de 18 años</dt>
+                  <dd>
+                    @if (f.cadete.mayorEdadDeclaradaEn) {
+                      ✔ Declarado el {{ f.cadete.mayorEdadDeclaradaEn | date: 'dd/MM/yyyy HH:mm' }}
+                      {{ f.cadete.mayorEdadDeclaradaPor === 'postulante' ? '(lo tildó en el formulario de alta)' : '(lo cargó ' + f.cadete.mayorEdadDeclaradaPor + ')' }}
+                    } @else {
+                      <span class="text-amber-700">Sin constancia (cargado antes del 26/09/2026)</span>
+                    }
+                  </dd>
+                </div>
                 <div class="sm:col-span-2"><dt>Notas internas</dt><dd class="whitespace-pre-line">{{ f.cadete.notasInternas || '—' }}</dd></div>
               </dl>
               <h2 class="subtitulo">Documentación</h2>

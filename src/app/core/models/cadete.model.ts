@@ -59,6 +59,9 @@ export interface Cadete {
   /** Última versión de APK con la que se logueó — null si nunca lo reportó (mejora 2026-09-17). */
   ultimaVersionApp: number | null;
   ultimaVersionAppEn: string | null;
+  /** Constancia de mayor de edad: cuándo y quién ("postulante" o el admin que lo cargó). null en los viejos. */
+  mayorEdadDeclaradaEn?: string | null;
+  mayorEdadDeclaradaPor?: string | null;
 }
 
 export interface CadeteEstadoLog {

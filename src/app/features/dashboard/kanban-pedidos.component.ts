@@ -1,5 +1,6 @@
-import { Component, EventEmitter, Input, OnChanges, Output, computed, signal } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, Input, OnChanges, Output, computed, inject, signal } from '@angular/core';
 import { Pedido } from '../../core/models/pedido.model';
+import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { claseEstadoPedido } from './tabla-pedidos.component';
 
 type Accion =
@@ -13,7 +14,9 @@ type Accion =
   | 'imprimir'
   | 'detalle'
   | 'incidencia'
-  | 'prioritario';
+  | 'prioritario'
+  | 'reclamo-visto'
+  | 'reclamo-cerrar';
 
 interface Columna {
   estadoId: string;
@@ -54,6 +57,11 @@ const COLUMNAS: Columna[] = [
               <div
                 class="bg-white rounded border border-gray-200 shadow-sm p-2.5 text-xs flex flex-col gap-1.5"
                 [class.bg-amber-50]="p.prioritario"
+                [class.reclamo-retiro]="reclamoActivo(p) && p.reclamoTipo === 'DEMORA_RETIRO'"
+                [class.reclamo-entrega]="reclamoActivo(p) && p.reclamoTipo === 'DEMORA_ENTREGA'"
+                [class.reclamo-problema]="reclamoActivo(p) && p.reclamoTipo === 'PROBLEMA_ENTREGA'"
+                [class.reclamo-parpadea]="p.reclamoEstado === 'ABIERTO'"
+                [class.sin-asignar-urgente]="sinAsignarHaceRato(p)"
                 [class.cursor-grab]="col.estadoId === 'SIN_ASIGNAR'"
                 [attr.draggable]="col.estadoId === 'SIN_ASIGNAR' ? 'true' : null"
                 (dragstart)="col.estadoId === 'SIN_ASIGNAR' && onDragStart($event, p)"
@@ -78,6 +86,19 @@ const COLUMNAS: Columna[] = [
                 }
                 @if (p.smsFallido) {
                   <div class="text-amber-600">📵 SMS sin enviar</div>
+                }
+                @if (sinAsignarHaceRato(p)) {
+                  <div class="text-[11px] font-semibold text-violet-700">⏰ Sin asignar hace {{ minutosDesde(p.creadoEn) }} min</div>
+                }
+                <!-- Reclamo del cliente: lo mismo que en la tabla (2026-09-29, antes el Kanban no lo mostraba). -->
+                @if (reclamoActivo(p)) {
+                  <div class="flex items-center gap-1 flex-wrap" [title]="p.reclamoDetalle || ''">
+                    <span class="text-[11px] font-semibold" [class]="claseTextoReclamo(p)">📣 {{ textoReclamo(p) }}</span>
+                    @if (p.reclamoEstado === 'ABIERTO') {
+                      <button type="button" class="btn-reclamo" (click)="accion.emit({ accion: 'reclamo-visto', pedido: p })">Visto</button>
+                    }
+                    <button type="button" class="btn-reclamo" (click)="accion.emit({ accion: 'reclamo-cerrar', pedido: p })">Cerrar</button>
+                  </div>
                 }
                 <div class="flex gap-1 flex-wrap pt-1 border-t border-gray-100 mt-0.5">
                   @if (col.estadoId === 'SIN_ASIGNAR') {
@@ -139,6 +160,38 @@ const COLUMNAS: Columna[] = [
         border-radius: 0.25rem;
         white-space: nowrap;
       }
+      /* Mismos colores que la tabla (tabla-pedidos.component.ts): reclamo por tipo, parpadea hasta
+         "Visto"; sin asignar hace rato en violeta, parpadea hasta que se asigna. */
+      .reclamo-retiro {
+        background-color: rgba(245, 158, 11, 0.18);
+      }
+      .reclamo-entrega {
+        background-color: rgba(249, 115, 22, 0.22);
+      }
+      .reclamo-problema {
+        background-color: rgba(220, 38, 38, 0.2);
+      }
+      .sin-asignar-urgente {
+        background-color: rgba(139, 92, 246, 0.2);
+        animation: parpadeo-reclamo 1s ease-in-out infinite;
+      }
+      .reclamo-parpadea {
+        animation: parpadeo-reclamo 1s ease-in-out infinite;
+      }
+      @keyframes parpadeo-reclamo {
+        50% {
+          background-color: white;
+        }
+      }
+      .btn-reclamo {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 0 0.4rem;
+        border-radius: 0.25rem;
+        border: 1px solid currentColor;
+        color: #374151;
+        background: white;
+      }
     `,
   ],
 })
@@ -170,5 +223,43 @@ export class KanbanPedidosComponent implements OnChanges {
 
   pedidosDe(estadoId: string): Pedido[] {
     return this.porColumna()[estadoId] ?? [];
+  }
+
+  private readonly config = inject(ConfiguracionService);
+  /** Reloj para "sin asignar hace N min", igual que en la tabla. */
+  readonly ahora = signal(Date.now());
+
+  constructor() {
+    const reloj = setInterval(() => this.ahora.set(Date.now()), 30_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(reloj));
+  }
+
+  minutosDesde(iso: string | null | undefined): number {
+    return iso ? Math.floor((this.ahora() - new Date(iso).getTime()) / 60_000) : 0;
+  }
+
+  /** Mismo criterio que la tabla: sin asignar hace más de "minutos_pedido_urgente_reintentar" (default 30). */
+  sinAsignarHaceRato(p: Pedido): boolean {
+    if (p.estado.id !== 'SIN_ASIGNAR' || !p.creadoEn) return false;
+    const limite = Number(this.config.valores()['minutos_pedido_urgente_reintentar']) || 30;
+    return this.minutosDesde(p.creadoEn) >= limite;
+  }
+
+  reclamoActivo(p: Pedido): boolean {
+    return !!p.reclamoEstado && p.reclamoEstado !== 'CERRADO';
+  }
+
+  textoReclamo(p: Pedido): string {
+    const tipo =
+      p.reclamoTipo === 'DEMORA_RETIRO'
+        ? 'Demora en el retiro'
+        : p.reclamoTipo === 'DEMORA_ENTREGA'
+          ? 'Demora en la entrega'
+          : 'Problema con la entrega';
+    return p.reclamoEstado === 'CONTACTO' ? `${tipo} — pidió que lo contacten` : tipo;
+  }
+
+  claseTextoReclamo(p: Pedido): string {
+    return p.reclamoTipo === 'PROBLEMA_ENTREGA' ? 'text-red-700' : p.reclamoTipo === 'DEMORA_ENTREGA' ? 'text-orange-700' : 'text-amber-700';
   }
 }
