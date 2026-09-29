@@ -647,6 +647,15 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
 
             <section class="bg-white rounded-lg border border-gray-200 p-3">
               <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2.5">Timeline</h3>
+              <!-- Datos del pedido, no de un paso: el intento pudo ser en el Retirado, una parada o la entrega. -->
+              @if (p.ubicacionSimulada) {
+                <div class="text-xs text-red-600 font-medium mb-2">
+                  🚫 En este pedido el cadete intentó marcar con una app de ubicación simulada (GPS falso): no lo dejó.
+                </div>
+              }
+              @if (p.ubicacionImprecisa) {
+                <div class="text-xs text-amber-700 mb-2">📡 En este pedido marcó con la ubicación imprecisa (GPS con mucho error).</div>
+              }
               <div class="flex flex-col">
                 <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
                   <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
@@ -756,14 +765,6 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   </div>
                 }
               </div>
-              @if (p.ubicacionSimulada) {
-                <div class="text-xs text-red-600 font-medium mb-1">
-                  🚫 Intentó marcar con una app de ubicación simulada (GPS falso): no lo dejó.
-                </div>
-              }
-              @if (p.ubicacionImprecisa) {
-                <div class="text-xs text-amber-700 mb-1">📡 Marcó con la ubicación imprecisa (GPS con mucho error).</div>
-              }
               @if (p.retiradoEn) {
                 <a
                   [routerLink]="['/mapa']"

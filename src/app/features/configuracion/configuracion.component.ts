@@ -445,6 +445,16 @@ const PROVEEDORES_KEYS = [
               de subirse, el viaje se registra igual y queda un comentario automático en el pedido.
             </p>
             <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="enLugarControlActivo" name="enLugarControlActivo" />
+              <span class="text-sm text-gray-700">Controlar que "Retirado" y "Entregado" se marquen en el lugar</span>
+            </label>
+            <p class="text-xs text-gray-400 -mt-2">
+              Prendido, el cadete tiene que estar a menos de 150 m del retiro, la parada o el destino (si la dirección
+              está mal ubicada puede marcar con "Estoy en el lugar" y una foto), y no puede marcar con GPS falso.
+              Apagado, marca desde donde sea: solo queda anotado a qué distancia lo hizo. En los dos casos tiene que
+              marcar "Retirado" antes de poder entregar. Los cadetes lo toman al abrir el viaje.
+            </p>
+            <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="checklistDocumentacionObligatorio" name="checklistDocumentacionObligatorio" />
               <span class="text-sm text-gray-700">Exigir carnet + tarjeta verde + foto del vehículo cargados para poder activarse</span>
             </label>
@@ -1036,6 +1046,8 @@ export class ConfiguracionComponent implements OnInit {
   firmaReceptorObligatoria = false;
   fotoRetiroObligatoria = false;
   fotoEntregaObligatoria = true;
+  /** Retirado/Entregado solo en el lugar (2026-09-28): interruptor por si en producción frena de más. */
+  enLugarControlActivo = true;
   checklistDocumentacionObligatorio = false;
   telefonoSoporte = '';
   metaMensualFacturacion: number | null = null;
@@ -1114,6 +1126,7 @@ export class ConfiguracionComponent implements OnInit {
       this.firmaReceptorObligatoria = (v['firma_receptor_obligatoria'] ?? 'false') === 'true';
       this.fotoRetiroObligatoria = (v['foto_retiro_obligatoria'] ?? 'false') === 'true';
       this.fotoEntregaObligatoria = (v['foto_entrega_obligatoria'] ?? 'true') === 'true';
+      this.enLugarControlActivo = (v['en_lugar_control_activo'] ?? 'true') === 'true';
       this.checklistDocumentacionObligatorio = (v['checklist_documentacion_obligatorio'] ?? 'false') === 'true';
       this.telefonoSoporte = v['telefono_soporte'] ?? '';
       this.metaMensualFacturacion = Number(v['meta_mensual_facturacion'] ?? 0);
@@ -1273,6 +1286,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('firma_receptor_obligatoria', String(this.firmaReceptorObligatoria));
     agregarSiCambio('foto_retiro_obligatoria', String(this.fotoRetiroObligatoria));
     agregarSiCambio('foto_entrega_obligatoria', String(this.fotoEntregaObligatoria));
+    agregarSiCambio('en_lugar_control_activo', String(this.enLugarControlActivo));
     agregarSiCambio('checklist_documentacion_obligatorio', String(this.checklistDocumentacionObligatorio));
     agregarSiCambio('telefono_soporte', this.telefonoSoporte);
     agregarSiCambio('meta_mensual_facturacion', String(this.metaMensualFacturacion ?? 0));

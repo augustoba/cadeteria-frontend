@@ -35,8 +35,8 @@ const VARIABLES = [
   standalone: true,
   imports: [FormsModule, DatePipe],
   template: `
-    <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-4">Aviso "en camino" por WhatsApp</h2>
-    <p class="text-xs text-gray-400 -mt-2">
+    <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-4 mb-1">Aviso "en camino" por WhatsApp</h2>
+    <p class="text-xs text-gray-400 mb-3">
       Es el mensaje del botón "Avisar al cliente" del dashboard: abre WhatsApp con este texto escrito. Va por la app de
       WhatsApp, así que las tildes están bien.
     </p>
@@ -78,7 +78,7 @@ const VARIABLES = [
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            class="btn bg-emerald-600 hover:bg-emerald-700"
+            class="text-white text-[0.8125rem] font-medium px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
             [disabled]="guardando() || !texto.includes('{link}') || texto === a.texto"
             (click)="guardar()"
           >
