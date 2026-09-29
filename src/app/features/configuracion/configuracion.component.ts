@@ -30,6 +30,16 @@ const CATEGORIAS: Array<{ id: Categoria; label: string }> = [
  * ni la lógica de guardado cambia — es reorganización visual + texto.
  */
 /** Espejo de ConfiguracionSistema (backend): solo el superadmin las ve y las cambia. */
+/** Cartel "Antes de arrancar" de la app (2026-09-29): los de siempre, iguales a los del backend. */
+const RECORDATORIOS_TITULO_DEFECTO = 'Antes de arrancar';
+const RECORDATORIOS_DEFECTO = [
+  'Llevá toda la documentación en regla (DNI, licencia, cédula del vehículo, seguro).',
+  'No te olvides los elementos de seguridad: casco, cadena y mochila.',
+  'Marcá cada viaje como "Retirado" al levantar el pedido, y "Finalizado" con los datos correspondientes al entregarlo.',
+];
+const RECORDATORIOS_MAX_RENGLONES = 6;
+const RECORDATORIOS_MAX_CARACTERES = 150;
+
 const CLAVES_SISTEMA = new Set([
   'cloudinary_cloud_name', 'cloudinary_upload_preset', 'open_route_service_url',
   'google_cache_pausar_borrado', 'google_cache_dias', 'google_link_vence',
@@ -462,6 +472,66 @@ const PROVEEDORES_KEYS = [
               Apagado (default): un cadete se puede activar aunque le falte cargar documentación. Prendido: si le
               falta algo, la app le avisa qué le falta y no lo deja pasar de "Desconectado" a "Libre".
             </p>
+
+            <div class="border-t border-gray-100 pt-3 flex flex-col gap-3">
+              <label class="flex items-center gap-2">
+                <input type="checkbox" [(ngModel)]="recordatoriosActivo" name="recordatoriosActivo" />
+                <span class="text-sm font-medium text-gray-700">Cartel de recordatorios al entrar a la app</span>
+              </label>
+              <p class="text-xs text-gray-400 -mt-2">
+                Le sale al cadete cada vez que inicia sesión y se cierra solo con "Entendido", que queda registrado en su
+                ficha con lo que decía el cartel. Sin renglones no sale. Si es largo, en el celular se desliza.
+              </p>
+              <div class="grid md:grid-cols-2 gap-4" [class.opacity-50]="!recordatoriosActivo">
+                <div class="flex flex-col gap-2">
+                  <label class="flex flex-col gap-1">
+                    <span class="text-sm text-gray-700">Título</span>
+                    <input class="input" maxlength="60" [(ngModel)]="recordatoriosTitulo" name="recordatoriosTitulo" />
+                  </label>
+                  @for (r of recordatorios; track $index) {
+                    <div class="flex gap-1 items-start">
+                      <div class="flex-1 flex flex-col">
+                        <textarea class="input text-sm" rows="2" [maxLength]="maxCaracteresRecordatorio" [value]="r"
+                          (input)="cambiarRecordatorio($index, $any($event.target).value)"></textarea>
+                        <span class="text-xs text-right" [class]="r.length >= maxCaracteresRecordatorio ? 'text-amber-600' : 'text-gray-400'">
+                          {{ r.length }}/{{ maxCaracteresRecordatorio }}
+                        </span>
+                      </div>
+                      <button type="button" class="px-1.5 text-gray-500 hover:text-gray-800 disabled:opacity-30" title="Subir"
+                        [disabled]="$index === 0" (click)="moverRecordatorio($index, -1)">↑</button>
+                      <button type="button" class="px-1.5 text-gray-500 hover:text-gray-800 disabled:opacity-30" title="Bajar"
+                        [disabled]="$index === recordatorios.length - 1" (click)="moverRecordatorio($index, 1)">↓</button>
+                      <button type="button" class="px-1.5 text-red-500 hover:text-red-700" title="Quitar" (click)="quitarRecordatorio($index)">✕</button>
+                    </div>
+                  }
+                  <div class="flex gap-3 text-sm">
+                    <button type="button" class="text-emerald-700 hover:underline disabled:opacity-40 disabled:no-underline"
+                      [disabled]="recordatorios.length >= maxRenglonesRecordatorio" (click)="agregarRecordatorio()">
+                      + Agregar renglón ({{ recordatorios.length }}/{{ maxRenglonesRecordatorio }})
+                    </button>
+                    <button type="button" class="text-gray-500 hover:underline" (click)="recordatoriosDeSiempre()">Volver a los de siempre</button>
+                  </div>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                  <span class="text-xs text-gray-400">Así lo ve el cadete</span>
+                  <div class="w-[260px] rounded-[28px] border-[6px] border-gray-800 bg-gray-500/60 p-3 h-[360px] flex items-center">
+                    <div class="bg-orange-50 rounded-2xl p-4 w-full flex flex-col max-h-full">
+                      <div class="text-lg text-gray-900 mb-2">{{ recordatoriosTitulo.trim() || tituloRecordatoriosDefecto }}</div>
+                      <div class="overflow-y-auto flex flex-col gap-2 text-[13px] text-gray-800 min-h-0">
+                        @for (r of recordatoriosVisibles(); track $index) {
+                          <div>• {{ r }}</div>
+                        } @empty {
+                          <div class="text-gray-400 italic">Sin renglones: no sale el cartel.</div>
+                        }
+                      </div>
+                      <div class="flex justify-end mt-3">
+                        <span class="bg-orange-500 text-white text-sm rounded-full px-4 py-1.5">Entendido</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
           <section class="flex flex-col gap-4 border-t border-gray-200 pt-4">
@@ -1048,6 +1118,13 @@ export class ConfiguracionComponent implements OnInit {
   fotoEntregaObligatoria = true;
   /** Retirado/Entregado solo en el lugar (2026-09-28): interruptor por si en producción frena de más. */
   enLugarControlActivo = true;
+  recordatoriosActivo = true;
+  recordatoriosTitulo = RECORDATORIOS_TITULO_DEFECTO;
+  recordatorios: string[] = [...RECORDATORIOS_DEFECTO];
+  private recordatoriosIniciales = '';
+  readonly tituloRecordatoriosDefecto = RECORDATORIOS_TITULO_DEFECTO;
+  readonly maxRenglonesRecordatorio = RECORDATORIOS_MAX_RENGLONES;
+  readonly maxCaracteresRecordatorio = RECORDATORIOS_MAX_CARACTERES;
   checklistDocumentacionObligatorio = false;
   telefonoSoporte = '';
   metaMensualFacturacion: number | null = null;
@@ -1127,6 +1204,15 @@ export class ConfiguracionComponent implements OnInit {
       this.fotoRetiroObligatoria = (v['foto_retiro_obligatoria'] ?? 'false') === 'true';
       this.fotoEntregaObligatoria = (v['foto_entrega_obligatoria'] ?? 'true') === 'true';
       this.enLugarControlActivo = (v['en_lugar_control_activo'] ?? 'true') === 'true';
+      this.recordatoriosActivo = (v['recordatorios_entrar_activo'] ?? 'true') !== 'false';
+      this.recordatoriosTitulo = (v['recordatorios_entrar_titulo'] ?? '').trim() || RECORDATORIOS_TITULO_DEFECTO;
+      const numeros = Array.from({ length: RECORDATORIOS_MAX_RENGLONES }, (_, i) => i + 1);
+      // Si nunca se editaron valen los de siempre; si se editaron y quedaron vacíos, no hay cartel.
+      const editados = numeros.some((n) => v['recordatorio_entrar_' + n] !== undefined);
+      this.recordatorios = editados
+        ? numeros.map((n) => (v['recordatorio_entrar_' + n] ?? '').trim()).filter(Boolean)
+        : [...RECORDATORIOS_DEFECTO];
+      this.recordatoriosIniciales = this.firmaRecordatorios();
       this.checklistDocumentacionObligatorio = (v['checklist_documentacion_obligatorio'] ?? 'false') === 'true';
       this.telefonoSoporte = v['telefono_soporte'] ?? '';
       this.metaMensualFacturacion = Number(v['meta_mensual_facturacion'] ?? 0);
@@ -1245,6 +1331,37 @@ export class ConfiguracionComponent implements OnInit {
     });
   }
 
+  recordatoriosVisibles(): string[] {
+    return this.recordatorios.map((r) => r.trim()).filter(Boolean);
+  }
+
+  cambiarRecordatorio(i: number, valor: string): void {
+    this.recordatorios[i] = valor;
+  }
+
+  moverRecordatorio(i: number, delta: number): void {
+    const j = i + delta;
+    if (j < 0 || j >= this.recordatorios.length) return;
+    [this.recordatorios[i], this.recordatorios[j]] = [this.recordatorios[j], this.recordatorios[i]];
+  }
+
+  quitarRecordatorio(i: number): void {
+    this.recordatorios.splice(i, 1);
+  }
+
+  agregarRecordatorio(): void {
+    if (this.recordatorios.length < RECORDATORIOS_MAX_RENGLONES) this.recordatorios.push('');
+  }
+
+  recordatoriosDeSiempre(): void {
+    this.recordatoriosTitulo = RECORDATORIOS_TITULO_DEFECTO;
+    this.recordatorios = [...RECORDATORIOS_DEFECTO];
+  }
+
+  private firmaRecordatorios(): string {
+    return JSON.stringify([this.recordatoriosTitulo.trim(), this.recordatoriosVisibles()]);
+  }
+
   guardar(): void {
     this.mensaje.set(null);
     this.huboError.set(false);
@@ -1288,6 +1405,16 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('foto_entrega_obligatoria', String(this.fotoEntregaObligatoria));
     agregarSiCambio('en_lugar_control_activo', String(this.enLugarControlActivo));
     agregarSiCambio('checklist_documentacion_obligatorio', String(this.checklistDocumentacionObligatorio));
+    agregarSiCambio('recordatorios_entrar_activo', String(this.recordatoriosActivo));
+    // Título y los 6 renglones juntos, solo si se tocaron (cada renglón es una clave: el valor admite 500).
+    if (this.firmaRecordatorios() !== this.recordatoriosIniciales) {
+      cambios.push(['recordatorios_entrar_titulo', this.recordatoriosTitulo.trim()]);
+      const textos = this.recordatoriosVisibles();
+      for (let i = 0; i < RECORDATORIOS_MAX_RENGLONES; i++) {
+        cambios.push(['recordatorio_entrar_' + (i + 1), textos[i] ?? '']);
+      }
+      this.recordatoriosIniciales = this.firmaRecordatorios();
+    }
     agregarSiCambio('telefono_soporte', this.telefonoSoporte);
     agregarSiCambio('meta_mensual_facturacion', String(this.metaMensualFacturacion ?? 0));
     agregarSiCambio('precio_base_viaje', String(this.precioBaseViaje ?? 0));

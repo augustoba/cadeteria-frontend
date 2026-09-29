@@ -6,6 +6,7 @@ import { CadeteFicha } from '../../core/models/cadete.model';
 import { TasaAceptacionChartComponent } from './tasa-aceptacion-chart.component';
 import { RegistrosEnElLugarComponent } from './registros-en-el-lugar.component';
 import { AvisosCalleCadeteComponent } from './avisos-calle-cadete.component';
+import { RecordatoriosCadeteComponent } from './recordatorios-cadete.component';
 
 type RangoFicha = 'hoy' | 'semana' | 'mes' | 'todo';
 type Solapa = 'desempeno' | 'personales' | 'vehiculo' | 'incidencias' | 'historial';
@@ -38,7 +39,7 @@ function inicioDeMesIso(): string {
  */
 @Component({
   selector: 'app-cadete-ficha',
-  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent, RegistrosEnElLugarComponent, AvisosCalleCadeteComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent, RegistrosEnElLugarComponent, AvisosCalleCadeteComponent, RecordatoriosCadeteComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-wrap gap-2">
@@ -169,6 +170,7 @@ function inicioDeMesIso(): string {
 
             <app-registros-en-el-lugar [cadeteId]="f.cadete.id" />
             <app-avisos-calle-cadete [cadeteId]="f.cadete.id" />
+            <app-recordatorios-cadete [cadeteId]="f.cadete.id" />
 
             <section class="border border-gray-200 rounded p-3">
               <h2 class="font-semibold text-gray-700 mb-2">Tasa de aceptación de ofertas</h2>

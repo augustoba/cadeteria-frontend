@@ -217,11 +217,16 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
           <div class="p-4 flex flex-col gap-3">
             <p class="text-sm text-gray-600">
               Se manda a todos los cadetes conectados ahora mismo (Libres u Ocupados, no Desconectados) — por
-              WebSocket si tienen la app abierta, y por notificación push si no.
+              WebSocket si tienen la app abierta, y por notificación push si no. En la app sale como cartel y
+              queda hasta que tocan <b>Entendido</b>: eso es lo que cuenta como "confirmado". Los que estaban
+              desconectados lo ven al abrir la app (si el aviso tiene menos de 3 días).
             </p>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Mensaje</span>
-              <textarea class="input" rows="3" [(ngModel)]="mensajeAviso" name="mensajeAviso" placeholder="Ej: cerramos temprano hoy"></textarea>
+              <textarea class="input" rows="3" maxlength="1000" [(ngModel)]="mensajeAviso" name="mensajeAviso" placeholder="Ej: cerramos temprano hoy"></textarea>
+              <span class="text-xs text-right" [class]="mensajeAviso.length > 300 ? 'text-amber-600' : 'text-gray-400'">
+                {{ mensajeAviso.length }}/1000{{ mensajeAviso.length > 300 ? ' · largo: en el celular hay que deslizar para leerlo' : '' }}
+              </span>
             </label>
 
             @if (avisosRecientes().length > 0) {
@@ -232,7 +237,7 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
                     <div class="bg-gray-50 rounded px-2.5 py-1.5 text-sm">
                       <div class="text-gray-700">{{ a.mensaje }}</div>
                       <div class="text-xs text-gray-400 mt-0.5">
-                        {{ a.enviadoEn | date: 'short' }} · confirmado por {{ a.totalLeido }}/{{ a.totalDestinatarios }}
+                        {{ a.enviadoEn | date: 'short' }} · tocaron Entendido {{ a.totalLeido }}/{{ a.totalDestinatarios }}
                       </div>
                     </div>
                   }
