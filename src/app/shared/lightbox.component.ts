@@ -13,7 +13,8 @@ import { optimizarImagen } from '../core/utils/imagen.util';
         <button type="button" class="absolute top-4 right-4 text-white text-2xl leading-none hover:opacity-80" (click)="lightbox.cerrar()">
           ✕
         </button>
-        <img [src]="optimizar(url, 1600)" class="max-w-full max-h-full rounded shadow-2xl" (click)="$event.stopPropagation()" />
+        <!-- Estirada a la pantalla (2026-09-29): con max-w/max-h una foto chica quedaba del mismo tamaño que la miniatura. -->
+        <img [src]="optimizar(url, 1600)" class="w-full h-full object-contain" (click)="$event.stopPropagation()" />
       </div>
     }
   `,

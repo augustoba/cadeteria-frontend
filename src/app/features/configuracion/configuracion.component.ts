@@ -464,6 +464,24 @@ const PROVEEDORES_KEYS = [
               Apagado, marca desde donde sea: solo queda anotado a qué distancia lo hizo. En los dos casos tiene que
               marcar "Retirado" antes de poder entregar. Los cadetes lo toman al abrir el viaje.
             </p>
+            <label class="flex flex-col gap-1 max-w-sm">
+              <span class="text-sm font-medium text-gray-700">Minutos mínimos entre "Retirado" y "Finalizar"</span>
+              <input type="number" min="0" step="1" class="input" [(ngModel)]="minutosMinimosRetiroEntrega" name="minutosMinimosRetiroEntrega" />
+              <span class="text-xs text-gray-400">
+                El botón "Finalizar" de la app queda apagado con una cuenta regresiva hasta que pasen estos minutos
+                desde el retiro (también si lo marca sin señal: cuenta la hora en que tocó). 0 = sin espera. Desde el
+                panel el admin puede finalizar igual.
+              </span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" [(ngModel)]="celularUnicoActivo" name="celularUnicoActivo" />
+              <span class="text-sm text-gray-700">Un celular por cadete (no puede entrar desde otro celular)</span>
+            </label>
+            <p class="text-xs text-gray-400 -mt-2">
+              El primer celular con el que entra queda vinculado; desde otro no puede entrar y el intento queda en su
+              ficha. Si cambia de celular, en su ficha → Datos personales → "Habilitar nuevo celular". Apagado, entra
+              desde cualquiera pero los intentos igual quedan anotados.
+            </p>
             <label class="flex items-center gap-2">
               <input type="checkbox" [(ngModel)]="checklistDocumentacionObligatorio" name="checklistDocumentacionObligatorio" />
               <span class="text-sm text-gray-700">Exigir carnet + tarjeta verde + foto del vehículo cargados para poder activarse</span>
@@ -1022,6 +1040,14 @@ const PROVEEDORES_KEYS = [
                 <input type="number" min="0" step="1" class="input" [(ngModel)]="retencionChatDias" name="retencionChatDias" />
                 <span class="text-xs text-gray-400">Lo mismo, para las conversaciones del chat interno del panel con cada cadete.</span>
               </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Fotos y audios del chat (días)</span>
+                <input type="number" min="0" step="1" class="input" [(ngModel)]="retencionChatArchivosDias" name="retencionChatArchivosDias" />
+                <span class="text-xs text-gray-400">
+                  Pasados estos días se borran de Cloudinary las fotos y notas de voz del chat (son lo que llena el plan
+                  gratis); el mensaje queda con "Foto borrada". El texto sigue según el campo de arriba. 0 = nunca.
+                </span>
+              </label>
             </div>
           </section>
 
@@ -1118,6 +1144,10 @@ export class ConfiguracionComponent implements OnInit {
   fotoEntregaObligatoria = true;
   /** Retirado/Entregado solo en el lugar (2026-09-28): interruptor por si en producción frena de más. */
   enLugarControlActivo = true;
+  /** Espera mínima entre Retirado y Finalizar (2026-09-29); 0 = sin espera. */
+  minutosMinimosRetiroEntrega: number | null = 10;
+  /** Un celular por cadete (2026-09-29): interruptor por si en producción traba a alguien. */
+  celularUnicoActivo = true;
   recordatoriosActivo = true;
   recordatoriosTitulo = RECORDATORIOS_TITULO_DEFECTO;
   recordatorios: string[] = [...RECORDATORIOS_DEFECTO];
@@ -1171,6 +1201,8 @@ export class ConfiguracionComponent implements OnInit {
   verificacionTelefonoActiva = false;
   retencionWhatsappDias: number | null = null;
   retencionChatDias: number | null = null;
+  /** Fotos y audios del chat (2026-09-29): se borran de Cloudinary antes que el texto. */
+  retencionChatArchivosDias: number | null = 30;
 
   readonly guardando = signal(false);
   readonly mensaje = signal<string | null>(null);
@@ -1204,6 +1236,8 @@ export class ConfiguracionComponent implements OnInit {
       this.fotoRetiroObligatoria = (v['foto_retiro_obligatoria'] ?? 'false') === 'true';
       this.fotoEntregaObligatoria = (v['foto_entrega_obligatoria'] ?? 'true') === 'true';
       this.enLugarControlActivo = (v['en_lugar_control_activo'] ?? 'true') === 'true';
+      this.minutosMinimosRetiroEntrega = Number(v['minutos_minimos_retiro_entrega'] ?? 10);
+      this.celularUnicoActivo = (v['celular_unico_activo'] ?? 'true') === 'true';
       this.recordatoriosActivo = (v['recordatorios_entrar_activo'] ?? 'true') !== 'false';
       this.recordatoriosTitulo = (v['recordatorios_entrar_titulo'] ?? '').trim() || RECORDATORIOS_TITULO_DEFECTO;
       const numeros = Array.from({ length: RECORDATORIOS_MAX_RENGLONES }, (_, i) => i + 1);
@@ -1254,6 +1288,7 @@ export class ConfiguracionComponent implements OnInit {
       this.verificacionTelefonoActiva = (v['verificacion_telefono_activa'] ?? 'false') === 'true';
       this.retencionWhatsappDias = Number(v['retencion_whatsapp_dias'] ?? 0);
       this.retencionChatDias = Number(v['retencion_chat_dias'] ?? 0);
+      this.retencionChatArchivosDias = Number(v['retencion_chat_archivos_dias'] ?? 30);
     });
   }
 
@@ -1404,6 +1439,8 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('foto_retiro_obligatoria', String(this.fotoRetiroObligatoria));
     agregarSiCambio('foto_entrega_obligatoria', String(this.fotoEntregaObligatoria));
     agregarSiCambio('en_lugar_control_activo', String(this.enLugarControlActivo));
+    agregarSiCambio('minutos_minimos_retiro_entrega', String(this.minutosMinimosRetiroEntrega ?? 10));
+    agregarSiCambio('celular_unico_activo', String(this.celularUnicoActivo));
     agregarSiCambio('checklist_documentacion_obligatorio', String(this.checklistDocumentacionObligatorio));
     agregarSiCambio('recordatorios_entrar_activo', String(this.recordatoriosActivo));
     // Título y los 6 renglones juntos, solo si se tocaron (cada renglón es una clave: el valor admite 500).
@@ -1453,6 +1490,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('verificacion_telefono_activa', String(this.verificacionTelefonoActiva));
     agregarSiCambio('retencion_whatsapp_dias', String(this.retencionWhatsappDias ?? 0));
     agregarSiCambio('retencion_chat_dias', String(this.retencionChatDias ?? 0));
+    agregarSiCambio('retencion_chat_archivos_dias', String(this.retencionChatArchivosDias ?? 30));
 
     if (!cambios.length) {
       this.mensaje.set('No hay cambios para guardar.');

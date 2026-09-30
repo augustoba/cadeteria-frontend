@@ -6,6 +6,7 @@ import { CadeteFicha } from '../../core/models/cadete.model';
 import { TasaAceptacionChartComponent } from './tasa-aceptacion-chart.component';
 import { RegistrosEnElLugarComponent } from './registros-en-el-lugar.component';
 import { AvisosCalleCadeteComponent } from './avisos-calle-cadete.component';
+import { CelularCadeteComponent } from './celular-cadete.component';
 import { RecordatoriosCadeteComponent } from './recordatorios-cadete.component';
 
 type RangoFicha = 'hoy' | 'semana' | 'mes' | 'todo';
@@ -39,7 +40,7 @@ function inicioDeMesIso(): string {
  */
 @Component({
   selector: 'app-cadete-ficha',
-  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent, RegistrosEnElLugarComponent, AvisosCalleCadeteComponent, RecordatoriosCadeteComponent],
+  imports: [RouterLink, DecimalPipe, DatePipe, TasaAceptacionChartComponent, RegistrosEnElLugarComponent, AvisosCalleCadeteComponent, RecordatoriosCadeteComponent, CelularCadeteComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-wrap gap-2">
@@ -219,6 +220,7 @@ function inicioDeMesIso(): string {
                 </div>
                 <div class="sm:col-span-2"><dt>Notas internas</dt><dd class="whitespace-pre-line">{{ f.cadete.notasInternas || '—' }}</dd></div>
               </dl>
+              <app-celular-cadete [cadeteId]="f.cadete.id" />
               <h2 class="subtitulo">Documentación</h2>
               <div class="docs">
               @if (f.cadete.fotoUrl; as url) {
