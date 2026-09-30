@@ -8,6 +8,7 @@ import { SeguridadService } from '../../core/services/seguridad.service';
 import { SaludService, Salud } from '../../core/services/salud.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AccesoLog } from '../../core/models/acceso-log.model';
+import { ApkCadetesComponent } from './apk-cadetes.component';
 import { AvisoEnCaminoEditorComponent } from './aviso-en-camino-editor.component';
 
 type Categoria = 'pedidos' | 'cadetes' | 'integraciones' | 'marca' | 'sistema';
@@ -61,7 +62,7 @@ const PROVEEDORES_KEYS = [
 
 @Component({
   selector: 'app-configuracion',
-  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, AvisoEnCaminoEditorComponent],
+  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, AvisoEnCaminoEditorComponent, ApkCadetesComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -1050,6 +1051,8 @@ const PROVEEDORES_KEYS = [
               </label>
             </div>
           </section>
+
+          <app-apk-cadetes />
 
           <section class="flex flex-col gap-3 border-t border-gray-200 pt-4">
             <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Zona de emergencia</h2>

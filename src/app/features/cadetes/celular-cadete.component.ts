@@ -11,7 +11,19 @@ interface CelularCadete {
   intentosOtroCelular: number;
   ultimoIntentoOtroCelularEn: string | null;
   ultimoIntentoOtroCelularModelo: string | null;
+  /** "NOTIFICACIONES,BATERIA"; '' = todos dados; null = la app nunca lo informó. */
+  permisosFaltantes: string | null;
+  permisosInformadosEn: string | null;
+  ultimoLinkApkEn: string | null;
+  ultimoLinkApkDescargadoEn: string | null;
 }
+
+const NOMBRE_PERMISO: Record<string, string> = {
+  UBICACION: 'Ubicación precisa',
+  NOTIFICACIONES: 'Notificaciones',
+  MICROFONO: 'Micrófono',
+  BATERIA: 'Batería sin restricciones',
+};
 
 /**
  * Ficha del cadete → Datos personales: el celular con el que puede entrar (2026-09-29, un celular por
@@ -66,6 +78,45 @@ interface CelularCadete {
             </div>
           }
         }
+        @if (d.permisosFaltantes != null) {
+          @if (d.permisosFaltantes) {
+            <div class="text-amber-700">
+              ⚠️ A la app le faltan permisos: {{ nombresPermisos(d.permisosFaltantes) }}
+              (informado el {{ d.permisosInformadosEn | date: 'dd/MM/yyyy HH:mm' }}). Sin ellos no puede trabajar.
+            </div>
+          } @else {
+            <div class="text-gray-500 text-xs">✔ La app tiene todos los permisos ({{ d.permisosInformadosEn | date: 'dd/MM HH:mm' }}).</div>
+          }
+        }
+
+        <div class="border-t border-gray-100 pt-2 flex flex-col gap-1">
+          <span class="font-medium text-gray-700">Descargar la app</span>
+          @if (d.ultimoLinkApkEn) {
+            <span class="text-xs text-gray-500">
+              Último link: {{ d.ultimoLinkApkEn | date: 'dd/MM/yyyy HH:mm' }} —
+              {{ d.ultimoLinkApkDescargadoEn ? 'descargado el ' + (d.ultimoLinkApkDescargadoEn | date: 'dd/MM HH:mm') : 'todavía no lo usó' }}
+            </span>
+          }
+          @if (puedeHabilitar) {
+            <button type="button" class="self-start text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
+                    [disabled]="enviando()" (click)="generarLink()">
+              Generar link de descarga
+            </button>
+          }
+          @if (link(); as l) {
+            <div class="bg-gray-50 border border-gray-200 rounded p-2 flex flex-col gap-1">
+              <span class="text-xs text-gray-500">
+                Pasáselo por WhatsApp. Es personal, sirve una sola vez y vence el {{ l.venceEn | date: 'dd/MM HH:mm' }}.
+              </span>
+              <div class="flex gap-2 items-center">
+                <input class="input text-xs font-mono flex-1" [value]="l.url" readonly />
+                <button type="button" class="text-sm px-3 py-1.5 rounded border border-gray-300" (click)="copiar(l.url)">
+                  {{ copiado() ? '✔ Copiado' : 'Copiar' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
         @if (error()) {
           <div class="text-red-600">{{ error() }}</div>
         }
@@ -90,6 +141,33 @@ export class CelularCadeteComponent {
         .get<CelularCadete>(apiUrl(`/admin/cadetes/${id}/celular`))
         .subscribe({ next: (d) => this.datos.set(d), error: () => this.datos.set(null) });
     });
+  }
+
+  readonly link = signal<{ url: string; venceEn: string } | null>(null);
+  readonly copiado = signal(false);
+
+  nombresPermisos(faltantes: string): string {
+    return faltantes.split(',').filter(Boolean).map((p) => NOMBRE_PERMISO[p] ?? p).join(', ');
+  }
+
+  generarLink(): void {
+    this.enviando.set(true);
+    this.error.set(null);
+    this.copiado.set(false);
+    this.http.post<{ url: string; venceEn: string }>(apiUrl(`/admin/cadetes/${this.cadeteId()}/celular/link-apk`), {}).subscribe({
+      next: (l) => {
+        this.link.set(l);
+        this.enviando.set(false);
+      },
+      error: (e) => {
+        this.error.set(e?.error?.message ?? 'No se pudo generar el link.');
+        this.enviando.set(false);
+      },
+    });
+  }
+
+  copiar(url: string): void {
+    navigator.clipboard?.writeText(url).then(() => this.copiado.set(true));
   }
 
   habilitarNuevo(): void {

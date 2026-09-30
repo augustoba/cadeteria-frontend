@@ -67,7 +67,7 @@ function inicioDeMesIso(): string {
             <div class="p-5 flex flex-col gap-3 text-sm">
               <p class="text-gray-600">
                 Pasásela al cadete por un canal seguro — esta es la única vez que la vas a poder ver.
-                <strong>Tiene 10 minutos para entrar con esta contraseña</strong> — si se vence, volvé acá para reenviarle otra.
+                <strong>Tiene 24 horas para entrar con esta contraseña</strong> — si se vence, volvé acá para reenviarle otra.
               </p>
               <div class="bg-gray-50 border border-gray-200 rounded p-3">
                 <span class="text-xs text-gray-400">Contraseña temporal</span>
