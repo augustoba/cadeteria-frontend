@@ -33,6 +33,29 @@ export class GeocodingPublicoService {
     }
   }
 
+  /** Solo la base propia del backend: contesta al instante. */
+  async searchPropias(text: string): Promise<GeoAddress[]> {
+    return this.buscarEn('/publico/direcciones/buscar-propias', text);
+  }
+
+  /**
+   * Solo los servicios de afuera (tardan unos segundos). Vacío si la base ya lo resolvió o si la
+   * búsqueda externa está apagada en Configuración.
+   */
+  async searchExternas(text: string): Promise<GeoAddress[]> {
+    return this.buscarEn('/publico/direcciones/buscar-externas', text);
+  }
+
+  private async buscarEn(ruta: string, text: string): Promise<GeoAddress[]> {
+    const q = text.trim();
+    if (q.length < 4) return [];
+    try {
+      return await firstValueFrom(this.http.get<GeoAddress[]>(apiUrl(ruta), { params: { q } }));
+    } catch {
+      return [];
+    }
+  }
+
   /**
    * "No está mi dirección — buscar de nuevo": saltea la cache del backend y prueba Google si hay
    * key cargada (si no, vuelve a consultar los gratuitos).

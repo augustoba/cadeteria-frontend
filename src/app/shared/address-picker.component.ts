@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subject, debounce, distinctUntilChanged, switchMap, timer } from 'rxjs';
+import { Observable, Subject, debounce, distinctUntilChanged, switchMap, timer } from 'rxjs';
 import * as L from 'leaflet';
 import { GeoAddress } from '../core/models/geo-address.model';
 import { GeocodingPublicoService } from '../core/services/geocoding-publico.service';
@@ -99,6 +99,26 @@ function empiezaComoLink(texto: string): boolean {
   return /^\s*(https?(:\/{0,2})?$|www\.|maps\.|goo\.gl)/i.test(texto);
 }
 
+/**
+ * Lo propio con altura exacta, después lo de afuera y al final lo propio "sin altura exacta" (que
+ * solo sirve si nadie dio con el número). Sin repetir la misma dirección.
+ */
+function juntar(propias: GeoAddress[], externas: GeoAddress[]): GeoAddress[] {
+  const vistas = new Set<string>();
+  const exactasDeAfuera = externas.some((a) => !a.approximate);
+  const orden = [
+    ...propias.filter((a) => !a.approximate),
+    ...externas,
+    ...(exactasDeAfuera ? [] : propias.filter((a) => a.approximate)),
+  ];
+  return orden.filter((a) => {
+    const clave = a.label.toLowerCase();
+    if (vistas.has(clave)) return false;
+    vistas.add(clave);
+    return true;
+  });
+}
+
 function pareceLink(texto: string): boolean {
   return /https?:\/\//i.test(texto) || /goo\.gl\//i.test(texto) || /google\.[a-z.]+\/maps/i.test(texto);
 }
@@ -160,6 +180,9 @@ function pareceLink(texto: string): boolean {
           <p class="text-xs text-red-600 mt-1">{{ errorLink() }}</p>
         } @else if (searching()) {
           <p class="text-xs text-gray-400 mt-1">{{ ampliada() ? 'Buscando en más lugares…' : 'Buscando…' }}</p>
+        } @else if (buscandoAfuera() && !results().length) {
+          <!-- 2026-10-03: la base propia ya contestó (nada); falta lo de los servicios de afuera. -->
+          <p class="text-xs text-gray-400 mt-1">No está entre las direcciones conocidas. Buscando en más lugares…</p>
         } @else if (query().length >= 4 && !results().length) {
           <p class="text-xs text-gray-500 mt-1">
             @if (!ampliada()) {
@@ -206,6 +229,9 @@ function pareceLink(texto: string): boolean {
                   }
                 </button>
               </li>
+            }
+            @if (buscandoAfuera()) {
+              <li class="px-3 py-2 text-xs text-gray-400 border-b border-gray-100">Buscando en más lugares…</li>
             }
             <li>
               @if (!ampliada()) {
@@ -350,6 +376,8 @@ export class AddressPickerComponent {
   readonly query = signal('');
   readonly results = signal<GeoAddress[]>([]);
   readonly searching = signal(false);
+  /** Lo propio ya está en la lista; todavía no contestaron los servicios de afuera. */
+  readonly buscandoAfuera = signal(false);
   /** true después de "buscar de nuevo": la próxima salida ya es ubicarla a mano. */
   readonly ampliada = signal(false);
   readonly selected = signal<GeoAddress | null>(null);
@@ -422,15 +450,13 @@ export class AddressPickerComponent {
         debounce((q) => timer(alturaAMedias(q) ? 1500 : 600)),
         distinctUntilChanged()
       )
-      .pipe(
-        switchMap((q) => {
-          this.searching.set(true);
-          return this.geocoding.search(q);
-        })
-      )
-      .subscribe((res) => {
+      .pipe(switchMap((q) => this.buscarEnDosEtapas(q)))
+      .subscribe(({ lista, falta }) => {
+        // Si ya eligió una dirección o pegó un link, lo que llegue tarde de afuera no vuelve a abrir la lista.
+        if (this.selected() || pareceLink(this.query())) return;
         this.searching.set(false);
-        this.results.set(res);
+        this.buscandoAfuera.set(falta);
+        this.results.set(lista);
       });
 
     // (re)crear el mapa cuando hay una dirección elegida y el div ya existe
@@ -446,6 +472,33 @@ export class AddressPickerComponent {
       clearTimeout(this.esperaDireccionLink);
       clearTimeout(this.esperaSugerencias);
       this.map?.remove();
+    });
+  }
+
+  /**
+   * La base propia contesta al instante y los servicios de afuera tardan segundos (2026-10-03: se
+   * esperaba 8 a 15 s por direcciones que la base ya tenía). Se piden las dos cosas a la vez: lo
+   * propio se muestra apenas llega y lo de afuera se agrega después, sin mover lo que ya estaba.
+   * Con otra búsqueda en el medio, switchMap descarta lo que quede por llegar de esta.
+   */
+  private buscarEnDosEtapas(q: string): Observable<{ lista: GeoAddress[]; falta: boolean }> {
+    return new Observable((sub) => {
+      let cancelada = false;
+      this.searching.set(true);
+      this.buscandoAfuera.set(false);
+      const afuera = this.geocoding.searchExternas(q);
+      (async () => {
+        const propias = await this.geocoding.searchPropias(q);
+        if (cancelada) return;
+        sub.next({ lista: propias, falta: true });
+        const externas = await afuera;
+        if (cancelada) return;
+        sub.next({ lista: juntar(propias, externas), falta: false });
+        sub.complete();
+      })();
+      return () => {
+        cancelada = true;
+      };
     });
   }
 
@@ -615,6 +668,7 @@ export class AddressPickerComponent {
     this.selected.set(addr);
     this.pin.set({ lat: addr.lat, lng: addr.lng });
     this.fuente.set(addr.proveedor ?? null);
+    this.buscandoAfuera.set(false);
     this.sugerencias.set([]);
     this.results.set([]);
     this.query.set(addr.label);
