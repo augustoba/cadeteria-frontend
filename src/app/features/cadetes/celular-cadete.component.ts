@@ -36,7 +36,7 @@ const NOMBRE_PERMISO: Record<string, string> = {
   imports: [DatePipe],
   template: `
     @if (datos(); as d) {
-      <h2 class="subtitulo">Celular</h2>
+      <h2 class="subtitulo" id="celular">Celular</h2>
       <div class="border border-gray-200 rounded p-3 flex flex-col gap-2 text-sm">
         @if (d.modelo || d.vinculadoEn) {
           <div>
@@ -52,6 +52,13 @@ const NOMBRE_PERMISO: Record<string, string> = {
             ⚠️ Intentó entrar desde otro celular {{ d.intentosOtroCelular }} {{ d.intentosOtroCelular === 1 ? 'vez' : 'veces' }}
             (el último: {{ d.ultimoIntentoOtroCelularModelo || 'modelo desconocido' }},
             {{ d.ultimoIntentoOtroCelularEn | date: 'dd/MM/yyyy HH:mm' }}).
+          </div>
+        }
+        @if (!puedeHabilitar && (d.modelo || d.vinculadoEn)) {
+          <!-- 2026-10-03: sin el permiso el botón no aparecía y no había forma de saber por qué. -->
+          <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+            Si el cadete cambió de celular hay que habilitarle el nuevo desde acá, pero tu usuario no tiene el permiso
+            <strong>"Habilitar nuevo celular de un cadete"</strong>. Se da en Roles (lo puede hacer un administrador).
           </div>
         }
         @if (puedeHabilitar && (d.modelo || d.vinculadoEn)) {
@@ -126,6 +133,14 @@ const NOMBRE_PERMISO: Record<string, string> = {
 })
 export class CelularCadeteComponent {
   private readonly http = inject(HttpClient);
+
+  /** Desde "📱 Celular" de la lista se llega con #celular: la sección está al final de la ficha. */
+  private irAlCelularSiSePidio(): void {
+    if (location.hash !== '#celular') return;
+    [300, 900].forEach((ms) =>
+      setTimeout(() => document.getElementById('celular')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), ms),
+    );
+  }
   readonly cadeteId = input.required<string>();
   readonly datos = signal<CelularCadete | null>(null);
   readonly confirmando = signal(false);
@@ -137,6 +152,7 @@ export class CelularCadeteComponent {
     effect(() => {
       const id = this.cadeteId();
       if (!id) return;
+      this.irAlCelularSiSePidio();
       this.http
         .get<CelularCadete>(apiUrl(`/admin/cadetes/${id}/celular`))
         .subscribe({ next: (d) => this.datos.set(d), error: () => this.datos.set(null) });

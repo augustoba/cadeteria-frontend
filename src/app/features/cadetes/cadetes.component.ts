@@ -184,6 +184,14 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
                     <button type="button" class="btn-mini bg-amber-600 hover:bg-amber-700" (click)="abrirIncidenciaCadete(c)">
                       🚨 Incidencia
                     </button>
+                    <a
+                      [routerLink]="['/cadetes', c.id, 'ficha']"
+                      fragment="celular"
+                      class="btn-mini bg-gray-600 hover:bg-gray-700"
+                      title="Ver el celular vinculado y habilitar uno nuevo si lo cambió"
+                    >
+                      📱 Celular
+                    </a>
                     <a [routerLink]="['/cadetes', c.id, 'ficha']" class="btn-mini bg-gray-600 hover:bg-gray-700">📊 Ficha</a>
                     <a [routerLink]="['/cadetes', c.id]" class="btn-mini bg-brand-600 hover:bg-brand-700">Editar</a>
                   </td>

@@ -545,7 +545,8 @@ export class CadeteFichaComponent implements OnInit {
   readonly ficha = signal<CadeteFicha | null>(null);
   readonly rango = signal<RangoFicha>('todo');
   readonly passwordGenerada = signal<string | null>(null);
-  readonly solapa = signal<Solapa>('desempeno');
+  /** Desde "📱 Celular" de la lista (#celular) se abre directo en Datos personales, que es donde está. */
+  readonly solapa = signal<Solapa>(this.route.snapshot.fragment === 'celular' ? 'personales' : 'desempeno');
   readonly solapas: Array<{ valor: Solapa; etiqueta: string }> = [
     { valor: 'desempeno', etiqueta: 'Desempeño' },
     { valor: 'personales', etiqueta: 'Datos personales' },

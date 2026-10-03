@@ -55,9 +55,24 @@ interface ApkInfo {
         las 24 h; los que ya se mandaron bajan siempre la APK que esté subida. Con "Obligar a actualizar", al cadete
         con una versión vieja le aparece "Descargar la nueva versión" al entrar.
       </p>
+      <!-- 2026-10-03: se elegía el archivo, se tocaba "Guardar cambios" (que no la sube) y parecía subida. -->
+      <p class="text-xs text-gray-500 -mt-1">
+        Esta sección no usa "Guardar cambios": la APK se sube con el botón de acá abajo.
+      </p>
+      @if (archivo && !subiendo()) {
+        <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 max-w-2xl">
+          ⚠️ Elegiste <strong>{{ archivo.name }}</strong> pero todavía no se subió. Revisá la versión
+          @if (obligar) {
+            (va a quedar como <strong>obligatoria</strong>)
+          } @else {
+            (no va a ser obligatoria: las versiones anteriores siguen entrando)
+          }
+          y tocá <strong>Subir APK</strong>.
+        </p>
+      }
       <div class="flex items-center gap-3">
         <button type="button" class="btn bg-brand-600 hover:bg-brand-700" [disabled]="!archivo || subiendo()" (click)="subir()">
-          {{ subiendo() ? 'Subiendo…' : 'Subir APK' }}
+          {{ subiendo() ? 'Subiendo…' : '⬆ Subir APK' }}
         </button>
         @if (mensaje()) {
           <span class="text-sm" [class]="error() ? 'text-red-600' : 'text-emerald-700'">{{ mensaje() }}</span>
@@ -73,6 +88,7 @@ export class ApkCadetesComponent {
   readonly mensaje = signal<string | null>(null);
   readonly error = signal(false);
   archivo: File | null = null;
+  private campoArchivo: HTMLInputElement | null = null;
   version: number | null = null;
   obligar = false;
 
@@ -91,7 +107,8 @@ export class ApkCadetesComponent {
   }
 
   elegir(evento: Event): void {
-    this.archivo = (evento.target as HTMLInputElement).files?.[0] ?? null;
+    this.campoArchivo = evento.target as HTMLInputElement;
+    this.archivo = this.campoArchivo.files?.[0] ?? null;
     this.mensaje.set(null);
   }
 
@@ -110,6 +127,9 @@ export class ApkCadetesComponent {
         this.error.set(false);
         this.mensaje.set(this.obligar ? 'APK subida. Las versiones anteriores ya no pueden entrar.' : 'APK subida.');
         this.obligar = false;
+        // Ya está subida: se vacía el campo para que no quede el aviso de "todavía no se subió".
+        this.archivo = null;
+        if (this.campoArchivo) this.campoArchivo.value = '';
       },
       error: (e) => {
         this.subiendo.set(false);
