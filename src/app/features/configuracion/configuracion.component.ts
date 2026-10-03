@@ -46,6 +46,7 @@ const CLAVES_SISTEMA = new Set([
   'google_cache_pausar_borrado', 'google_cache_dias', 'google_link_vence',
   'frecuencia_ubicacion_seg', 'mapeo_calles_cadetes_intervalo_seg',
   'aprender_gps_precision_max_m', 'aprender_geocoder_precision_max_m', 'reverse_respaldo_max_dia',
+  'busqueda_externa_activa',
   'version_minima_app', 'retencion_imagenes_pedido_dias', 'rate_limit_publico_max', 'rate_limit_publico_ventana_seg',
   'vapid_public_key', 'vapid_private_key', 'proximo_numero_pedido',
   'geoapify_keys', 'locationiq_keys', 'google_geocoding_keys', 'graphhopper_key', 'open_route_service_key',
@@ -635,6 +636,20 @@ const PROVEEDORES_KEYS = [
                   intento vuelve a probar los servicios gratuitos.
                 </span>
               </label>
+              <!-- Buscar solo en la base propia (2026-10-03) -->
+              <div class="sm:col-span-2 flex flex-col gap-2 rounded border border-gray-200 p-3">
+                <span class="text-sm font-medium text-gray-700">Buscador de direcciones</span>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" [(ngModel)]="busquedaExternaActiva" name="busquedaExternaActiva" />
+                  <span class="text-sm text-gray-700">Buscar también en los servicios gratuitos de afuera</span>
+                </label>
+                <span class="text-xs text-gray-400 -mt-1">
+                  Tildado (como venía): si la base propia no tiene la dirección, se consulta a Nominatim, Geoapify y
+                  LocationIQ. Destildado: se busca <strong>solo en la base propia</strong> (con las calles precargadas,
+                  los alias y la búsqueda por parecido) y lo que falte se carga pegando el link de Google Maps. No
+                  cambia el "qué calle hay acá" del mapa.
+                </span>
+              </div>
               <!-- Ubicaciones de Google en la cache de direcciones (2026-09-25) -->
               <div class="sm:col-span-2 flex flex-col gap-2 rounded border border-gray-200 p-3">
                 <span class="text-sm font-medium text-gray-700">Direcciones encontradas con Google</span>
@@ -1176,6 +1191,7 @@ export class ConfiguracionComponent implements OnInit {
   googleGeocodingKeys = '';
   googleCacheDias: number | null = 30;
   googleLinkVence = false;
+  busquedaExternaActiva = true;
   googleCachePausarBorrado = false;
   graphhopperKey = '';
   openRouteServiceKey = '';
@@ -1266,6 +1282,7 @@ export class ConfiguracionComponent implements OnInit {
       this.googleGeocodingKeys = v['google_geocoding_keys'] ?? '';
       this.googleCacheDias = Number(v['google_cache_dias'] ?? 30);
       this.googleLinkVence = (v['google_link_vence'] ?? 'false') === 'true';
+      this.busquedaExternaActiva = (v['busqueda_externa_activa'] ?? 'true') === 'true';
       this.googleCachePausarBorrado = (v['google_cache_pausar_borrado'] ?? 'false') === 'true';
       this.graphhopperKey = v['graphhopper_key'] ?? '';
       this.openRouteServiceKey = v['open_route_service_key'] ?? '';
@@ -1468,6 +1485,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('google_geocoding_keys', this.googleGeocodingKeys);
     agregarSiCambio('google_cache_dias', String(this.googleCacheDias ?? 30));
     agregarSiCambio('google_link_vence', String(this.googleLinkVence));
+    agregarSiCambio('busqueda_externa_activa', String(this.busquedaExternaActiva));
     agregarSiCambio('google_cache_pausar_borrado', String(this.googleCachePausarBorrado));
     agregarSiCambio('graphhopper_key', this.graphhopperKey);
     agregarSiCambio('open_route_service_key', this.openRouteServiceKey);
