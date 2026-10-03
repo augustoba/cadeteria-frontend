@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { Subject, debounce, distinctUntilChanged, switchMap, timer } from 'rxjs';
 import * as L from 'leaflet';
 import { GeoAddress } from '../core/models/geo-address.model';
 import { GeocodingPublicoService } from '../core/services/geocoding-publico.service';
@@ -82,6 +82,18 @@ function cartel(texto: string): HTMLElement {
   return span;
 }
 
+/** "Belgrano 750", "9 de Julio 450": tiene letras y termina en la altura (lo que el backend aprende). */
+function tieneNumero(direccion: string): boolean {
+  return /\p{L}.*[\s,]\d{1,6}\s*$/u.test(direccion.split(',')[0]);
+}
+
+/** Altura a medio escribir ("suipacha 7" camino a "suipacha 750"): conviene esperar antes de buscar. */
+function alturaAMedias(texto: string): boolean {
+  return /\s\d{1,2}$/.test(texto);
+}
+
+const SUFIJO_LINK = /\s*\(ubicaci[oó]n de Google Maps\)\s*$/i;
+
 function pareceLink(texto: string): boolean {
   return /https?:\/\//i.test(texto) || /goo\.gl\//i.test(texto) || /google\.[a-z.]+\/maps/i.test(texto);
 }
@@ -95,6 +107,11 @@ function pareceLink(texto: string): boolean {
  * clic pone el pin y arrastrarlo lo ajusta; con el pin quieto 1 segundo se consulta qué calle hay
  * ahí y se muestra arriba del pin, sin pisar lo que escribió el usuario (la altura tipeada es lo
  * que el backend aprende).
+ * <p>
+ * Con un link pegado (2026-10-03) se pide además "Calle y número": el link solo trae el punto, el
+ * pedido quedaba "Belgrano (ubicación de Google Maps)" y el cadete no sabía la altura (ni el
+ * backend aprendía la dirección). Se precarga con lo que haya — la dirección del link, lo último
+ * que se buscó, o lo que dice el mapa — y hasta que no tenga número no se emite la dirección.
  */
 @Component({
   selector: 'app-address-picker',
@@ -227,7 +244,7 @@ function pareceLink(texto: string): boolean {
               distancia y el precio salen desde el pin.
             </p>
           }
-        } @else if (selected()!.approximate) {
+        } @else if (selected()!.approximate && !esLink()) {
           <!-- Sin altura exacta el pin queda en cualquier punto de la calle, y el precio se calcula
                desde el pin: con "Colombia 4695" daba 5,2 km en vez de 6,2 (2026-09-24). -->
           <p class="text-xs px-3 py-2 bg-amber-50 border-t border-amber-200 text-amber-800">
@@ -236,6 +253,39 @@ function pareceLink(texto: string): boolean {
           </p>
         } @else {
           <p class="text-[11px] px-3 py-1.5 text-gray-400">Doble clic en el mapa o arrastrá el pin para corregirlo.</p>
+        }
+        @if (esLink()) {
+          <div class="px-3 py-2 border-t border-gray-200 bg-white">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Calle y número</label>
+            <input
+              type="text"
+              class="input w-full"
+              [ngModel]="direccionLink()"
+              (ngModelChange)="onDireccionLink($event)"
+              (blur)="emitirDireccionLink()"
+              [ngModelOptions]="{ standalone: true }"
+              placeholder="Ej: Belgrano 750"
+              maxlength="120"
+              autocomplete="off"
+            />
+            @if (!direccionLinkValida()) {
+              <p class="text-xs text-red-600 mt-1">
+                Falta la calle y el número: el link de Google Maps solo trae el punto en el mapa, y quien lleva el pedido
+                necesita la dirección escrita.
+              </p>
+            } @else if (alturaSugerida()) {
+              <p class="text-xs text-amber-700 mt-1">El número lo sugirió el mapa y es aproximado: corregilo si lo sabés.</p>
+            }
+            <label class="flex items-center gap-2 text-xs text-gray-600 mt-1.5">
+              <input
+                type="checkbox"
+                [ngModel]="sinNumero()"
+                (ngModelChange)="onSinNumero($event)"
+                [ngModelOptions]="{ standalone: true }"
+              />
+              Esta dirección no tiene número
+            </label>
+          </div>
         }
       </div>
     }
@@ -291,11 +341,26 @@ export class AddressPickerComponent {
   readonly errorLink = signal<string | null>(null);
   /** Lo último que se escribió que no era un link — es la dirección que queda si después se pega uno. */
   private ultimoTexto = '';
+  /** Lo último que se buscó, aunque después se haya borrado para pegar el link (así se usa en la práctica). */
+  private ultimaBusqueda = '';
+  /** "Calle y número" de un link pegado (el link solo trae el punto). */
+  readonly direccionLink = signal('');
+  readonly sinNumero = signal(false);
+  /** El número de "Calle y número" lo puso el mapa (la cuadra), no una persona ni el link. */
+  readonly alturaSugerida = signal(false);
+
+  readonly esLink = computed(() => this.fuente() === 'google_link');
+  readonly direccionLinkValida = computed(() => {
+    const t = this.direccionLink().trim();
+    return tieneNumero(t) || (this.sinNumero() && t.length >= 3);
+  });
 
   readonly picked = computed<PickedAddress | null>(() => {
     const sel = this.selected();
     const p = this.pin();
     if (!sel || !p) return null;
+    // Un link sin calle y número todavía no es una dirección: el formulario no deja guardar.
+    if (this.esLink() && !this.direccionLinkValida()) return null;
     return { address: sel.label, lat: p.lat, lng: p.lng, approximate: sel.approximate, fuente: this.fuente() };
   });
 
@@ -318,14 +383,17 @@ export class AddressPickerComponent {
   private marker?: L.Marker;
   private esperaReverse?: ReturnType<typeof setTimeout>;
   private esperaLink?: ReturnType<typeof setTimeout>;
+  private esperaDireccionLink?: ReturnType<typeof setTimeout>;
   /** Al crear el mapa, consultar la calle bajo el pin (link pegado) en vez de mostrar la del resultado. */
   private resolverAlIniciar = false;
 
   constructor() {
     this.query$
       .pipe(
-        // 600ms: respeta el límite de ~1 req/s de Nominatim
-        debounceTime(600),
+        // 600ms: respeta el límite de ~1 req/s de Nominatim. Con la altura a medio escribir se
+        // espera más (2026-10-03): "suipacha 7" camino a "suipacha 750" mostraba la cuadra 0 como
+        // encontrada y parecía que la 700 no estaba.
+        debounce((q) => timer(alturaAMedias(q) ? 1500 : 600)),
         distinctUntilChanged()
       )
       .pipe(
@@ -349,6 +417,7 @@ export class AddressPickerComponent {
     this.destroyRef.onDestroy(() => {
       clearTimeout(this.esperaReverse);
       clearTimeout(this.esperaLink);
+      clearTimeout(this.esperaDireccionLink);
       this.map?.remove();
     });
   }
@@ -362,11 +431,16 @@ export class AddressPickerComponent {
       this.query.set('');
       return;
     }
+    // Un pedido viejo cargado con link ("Belgrano (ubicación de Google Maps)") vuelve a pedir el número.
+    const [calle, ...resto] = valor.address.replace(SUFIJO_LINK, '').split(',');
+    this.direccionLink.set(valor.fuente === 'google_link' ? calle.trim() : '');
+    this.sinNumero.set(false);
+    this.alturaSugerida.set(false);
     this.selected.set({
       label: valor.address,
       street: valor.address,
       number: null,
-      locality: '',
+      locality: valor.fuente === 'google_link' ? resto.join(',').trim() : '',
       lat: valor.lat,
       lng: valor.lng,
       approximate: valor.approximate,
@@ -394,10 +468,16 @@ export class AddressPickerComponent {
     }
     this.leyendoLink.set(false);
     this.ultimoTexto = value;
+    // Borrar letra por letra para pegar el link no cuenta como una búsqueda nueva.
+    const t = value.trim();
+    if (t.length >= 4 && !this.ultimaBusqueda.startsWith(t)) this.ultimaBusqueda = t;
     this.query$.next(value.trim());
   }
 
-  /** Link de Google Maps pegado en el campo: el pin salta a ese punto y queda lo que se había escrito. */
+  /**
+   * Link de Google Maps pegado en el campo: el pin salta a ese punto. La calle y el número salen
+   * del link si los trae, y si no de lo que se había escrito o buscado antes; se confirman abajo.
+   */
   private async usarLink(link: string): Promise<void> {
     this.leyendoLink.set(true);
     const r = await this.geocoding.resolverLink(link.trim());
@@ -408,11 +488,15 @@ export class AddressPickerComponent {
       this.errorLink.set(r.error ?? 'No pudimos leer ese link.');
       return;
     }
-    const texto = this.ultimoTexto.trim();
+    const escrito = this.ultimoTexto.trim().length >= 4 ? this.ultimoTexto.trim() : this.ultimaBusqueda;
+    // Sin nada de eso, el reverse propone la calle (y la cuadra) cuando se crea el mapa.
+    const texto = (r.direccion ?? '').trim() || escrito;
     this.resolverAlIniciar = true;
+    this.direccionLink.set(texto);
+    this.sinNumero.set(false);
+    this.alturaSugerida.set(false);
     this.selected.set({
-      // Sin nada escrito antes, el reverse completa la calle (sin altura).
-      label: texto.length >= 4 ? texto : 'Ubicación de Google Maps',
+      label: texto || 'Ubicación de Google Maps',
       street: texto,
       number: null,
       locality: '',
@@ -423,6 +507,36 @@ export class AddressPickerComponent {
     this.pin.set({ lat: r.lat, lng: r.lng });
     this.fuente.set('google_link');
     this.emit();
+  }
+
+  /** Mientras se escribe no se emite cada letra: cada emisión recotiza el pedido. Al salir del campo, sí. */
+  onDireccionLink(valor: string): void {
+    this.direccionLink.set(valor);
+    this.alturaSugerida.set(false);
+    this.actualizarLabelDeLink(false);
+    clearTimeout(this.esperaDireccionLink);
+    this.esperaDireccionLink = setTimeout(() => this.emit(), 600);
+  }
+
+  emitirDireccionLink(): void {
+    clearTimeout(this.esperaDireccionLink);
+    this.emit();
+  }
+
+  onSinNumero(valor: boolean): void {
+    this.sinNumero.set(valor);
+    this.actualizarLabelDeLink();
+  }
+
+  /** "Belgrano 750, San Miguel de Tucumán" (o "Belgrano s/n, ...") a partir de "Calle y número" y la localidad del pin. */
+  private actualizarLabelDeLink(emitir = true): void {
+    const sel = this.selected();
+    if (!sel) return;
+    const t = this.direccionLink().trim().replace(/\s+/g, ' ');
+    const base = this.sinNumero() && t && !tieneNumero(t) ? `${t} s/n` : t;
+    const conLocalidad = sel.locality && !normalizar(base).includes(normalizar(sel.locality)) ? `${base}, ${sel.locality}` : base;
+    this.selected.set({ ...sel, label: base ? conLocalidad : 'Ubicación de Google Maps', street: t });
+    if (emitir) this.emit();
   }
 
   /** Segundo intento: sin cache y con Google si el backend tiene key (ver GeocodingProxyService.buscarAmpliado). */
@@ -479,6 +593,11 @@ export class AddressPickerComponent {
     this.results.set([]);
     this.query.set('');
     this.ultimoTexto = '';
+    this.ultimaBusqueda = '';
+    clearTimeout(this.esperaDireccionLink);
+    this.direccionLink.set('');
+    this.sinNumero.set(false);
+    this.alturaSugerida.set(false);
     this.emit();
   }
 
@@ -517,10 +636,17 @@ export class AddressPickerComponent {
     this.callePinPropia.set(found.proveedor === 'cache');
     this.marker?.setTooltipContent(cartel(found.locality ? `${found.street} · ${found.locality}` : found.street));
     const sel = this.selected()!;
-    if (sel.label === 'Ubicación de Google Maps') {
-      // Link pegado sin haber escrito nada: al menos la calle y la localidad.
-      this.selected.set({ ...sel, label: `${found.street} (ubicación de Google Maps)`, street: found.street, locality: found.locality });
-    } else if (found.locality && this.fuente() !== null && !sel.label.includes(found.locality)) {
+    if (this.esLink()) {
+      this.selected.set({ ...sel, locality: found.locality });
+      if (!this.direccionLink().trim()) {
+        // Link pegado sin nada escrito ni buscado: lo que dice el mapa, para confirmar o corregir.
+        this.direccionLink.set(found.number ? `${found.street} ${found.number}` : found.street);
+        this.alturaSugerida.set(!!found.number);
+      }
+      this.actualizarLabelDeLink();
+      return;
+    }
+    if (found.locality && this.fuente() !== null && !sel.label.includes(found.locality)) {
       // La localidad del texto sale del pin: "Colombia 4695, Yerba Buena" movido a la capital
       // pasa a "Colombia 4695, San Miguel de Tucumán". La calle y la altura quedan como estaban.
       this.selected.set({ ...sel, label: `${sel.label.split(',')[0].trim()}, ${found.locality}`, locality: found.locality });

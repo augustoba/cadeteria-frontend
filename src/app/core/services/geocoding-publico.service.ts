@@ -12,6 +12,13 @@ import { GeoAddress } from '../models/geo-address.model';
  * hardcodeadas y expuestas en el bundle — ese servicio (`geocoding.service.ts`) se eliminó al
  * migrar acá, así que ya no hay ninguna key de geocoding en el front.
  */
+export interface ResultadoLink {
+  lat: number | null;
+  lng: number | null;
+  error: string | null;
+  direccion?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GeocodingPublicoService {
   private readonly http = inject(HttpClient);
@@ -43,17 +50,16 @@ export class GeocodingPublicoService {
   /**
    * Link de Google Maps pegado en el buscador (largo, o corto de "Compartir" en la app) — el
    * backend saca las coordenadas (ver LinkGoogleMapsService). No gasta cupo de Google.
+   * `direccion` es "calle número" cuando el link la trae escrita (una dirección buscada en Google
+   * Maps); con un comercio o un punto marcado a mano viene null.
    */
-  async resolverLink(url: string): Promise<{ lat: number | null; lng: number | null; error: string | null }> {
+  async resolverLink(url: string): Promise<ResultadoLink> {
     try {
       return await firstValueFrom(
-        this.http.get<{ lat: number | null; lng: number | null; error: string | null }>(
-          apiUrl('/publico/direcciones/link'),
-          { params: { url } },
-        ),
+        this.http.get<ResultadoLink>(apiUrl('/publico/direcciones/link'), { params: { url } }),
       );
     } catch {
-      return { lat: null, lng: null, error: 'No pudimos leer ese link. Probá de nuevo.' };
+      return { lat: null, lng: null, error: 'No pudimos leer ese link. Probá de nuevo.', direccion: null };
     }
   }
 
