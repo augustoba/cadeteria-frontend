@@ -48,6 +48,20 @@ export class GeocodingPublicoService {
   }
 
   /**
+   * Calles conocidas para lo que se viene escribiendo sin la altura ("alem" -> "Avenida Alem"): la
+   * base propia ubica por calle + altura, así que se ofrecen para completar el nombre.
+   */
+  async sugerirCalles(text: string): Promise<string[]> {
+    const q = text.trim();
+    if (q.length < 4) return [];
+    try {
+      return await firstValueFrom(this.http.get<string[]>(apiUrl('/publico/direcciones/calles'), { params: { q } }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Link de Google Maps pegado en el buscador (largo, o corto de "Compartir" en la app) — el
    * backend saca las coordenadas (ver LinkGoogleMapsService). No gasta cupo de Google.
    * `direccion` es "calle número" cuando el link la trae escrita (una dirección buscada en Google

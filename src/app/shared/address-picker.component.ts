@@ -120,6 +120,7 @@ function pareceLink(texto: string): boolean {
     @if (!selected()) {
       <div class="relative">
         <input
+          #campoBusqueda
           type="text"
           class="input w-full"
           [ngModel]="query()"
@@ -128,6 +129,22 @@ function pareceLink(texto: string): boolean {
           autocomplete="off"
           name="direccionBusqueda"
         />
+
+        <!-- Sin la altura todavía (2026-10-03): las calles conocidas que coinciden, para completar el nombre. -->
+        @if (sugerencias().length) {
+          <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span class="text-xs text-gray-500">¿Qué calle? Elegila y escribí la altura:</span>
+            @for (calle of sugerencias(); track calle) {
+              <button
+                type="button"
+                (click)="usarSugerencia(calle)"
+                class="text-xs px-2 py-1 rounded-full border border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
+              >
+                {{ calle }}
+              </button>
+            }
+          </div>
+        }
 
         <!-- Tres pasos (2026-09-24): lista normal → "no está, buscar de nuevo" (sin cache, con Google si
              hay key) → "tampoco está, ubicarla a mano". Antes, si la lista traía direcciones pero
@@ -323,6 +340,7 @@ export class AddressPickerComponent {
   readonly addressPicked = output<PickedAddress | null>();
 
   private readonly mapEl = viewChild<ElementRef<HTMLElement>>('mapEl');
+  private readonly campoBusqueda = viewChild<ElementRef<HTMLInputElement>>('campoBusqueda');
 
   readonly query = signal('');
   readonly results = signal<GeoAddress[]>([]);
@@ -338,6 +356,9 @@ export class AddressPickerComponent {
   /** La calle bajo el pin salió de la base propia (lo que confirmaron cadetes o personas), no de OpenStreetMap. */
   readonly callePinPropia = signal(false);
   readonly leyendoLink = signal(false);
+  /** Calles conocidas para lo escrito sin la altura (ver GeocodingPublicoService.sugerirCalles). */
+  readonly sugerencias = signal<string[]>([]);
+  private esperaSugerencias?: ReturnType<typeof setTimeout>;
   readonly errorLink = signal<string | null>(null);
   /** Lo último que se escribió que no era un link — es la dirección que queda si después se pega uno. */
   private ultimoTexto = '';
@@ -418,6 +439,7 @@ export class AddressPickerComponent {
       clearTimeout(this.esperaReverse);
       clearTimeout(this.esperaLink);
       clearTimeout(this.esperaDireccionLink);
+      clearTimeout(this.esperaSugerencias);
       this.map?.remove();
     });
   }
@@ -459,6 +481,7 @@ export class AddressPickerComponent {
     this.ampliada.set(false);
     this.errorLink.set(null);
     clearTimeout(this.esperaLink);
+    this.programarSugerencias(value);
     if (pareceLink(value)) {
       this.results.set([]);
       // Pegado llega de una vez; si alguien lo tipea, se espera a que termine.
@@ -472,6 +495,30 @@ export class AddressPickerComponent {
     const t = value.trim();
     if (t.length >= 4 && !this.ultimaBusqueda.startsWith(t)) this.ultimaBusqueda = t;
     this.query$.next(value.trim());
+  }
+
+  /** Mientras falte la altura, las calles conocidas que coinciden con lo escrito. */
+  private programarSugerencias(value: string): void {
+    clearTimeout(this.esperaSugerencias);
+    const texto = value.trim();
+    if (pareceLink(value) || texto.length < 4 || tieneNumero(texto)) {
+      this.sugerencias.set([]);
+      return;
+    }
+    this.esperaSugerencias = setTimeout(async () => {
+      const calles = await this.geocoding.sugerirCalles(texto);
+      // si mientras tanto siguió escribiendo, estas ya no corresponden
+      if (this.query().trim() === texto) this.sugerencias.set(calles);
+    }, 400);
+  }
+
+  /** Deja el nombre completo de la calle en el campo, listo para escribir la altura. */
+  usarSugerencia(calle: string): void {
+    this.sugerencias.set([]);
+    this.onQueryChange(`${calle} `);
+    this.sugerencias.set([]);
+    clearTimeout(this.esperaSugerencias);
+    this.campoBusqueda()?.nativeElement.focus();
   }
 
   /**
@@ -557,6 +604,7 @@ export class AddressPickerComponent {
     this.selected.set(addr);
     this.pin.set({ lat: addr.lat, lng: addr.lng });
     this.fuente.set(addr.proveedor ?? null);
+    this.sugerencias.set([]);
     this.results.set([]);
     this.query.set(addr.label);
     this.emit();
