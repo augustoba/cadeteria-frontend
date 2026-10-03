@@ -94,6 +94,11 @@ function alturaAMedias(texto: string): boolean {
 
 const SUFIJO_LINK = /\s*\(ubicaci[oó]n de Google Maps\)\s*$/i;
 
+/** El comienzo de un link que se está escribiendo a mano ("http", "https:/", "www.", "maps."). */
+function empiezaComoLink(texto: string): boolean {
+  return /^\s*(https?(:\/{0,2})?$|www\.|maps\.|goo\.gl)/i.test(texto);
+}
+
 function pareceLink(texto: string): boolean {
   return /https?:\/\//i.test(texto) || /goo\.gl\//i.test(texto) || /google\.[a-z.]+\/maps/i.test(texto);
 }
@@ -490,6 +495,12 @@ export class AddressPickerComponent {
       return;
     }
     this.leyendoLink.set(false);
+    // Un link escrito a mano pasa por "http", "https:/"... antes de parecer un link: eso no es una
+    // dirección, y quedaba precargado en "Calle y número".
+    if (empiezaComoLink(value)) {
+      this.results.set([]);
+      return;
+    }
     this.ultimoTexto = value;
     // Borrar letra por letra para pegar el link no cuenta como una búsqueda nueva.
     const t = value.trim();
@@ -501,7 +512,7 @@ export class AddressPickerComponent {
   private programarSugerencias(value: string): void {
     clearTimeout(this.esperaSugerencias);
     const texto = value.trim();
-    if (pareceLink(value) || texto.length < 4 || tieneNumero(texto)) {
+    if (pareceLink(value) || empiezaComoLink(value) || texto.length < 4 || tieneNumero(texto)) {
       this.sugerencias.set([]);
       return;
     }
