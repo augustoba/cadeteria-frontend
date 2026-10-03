@@ -215,7 +215,10 @@ interface AlertaSesion {
           >
             Manual
           </a>
-          <span class="hidden sm:inline">{{ auth.username() }}</span>
+          <a routerLink="/mi-cuenta" class="hover:underline" title="Cambiar mi contraseña">
+            <span class="hidden sm:inline">{{ auth.username() }}</span>
+            <span class="sm:hidden" aria-hidden="true">🔑</span>
+          </a>
           <button type="button" class="hover:underline" (click)="logout()">Cerrar sesión</button>
         </div>
       </header>

@@ -79,6 +79,11 @@ export class AuthService {
     );
   }
 
+  /** El usuario logueado cambia su contraseña; el backend cierra la sesión abierta (hay que volver a entrar). */
+  cambiarMiPassword(actual: string, nueva: string): Observable<void> {
+    return this.http.post<void>(apiUrl('/admin/mi-cuenta/password'), { actual, nueva });
+  }
+
   logout(): void {
     try {
       localStorage.removeItem(STORAGE_KEY);

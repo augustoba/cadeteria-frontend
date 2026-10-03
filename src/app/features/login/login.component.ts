@@ -42,14 +42,23 @@ import { AuthService } from '../../core/services/auth.service';
             <div class="relative">
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 text-sm">🔒</span>
               <input
-                type="password"
+                [type]="verPassword() ? 'text' : 'password'"
                 name="password"
-                class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 transition-shadow"
+                class="w-full border border-gray-300 rounded-lg pl-9 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400 transition-shadow"
                 [(ngModel)]="password"
                 autocomplete="current-password"
                 required
                 [disabled]="loading()"
               />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+                (click)="verPassword.set(!verPassword())"
+                [attr.aria-label]="verPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                [title]="verPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              >
+                {{ verPassword() ? '🙈' : '👁️' }}
+              </button>
             </div>
           </label>
 
@@ -82,6 +91,7 @@ export class LoginComponent {
   password = '';
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly verPassword = signal(false);
 
   submit(): void {
     if (!this.username || !this.password || this.loading()) return;
