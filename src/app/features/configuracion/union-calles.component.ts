@@ -58,7 +58,7 @@ interface UnionHecha extends UnionCalle {
           <ul class="text-sm text-gray-700 border border-gray-200 rounded divide-y divide-gray-100">
             @for (u of lista; track u.seFue + u.queda) {
               <li class="px-3 py-1.5">
-                <strong>{{ u.seFue }}</strong> → <strong>{{ u.queda }}</strong>
+                <strong>{{ mostrar(u.seFue) }}</strong> → <strong>{{ mostrar(u.queda) }}</strong>
                 <span class="text-xs text-gray-500">
                   · misma cuadra {{ u.cuadra }} en {{ u.localidad }}, a {{ u.distanciaM }} m
                 </span>
@@ -80,7 +80,7 @@ interface UnionHecha extends UnionCalle {
           <ul class="text-sm text-gray-700 border border-gray-200 rounded divide-y divide-gray-100">
             @for (u of lista; track u.cuando + u.seFue) {
               <li class="px-3 py-1.5">
-                <strong>{{ u.seFue }}</strong> → <strong>{{ u.queda }}</strong>
+                <strong>{{ mostrar(u.seFue) }}</strong> → <strong>{{ mostrar(u.queda) }}</strong>
                 <span class="text-xs text-gray-500">
                   · {{ u.cuando | date: 'dd/MM/yyyy HH:mm' }} · {{ u.origen }} · cuadra {{ u.cuadra }} en {{ u.localidad }} a
                   {{ u.distanciaM }} m · {{ u.filasMovidas }} cuadras pasadas, {{ u.filasFusionadas }} repetidas
@@ -119,6 +119,15 @@ interface UnionHecha extends UnionCalle {
 })
 export class UnionCallesComponent {
   private readonly http = inject(HttpClient);
+
+  /** Los nombres llegan como los guarda la base ("batalla de suipacha"): se muestran como en el buscador. */
+  mostrar(nombre: string): string {
+    const conectores = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'e']);
+    return nombre
+      .split(' ')
+      .map((p, i) => (i > 0 && conectores.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+      .join(' ');
+  }
 
   readonly ocupado = signal(false);
   readonly error = signal<string | null>(null);
