@@ -1022,8 +1022,8 @@ const PROVEEDORES_KEYS = [
                 </div>
               </div>
               <p class="text-xs text-gray-400 -mt-1">
-                Último pedido creado: {{ s.ultimoPedidoCreadoEn ? (s.ultimoPedidoCreadoEn | date: 'short') : 'nunca' }} · Consultado
-                {{ s.consultadoEn | date: 'short' }}
+                Último pedido creado: {{ s.ultimoPedidoCreadoEn ? (s.ultimoPedidoCreadoEn | date: 'dd/MM/yyyy HH:mm') : 'nunca' }} · Consultado
+                {{ s.consultadoEn | date: 'dd/MM/yyyy HH:mm' }}
               </p>
             } @else {
               <p class="text-xs text-gray-400">Cargando…</p>
@@ -1045,7 +1045,7 @@ const PROVEEDORES_KEYS = [
                   @for (a of accesos(); track a.id) {
                     <tr class="border-b border-gray-100">
                       <td class="py-1.5 px-3">{{ a.username }}</td>
-                      <td class="py-1.5 px-3 whitespace-nowrap">{{ a.ingresoEn | date: 'short' }}</td>
+                      <td class="py-1.5 px-3 whitespace-nowrap">{{ a.ingresoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                       <td class="py-1.5 px-3 text-gray-500">{{ a.ip ?? '—' }}</td>
                     </tr>
                   } @empty {

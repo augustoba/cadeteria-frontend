@@ -371,7 +371,7 @@ interface Delta {
                         <td class="py-2 pr-3 whitespace-nowrap">{{ r.pedidoNumero }}</td>
                         <td class="py-2 pr-3 whitespace-nowrap">{{ r.cadeteNombre }}</td>
                         <td class="py-2 pr-3">{{ r.motivo || '—' }}</td>
-                        <td class="py-2 pr-3 whitespace-nowrap">{{ r.ofrecidoEn | date: 'short' }}</td>
+                        <td class="py-2 pr-3 whitespace-nowrap">{{ r.ofrecidoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                       </tr>
                     } @empty {
                       <tr>

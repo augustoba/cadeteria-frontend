@@ -8,7 +8,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { LightboxService } from '../../core/services/lightbox.service';
 import { optimizarImagen } from '../../core/utils/imagen.util';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
-import { domicilioTexto } from '../../core/models/cadete.model';
+import { domicilioTexto, fechaNacimientoTexto } from '../../core/models/cadete.model';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
 
 const ESTADO_ETIQUETA: Record<string, string> = {
@@ -101,9 +101,12 @@ const ESTADO_CLASES: Record<string, string> = {
                     {{ s.nombre ? s.nombre + ' ' + s.apellido : '(link sin completar todavía)' }}
                   </span>
                 </div>
-                <span class="text-xs text-gray-400">Creado {{ s.creadoEn | date: 'short' }}</span>
+                <span class="text-xs text-gray-400">Creado {{ s.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
               </div>
 
+              @if (fechaNacimientoTexto(s.fechaNacimiento); as nac) {
+                <p class="text-xs text-gray-600">🎂 Fecha de nacimiento: {{ nac }}</p>
+              }
               @if (domicilioTexto(s.domicilio); as dom) {
                 <p class="text-xs text-gray-600">🏠 Domicilio: {{ dom }}</p>
               }
@@ -254,7 +257,7 @@ const ESTADO_CLASES: Record<string, string> = {
                   </ul>
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-xs text-gray-400">El link vence {{ s.expiraEn | date: 'short' }}.</span>
+                  <span class="text-xs text-gray-400">El link vence {{ s.expiraEn | date: 'dd/MM/yyyy HH:mm' }}.</span>
                   <button type="button" class="btn-mini bg-brand-600 hover:bg-brand-700" (click)="reenviarLink(s)">↻ Reenviar link</button>
                   <button type="button" class="btn-mini bg-red-600 hover:bg-red-700" (click)="rechazar(s)">✕ Rechazar del todo</button>
                 </div>
@@ -269,7 +272,7 @@ const ESTADO_CLASES: Record<string, string> = {
               @if (s.estado === 'PENDIENTE') {
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-xs text-gray-400">
-                    {{ vencido(s) ? 'Venció el' : 'Vence' }} {{ s.expiraEn | date: 'short' }} si no lo completa antes.
+                    {{ vencido(s) ? 'Venció el' : 'Vence' }} {{ s.expiraEn | date: 'dd/MM/yyyy HH:mm' }} si no lo completa antes.
                   </span>
                   <button type="button" class="btn-mini bg-brand-600 hover:bg-brand-700" (click)="reenviarLink(s)">
                     ↻ {{ vencido(s) ? 'Renovar link' : 'Volver a pasar el link' }}
@@ -390,6 +393,7 @@ const ESTADO_CLASES: Record<string, string> = {
 })
 export class SolicitudesCadeteComponent implements OnInit {
   readonly domicilioTexto = domicilioTexto;
+  readonly fechaNacimientoTexto = fechaNacimientoTexto;
   readonly service = inject(SolicitudCadeteService);
   private readonly toast = inject(ToastService);
   readonly lightbox = inject(LightboxService);

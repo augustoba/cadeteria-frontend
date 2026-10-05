@@ -106,7 +106,7 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.username }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">
                     @if (c.ultimaVersionApp != null) {
-                      <span [title]="'Último login: ' + (c.ultimaVersionAppEn | date: 'short')">v{{ c.ultimaVersionApp }}</span>
+                      <span [title]="'Último login: ' + (c.ultimaVersionAppEn | date: 'dd/MM/yyyy HH:mm')">v{{ c.ultimaVersionApp }}</span>
                     } @else {
                       <span class="text-xs text-gray-400">—</span>
                     }
@@ -148,7 +148,7 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
                         </button>
                       </div>
                       @if (c.pagoSemanalVenceEn) {
-                        <span class="text-xs text-amber-600">vence {{ c.pagoSemanalVenceEn | date: 'short' }}</span>
+                        <span class="text-xs text-amber-600">vence {{ c.pagoSemanalVenceEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                       }
                     } @else {
                       <div class="flex items-center gap-1">
@@ -245,7 +245,7 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
                     <div class="bg-gray-50 rounded px-2.5 py-1.5 text-sm">
                       <div class="text-gray-700">{{ a.mensaje }}</div>
                       <div class="text-xs text-gray-400 mt-0.5">
-                        {{ a.enviadoEn | date: 'short' }} · tocaron Entendido {{ a.totalLeido }}/{{ a.totalDestinatarios }}
+                        {{ a.enviadoEn | date: 'dd/MM/yyyy HH:mm' }} · tocaron Entendido {{ a.totalLeido }}/{{ a.totalDestinatarios }}
                       </div>
                     </div>
                   }
@@ -350,7 +350,7 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
               <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
                 ⚠ Atención: este cadete fue dado de baja
                 @if (b.cambiadoEn) {
-                  el {{ b.cambiadoEn | date: 'short' }}
+                  el {{ b.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }}
                 }
                 por: <strong>{{ b.motivo || 'sin motivo cargado' }}</strong>.
               </div>

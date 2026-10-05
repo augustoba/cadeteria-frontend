@@ -45,7 +45,7 @@ const ESTADO_CLASES: Record<string, string> = {
             <div class="bg-gray-50 rounded px-3 py-2">
               <div class="text-xs text-gray-400">Último pedido</div>
               <div class="text-lg font-semibold text-gray-700">
-                {{ ficha()!.cliente.ultimoPedidoEn ? (ficha()!.cliente.ultimoPedidoEn | date: 'short') : '—' }}
+                {{ ficha()!.cliente.ultimoPedidoEn ? (ficha()!.cliente.ultimoPedidoEn | date: 'dd/MM/yyyy HH:mm') : '—' }}
               </div>
             </div>
           </div>
@@ -129,7 +129,7 @@ const ESTADO_CLASES: Record<string, string> = {
                 @for (p of ficha()!.pedidosRecientes; track p.id) {
                   <tr class="border-b border-gray-100">
                     <td class="py-2 pr-3 whitespace-nowrap">#{{ p.numero }}</td>
-                    <td class="py-2 pr-3 whitespace-nowrap">{{ p.creadoEn | date: 'short' }}</td>
+                    <td class="py-2 pr-3 whitespace-nowrap">{{ p.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                     <td class="py-2 pr-3 whitespace-nowrap">$ {{ p.precio | number: '1.0-0' }}</td>
                     <td class="py-2 pr-3 whitespace-nowrap">
                       <span class="px-2 py-0.5 rounded text-xs font-medium" [class]="claseEstado(p.estadoId)">

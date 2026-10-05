@@ -39,6 +39,66 @@ export function domicilioTexto(d: Domicilio | null | undefined): string {
 
 export const MSJ_DOMICILIO = 'Falta el domicilio: calle, altura y localidad.';
 
+/** Fecha de nacimiento como se carga en el formulario: día, mes y año por separado (2026-10-05). */
+export interface FechaPartes {
+  dia: string;
+  mes: string;
+  anio: string;
+}
+
+export function fechaPartesVacia(): FechaPartes {
+  return { dia: '', mes: '', anio: '' };
+}
+
+/** De "1995-05-17" (como viene del backend) a los tres campos; vacía si no hay fecha. */
+export function fechaPartesDe(iso: string | null | undefined): FechaPartes {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  return m ? { dia: String(+m[3]), mes: String(+m[2]), anio: m[1] } : fechaPartesVacia();
+}
+
+export function fechaPartesEnBlanco(f: FechaPartes): boolean {
+  return !String(f.dia ?? '').trim() && !String(f.mes ?? '').trim() && !String(f.anio ?? '').trim();
+}
+
+/** "1995-05-17" para mandar al backend; null si falta algo o la fecha no existe (31 de febrero). */
+export function fechaIso(f: FechaPartes): string | null {
+  const dia = Number(String(f.dia ?? '').trim());
+  const mes = Number(String(f.mes ?? '').trim());
+  const anio = Number(String(f.anio ?? '').trim());
+  if (!Number.isInteger(dia) || !Number.isInteger(mes) || !Number.isInteger(anio) || anio < 1900 || mes < 1 || mes > 12 || dia < 1) return null;
+  const fecha = new Date(anio, mes - 1, dia);
+  if (fecha.getFullYear() !== anio || fecha.getMonth() !== mes - 1 || fecha.getDate() !== dia) return null;
+  return String(anio).padStart(4, '0') + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+}
+
+/** Años cumplidos hoy; null si no hay fecha. */
+export function edadDe(iso: string | null | undefined): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  if (!m) return null;
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - +m[1];
+  if (hoy.getMonth() + 1 < +m[2] || (hoy.getMonth() + 1 === +m[2] && hoy.getDate() < +m[3])) edad--;
+  return edad;
+}
+
+/** "17/05/1995 (31 años)"; '' si no hay fecha. */
+export function fechaNacimientoTexto(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  return m ? m[3] + '/' + m[2] + '/' + m[1] + ' (' + edadDe(iso) + ' años)' : '';
+}
+
+/**
+ * Qué le falta a la fecha de nacimiento cargada; null si está bien. Mismas reglas que el backend
+ * (Edad.java): que exista, que no sea futura ni de hace más de 100 años, y 18 años cumplidos.
+ */
+export function problemaFechaNacimiento(f: FechaPartes): string | null {
+  if (fechaPartesEnBlanco(f)) return 'Falta la fecha de nacimiento.';
+  const iso = fechaIso(f);
+  const edad = edadDe(iso);
+  if (iso == null || edad == null || edad < 0 || edad > 100) return 'La fecha de nacimiento no es válida: revisá el día, el mes y el año (4 cifras).';
+  return edad < 18 ? 'Con esa fecha de nacimiento tiene menos de 18 años: no se puede dar de alta a un menor.' : null;
+}
+
 export interface Cadete {
   id: string;
   nombre: string;
@@ -101,6 +161,8 @@ export interface Cadete {
   mayorEdadDeclaradaPor?: string | null;
   /** null = todavía no se cargó (cadetes anteriores al 2026-10-05). */
   domicilio?: Domicilio | null;
+  /** "1995-05-17"; null = todavía no se cargó (cadetes anteriores al 2026-10-05). */
+  fechaNacimiento?: string | null;
 }
 
 export interface CadeteEstadoLog {
@@ -161,6 +223,8 @@ export interface CadeteInput {
   mayorDeEdad?: boolean;
   /** Obligatorio al crear; al editar, en blanco = no se toca. */
   domicilio?: Domicilio | null;
+  /** "1995-05-17". Obligatoria al crear; al editar, null = no se toca. */
+  fechaNacimiento?: string | null;
 }
 
 /** Panorama completo de un cadete (estadísticas de todo su historial, no de un rango). */

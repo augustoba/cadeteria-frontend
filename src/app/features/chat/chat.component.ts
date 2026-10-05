@@ -64,7 +64,7 @@ import { optimizarImagen } from '../../core/utils/imagen.util';
                     } @else {
                       <p class="whitespace-pre-wrap">{{ m.texto }}</p>
                     }
-                    <p class="text-[10px] opacity-70 mt-1 text-right">{{ m.enviadoEn | date: 'short' }}</p>
+                    <p class="text-[10px] opacity-70 mt-1 text-right">{{ m.enviadoEn | date: 'dd/MM/yyyy HH:mm' }}</p>
                   </div>
                 </div>
               } @empty {

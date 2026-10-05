@@ -30,7 +30,7 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
             <span>
               Gateway {{ eg.conectado ? 'conectado' : 'desconectado' }}
               @if (eg.ultimoCambio) {
-                — hace {{ eg.ultimoCambio | date: 'short' }}
+                — hace {{ eg.ultimoCambio | date: 'dd/MM/yyyy HH:mm' }}
               }
             </span>
           }
@@ -135,7 +135,7 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
                       {{ estadoChipLabel(c.estado) }}
                     </span>
                     @if (c.ultimoCambioEstado) {
-                      <span class="text-xs text-gray-400">{{ c.ultimoCambioEstado | date: 'short' }}</span>
+                      <span class="text-xs text-gray-400">{{ c.ultimoCambioEstado | date: 'dd/MM/yyyy HH:mm' }}</span>
                     }
                     @if (c.estado !== 'BAJA') {
                       <button type="button" class="btn-mini bg-red-500 hover:bg-red-600" (click)="darDeBaja(c.id)">Dar de baja</button>
@@ -216,7 +216,7 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
                   <tbody>
                     @for (m of wa.mensajesPagina().items; track m.id) {
                       <tr class="border-b border-gray-100 align-top">
-                        <td class="py-1.5 pr-3 whitespace-nowrap text-gray-500">{{ m.creadoEn | date: 'short' }}</td>
+                        <td class="py-1.5 pr-3 whitespace-nowrap text-gray-500">{{ m.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                         <td class="py-1.5 pr-3 whitespace-nowrap">
                           <a class="text-brand-600 hover:underline" [routerLink]="['/clientes', m.telefono]">{{ m.telefono }}</a>
                         </td>
@@ -230,8 +230,8 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
                             <span class="block text-xs text-red-500">{{ m.error }}</span>
                           }
                         </td>
-                        <td class="py-1.5 pr-3 whitespace-nowrap">{{ m.entregadoEn ? '✓ ' + (m.entregadoEn | date: 'short') : '—' }}</td>
-                        <td class="py-1.5 pr-3 whitespace-nowrap">{{ m.leidoEn ? '✓✓ ' + (m.leidoEn | date: 'short') : '—' }}</td>
+                        <td class="py-1.5 pr-3 whitespace-nowrap">{{ m.entregadoEn ? '✓ ' + (m.entregadoEn | date: 'dd/MM/yyyy HH:mm') : '—' }}</td>
+                        <td class="py-1.5 pr-3 whitespace-nowrap">{{ m.leidoEn ? '✓✓ ' + (m.leidoEn | date: 'dd/MM/yyyy HH:mm') : '—' }}</td>
                       </tr>
                     } @empty {
                       <tr>
@@ -301,7 +301,7 @@ type Pestania = 'chips' | 'mensajes' | 'respuestas';
                         <a class="text-brand-600 hover:underline" [routerLink]="['/clientes', r.telefono]">{{ r.telefono }}</a>
                         @if (r.chipId) { <span class="font-mono"> · {{ r.chipId }}</span> }
                       </span>
-                      <span>{{ r.recibidoEn | date: 'short' }}</span>
+                      <span>{{ r.recibidoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                     </div>
                     <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ r.texto }}</p>
                   </div>

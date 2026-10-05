@@ -7,7 +7,7 @@ import { TasaAceptacionChartComponent } from './tasa-aceptacion-chart.component'
 import { RegistrosEnElLugarComponent } from './registros-en-el-lugar.component';
 import { AvisosCalleCadeteComponent } from './avisos-calle-cadete.component';
 import { CelularCadeteComponent } from './celular-cadete.component';
-import { domicilioTexto } from '../../core/models/cadete.model';
+import { domicilioTexto, fechaNacimientoTexto } from '../../core/models/cadete.model';
 import { RecordatoriosCadeteComponent } from './recordatorios-cadete.component';
 
 type RangoFicha = 'hoy' | 'semana' | 'mes' | 'todo';
@@ -91,7 +91,7 @@ function inicioDeMesIso(): string {
               <div class="rounded bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
                 ⚠ Este cadete está dado de baja.
                 @if (ultimaBaja(); as b) {
-                  <span> Motivo: <strong>{{ b.motivo || 'sin motivo cargado' }}</strong> — {{ b.cambiadoEn | date: 'short' }}.</span>
+                  <span> Motivo: <strong>{{ b.motivo || 'sin motivo cargado' }}</strong> — {{ b.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }}.</span>
                 }
               </div>
             }
@@ -198,6 +198,7 @@ function inicioDeMesIso(): string {
                 <div><dt>DNI</dt><dd>{{ f.cadete.dni }}</dd></div>
                 <div><dt>Usuario de la app</dt><dd class="font-mono">{{ f.cadete.username }}</dd></div>
                 <div><dt>Teléfono</dt><dd>{{ f.cadete.telefono }}</dd></div>
+                <div><dt>Fecha de nacimiento</dt><dd>{{ fechaNacimientoTexto(f.cadete.fechaNacimiento) || 'Sin cargar' }}</dd></div>
                 <div><dt>Domicilio</dt><dd>{{ domicilioTexto(f.cadete.domicilio) || 'Sin cargar' }}</dd></div>
                 <div><dt>Estado</dt><dd>{{ f.cadete.estado.nombre }}{{ f.cadete.activo ? '' : ' (dado de baja)' }}</dd></div>
                 <div><dt>Zona actual</dt><dd>{{ f.cadete.zonaActual?.nombre || '—' }}</dd></div>
@@ -332,7 +333,7 @@ function inicioDeMesIso(): string {
                           {{ i.estado === 'ABIERTA' ? 'Abierta' : 'Cerrada' }}
                         </span>
                       </td>
-                      <td class="py-2 pr-3 whitespace-nowrap">{{ i.creadaEn | date: 'short' }}</td>
+                      <td class="py-2 pr-3 whitespace-nowrap">{{ i.creadaEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                       <td class="py-2 pr-3 whitespace-nowrap">
                         @if (i.pedidoId) {
                           <a
@@ -400,7 +401,7 @@ function inicioDeMesIso(): string {
                         </span>
                       </td>
                       <td class="py-2 pr-3">{{ h.motivo || '—' }}</td>
-                      <td class="py-2 pr-3 whitespace-nowrap">{{ h.cambiadoEn | date: 'short' }}</td>
+                      <td class="py-2 pr-3 whitespace-nowrap">{{ h.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                       <td class="py-2 pr-3 whitespace-nowrap">{{ h.cambiadoPorUsername || '—' }}</td>
                     </tr>
                   } @empty {
@@ -541,6 +542,7 @@ function inicioDeMesIso(): string {
 })
 export class CadeteFichaComponent implements OnInit {
   readonly domicilioTexto = domicilioTexto;
+  readonly fechaNacimientoTexto = fechaNacimientoTexto;
   private readonly cadetes = inject(CadeteService);
   private readonly route = inject(ActivatedRoute);
 

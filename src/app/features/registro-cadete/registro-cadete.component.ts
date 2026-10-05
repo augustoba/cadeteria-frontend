@@ -3,7 +3,17 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Lookup } from '../../core/models/lookup.model';
 import { CorreccionSolicitud, ObservacionSolicitud } from '../../core/models/solicitud-cadete.model';
-import { MSJ_DOMICILIO, domicilioCompleto, domicilioEditable, domicilioVacio } from '../../core/models/cadete.model';
+import {
+  MSJ_DOMICILIO,
+  domicilioCompleto,
+  domicilioEditable,
+  domicilioVacio,
+  fechaIso,
+  fechaPartesDe,
+  fechaPartesVacia,
+  problemaFechaNacimiento,
+} from '../../core/models/cadete.model';
+import { FechaNacimientoCamposComponent } from '../../shared/fecha-nacimiento-campos.component';
 import { DomicilioCamposComponent } from '../../shared/domicilio-campos.component';
 import { SolicitudCadetePublicaService } from '../../core/services/solicitud-cadete.service';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
@@ -12,7 +22,7 @@ import * as V from '../../core/utils/validaciones';
 /** Formulario público de alta de cadete — link de un solo uso que le pasa el admin (ronda 7). */
 @Component({
   selector: 'app-registro-cadete',
-  imports: [FormsModule, ImageUploadComponent, DomicilioCamposComponent],
+  imports: [FormsModule, ImageUploadComponent, DomicilioCamposComponent, FechaNacimientoCamposComponent],
   template: `
     <div class="min-h-screen bg-gray-100 flex items-start sm:items-center justify-center p-4">
       <div class="bg-white rounded-lg shadow-md w-full max-w-2xl">
@@ -113,6 +123,8 @@ import * as V from '../../core/utils/validaciones';
                 }
               </label>
             </div>
+
+            <app-fecha-nacimiento-campos [fecha]="fechaNacimiento" aviso="Tenés que tener 18 años cumplidos." />
 
             <app-domicilio-campos [domicilio]="domicilio" />
 
@@ -289,6 +301,7 @@ export class RegistroCadeteComponent implements OnInit {
   telefono = '';
   email = '';
   domicilio = domicilioVacio();
+  fechaNacimiento = fechaPartesVacia();
   tipoVehiculoId: string | null = null;
   vehiculoColor = '';
   vehiculoPatente = '';
@@ -335,6 +348,7 @@ export class RegistroCadeteComponent implements OnInit {
     this.telefono = c.telefono ?? '';
     this.email = c.email ?? '';
     this.domicilio = domicilioEditable(c.domicilio);
+    this.fechaNacimiento = fechaPartesDe(c.fechaNacimiento);
     this.tipoVehiculoId = c.tipoVehiculoId;
     this.vehiculoColor = c.vehiculoColor ?? '';
     this.vehiculoPatente = c.vehiculoPatente ?? '';
@@ -367,6 +381,7 @@ export class RegistroCadeteComponent implements OnInit {
       [!V.DNI.test(this.dni), V.MSJ.dni],
       [!V.TELEFONO.test(this.telefono), V.MSJ.telefono],
       [!V.EMAIL.test(this.email.trim()), V.MSJ.email],
+      [!!problemaFechaNacimiento(this.fechaNacimiento), problemaFechaNacimiento(this.fechaNacimiento) ?? ''],
       [!domicilioCompleto(this.domicilio), MSJ_DOMICILIO],
       [this.esMoto() && !this.vehiculoPatente.trim(), 'Para moto falta la patente (123ABC o A123BCD).'],
       [this.esMoto() && !V.vacioO(V.PATENTE_MOTO, this.vehiculoPatente), V.MSJ.patente],
@@ -399,6 +414,7 @@ export class RegistroCadeteComponent implements OnInit {
         dni: this.dni,
         telefono: this.telefono,
         domicilio: this.domicilio,
+        fechaNacimiento: fechaIso(this.fechaNacimiento) ?? '',
         email: this.email,
         tipoVehiculoId: this.tipoVehiculoId,
         vehiculoColor: this.esMoto() ? this.vehiculoColor || null : null,

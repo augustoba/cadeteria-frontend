@@ -13,7 +13,13 @@ import {
   domicilioEditable,
   domicilioEnBlanco,
   domicilioVacio,
+  fechaIso,
+  fechaPartesDe,
+  fechaPartesEnBlanco,
+  fechaPartesVacia,
+  problemaFechaNacimiento,
 } from '../../core/models/cadete.model';
+import { FechaNacimientoCamposComponent } from '../../shared/fecha-nacimiento-campos.component';
 import { DomicilioCamposComponent } from '../../shared/domicilio-campos.component';
 import { CelularCadeteComponent } from './celular-cadete.component';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
@@ -21,7 +27,7 @@ import * as V from '../../core/utils/validaciones';
 
 @Component({
   selector: 'app-cadete-form',
-  imports: [FormsModule, RouterLink, ImageUploadComponent, DatePipe, DecimalPipe, DomicilioCamposComponent, CelularCadeteComponent],
+  imports: [FormsModule, RouterLink, ImageUploadComponent, DatePipe, DecimalPipe, DomicilioCamposComponent, CelularCadeteComponent, FechaNacimientoCamposComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -57,6 +63,11 @@ import * as V from '../../core/utils/validaciones';
             <input class="input" [(ngModel)]="telefono" name="telefono" />
           </label>
         </div>
+
+        <app-fecha-nacimiento-campos
+          [fecha]="fechaNacimiento"
+          [aviso]="editId ? 'Si este cadete todavía no la tiene cargada, podés dejarla en blanco y completarla después.' : 'Tiene que tener 18 años cumplidos.'"
+        />
 
         <app-domicilio-campos
           [domicilio]="domicilio"
@@ -254,7 +265,7 @@ import * as V from '../../core/utils/validaciones';
                       <td class="py-1.5 px-3">$ {{ m.monto | number: '1.0-0' }}</td>
                       <td class="py-1.5 px-3">$ {{ m.saldoResultante | number: '1.0-0' }}</td>
                       <td class="py-1.5 px-3">{{ m.pedidoNumero ? '#' + m.pedidoNumero : '—' }}</td>
-                      <td class="py-1.5 px-3 whitespace-nowrap">{{ m.creadoEn | date: 'short' }}</td>
+                      <td class="py-1.5 px-3 whitespace-nowrap">{{ m.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                     </tr>
                   } @empty {
                     <tr>
@@ -292,7 +303,7 @@ import * as V from '../../core/utils/validaciones';
                         </span>
                       </td>
                       <td class="py-1.5 px-3">{{ h.motivo || '—' }}</td>
-                      <td class="py-1.5 px-3 whitespace-nowrap">{{ h.cambiadoEn | date: 'short' }}</td>
+                      <td class="py-1.5 px-3 whitespace-nowrap">{{ h.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
                       <td class="py-1.5 px-3">{{ h.cambiadoPorUsername || '—' }}</td>
                     </tr>
                   }
@@ -347,6 +358,8 @@ export class CadeteFormComponent implements OnInit {
   dni = '';
   /** Dónde vive: obligatorio al crear; al editar a un cadete anterior puede quedar en blanco. */
   domicilio = domicilioVacio();
+  /** Obligatoria al crear; al editar a un cadete anterior puede quedar en blanco. */
+  fechaNacimiento = fechaPartesVacia();
   telefono = '';
   tipoVehiculoId: string | null = null;
   vehiculoColor = '';
@@ -397,6 +410,7 @@ export class CadeteFormComponent implements OnInit {
         this.dni = c.dni;
         this.telefono = c.telefono;
         this.domicilio = domicilioEditable(c.domicilio);
+        this.fechaNacimiento = fechaPartesDe(c.fechaNacimiento);
         this.tipoVehiculoId = c.tipoVehiculo.id;
         this.vehiculoColor = c.vehiculoColor ?? '';
         this.vehiculoPatente = c.vehiculoPatente ?? '';
@@ -459,6 +473,10 @@ export class CadeteFormComponent implements OnInit {
       [this.esMoto() && !V.vacioO(V.COLOR, this.vehiculoColor), V.MSJ.color],
       [!this.editId && !this.mayorDeEdad, 'Confirmá que el cadete es mayor de 18 años: no se puede dar de alta a un menor.'],
       [!domicilioCompleto(this.domicilio) && !(this.editId && domicilioEnBlanco(this.domicilio)), MSJ_DOMICILIO],
+      [
+        !(this.editId && fechaPartesEnBlanco(this.fechaNacimiento)) && !!problemaFechaNacimiento(this.fechaNacimiento),
+        problemaFechaNacimiento(this.fechaNacimiento) ?? '',
+      ],
     ]);
     if (mal) {
       this.error.set(mal);
@@ -471,6 +489,7 @@ export class CadeteFormComponent implements OnInit {
       dni: this.dni,
       telefono: this.telefono,
       domicilio: domicilioEnBlanco(this.domicilio) ? null : this.domicilio,
+      fechaNacimiento: fechaIso(this.fechaNacimiento),
       fotoUrl: this.fotoUrl,
       tipoVehiculoId: this.tipoVehiculoId,
       vehiculoColor: this.esMoto() ? this.vehiculoColor || null : null,

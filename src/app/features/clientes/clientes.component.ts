@@ -60,7 +60,7 @@ import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.componen
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.telefono }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">{{ c.cantidadPedidos }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">$ {{ c.montoTotal | number: '1.0-0' }}</td>
-                  <td class="py-2 pr-3 whitespace-nowrap">{{ c.ultimoPedidoEn ? (c.ultimoPedidoEn | date: 'short') : '—' }}</td>
+                  <td class="py-2 pr-3 whitespace-nowrap">{{ c.ultimoPedidoEn ? (c.ultimoPedidoEn | date: 'dd/MM/yyyy HH:mm') : '—' }}</td>
                   <td class="py-2 pr-3 whitespace-nowrap">
                     <a [routerLink]="['/clientes', c.telefono]" class="btn-mini bg-brand-600 hover:bg-brand-700">Ver ficha</a>
                   </td>

@@ -67,9 +67,9 @@ import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.componen
                 <p class="text-sm text-gray-600 whitespace-pre-line">{{ i.descripcion }}</p>
               }
               <p class="text-xs text-gray-400">
-                Creada {{ i.creadaEn | date: 'short' }}{{ i.creadaPorUsername ? ' por ' + i.creadaPorUsername : '' }}
+                Creada {{ i.creadaEn | date: 'dd/MM/yyyy HH:mm' }}{{ i.creadaPorUsername ? ' por ' + i.creadaPorUsername : '' }}
                 @if (i.cerradaEn) {
-                  · cerrada {{ i.cerradaEn | date: 'short' }}{{ i.cerradaPorUsername ? ' por ' + i.cerradaPorUsername : '' }}
+                  · cerrada {{ i.cerradaEn | date: 'dd/MM/yyyy HH:mm' }}{{ i.cerradaPorUsername ? ' por ' + i.cerradaPorUsername : '' }}
                 }
               </p>
             </div>

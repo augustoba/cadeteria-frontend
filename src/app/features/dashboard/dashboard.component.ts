@@ -548,7 +548,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                     <div class="flex items-center gap-1.5">
                       <span class="font-medium text-gray-800">{{ parada.direccion }}</span>
                       @if (parada.entregadoEn) {
-                        <span class="text-emerald-600 text-xs" [title]="'Entregada ' + (parada.entregadoEn | date: 'short')">✓</span>
+                        <span class="text-emerald-600 text-xs" [title]="'Entregada ' + (parada.entregadoEn | date: 'dd/MM/yyyy HH:mm')">✓</span>
                       } @else {
                         <span class="text-amber-600 text-xs">pendiente</span>
                       }
@@ -627,7 +627,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   <div class="flex flex-col gap-1 mt-1.5">
                     @for (h of historialPrecio(); track h.id) {
                       <div class="text-xs text-gray-500">
-                        $ {{ h.precioAnterior }} → $ {{ h.precioNuevo }} — {{ h.cambiadoPorUsername }} ({{ h.cambiadoEn | date: 'short' }})
+                        $ {{ h.precioAnterior }} → $ {{ h.precioNuevo }} — {{ h.cambiadoPorUsername }} ({{ h.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }})
                       </div>
                     }
                   </div>
@@ -660,7 +660,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
                   <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
                   <span class="text-gray-500">Creado</span>
-                  <span class="ml-auto text-gray-800">{{ p.creadoEn | date: 'short' }}</span>
+                  <span class="ml-auto text-gray-800">{{ p.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                 </div>
                 @if (p.asignadoEn) {
                   <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
@@ -671,7 +671,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                         <span class="text-gray-400">por {{ p.asignadoPorUsername }}</span>
                       }
                     </span>
-                    <span class="ml-auto text-gray-800">{{ p.asignadoEn | date: 'short' }}</span>
+                    <span class="ml-auto text-gray-800">{{ p.asignadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                   </div>
                 }
                 @if (p.vistoEn) {
@@ -683,21 +683,21 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                         <span class="text-amber-600">— todavía no lo aceptó</span>
                       }
                     </span>
-                    <span class="ml-auto text-gray-800">{{ p.vistoEn | date: 'short' }}</span>
+                    <span class="ml-auto text-gray-800">{{ p.vistoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                   </div>
                 }
                 @if (p.aceptadoEn) {
                   <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
                     <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
                     <span class="text-gray-500">Aceptado</span>
-                    <span class="ml-auto text-gray-800">{{ p.aceptadoEn | date: 'short' }}</span>
+                    <span class="ml-auto text-gray-800">{{ p.aceptadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                   </div>
                 }
                 @if (p.retiradoEn) {
                   <div class="flex items-center gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
                     <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
                     <span class="text-gray-500">Retirado</span>
-                    <span class="ml-auto text-gray-800">{{ p.retiradoEn | date: 'short' }}</span>
+                    <span class="ml-auto text-gray-800">{{ p.retiradoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                     @if (p.retiroLat != null && p.retiroLng != null) {
                       <a
                         [routerLink]="['/mapa']"
@@ -729,7 +729,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   <div class="flex items-center gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
                     <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-emerald-500"></span>
                     <span class="text-gray-500">Entregado</span>
-                    <span class="ml-auto text-gray-800">{{ p.finalizadoEn | date: 'short' }}</span>
+                    <span class="ml-auto text-gray-800">{{ p.finalizadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                     @if (p.entregaLat != null && p.entregaLng != null) {
                       <a
                         [routerLink]="['/mapa']"
@@ -761,7 +761,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                         <span class="text-gray-400">por {{ p.canceladoPorUsername }}</span>
                       }
                     </span>
-                    <span class="ml-auto text-gray-800">{{ p.canceladoEn | date: 'short' }}</span>
+                    <span class="ml-auto text-gray-800">{{ p.canceladoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
                   </div>
                 }
               </div>
@@ -835,7 +835,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                 <h3 class="text-xs font-semibold uppercase tracking-wide text-orange-600 mb-2">No se pudo entregar</h3>
                 <div class="font-medium text-gray-800">{{ p.motivoNoEntrega || 'Sin motivo especificado.' }}</div>
                 @if (p.noEntregadoEn) {
-                  <div class="text-xs text-gray-500 mt-1">{{ p.noEntregadoEn | date: 'short' }}</div>
+                  <div class="text-xs text-gray-500 mt-1">{{ p.noEntregadoEn | date: 'dd/MM/yyyy HH:mm' }}</div>
                 }
                 <p class="text-xs text-gray-500 mt-2">
                   El pedido sigue activo — usá "Reintentar entrega" en el dashboard para volver a ofrecerlo sin
@@ -853,7 +853,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   @for (c of comentariosDetalle(); track c.id) {
                     <div class="rounded-md px-2.5 py-1.5" [class.bg-gray-50]="!c.esAdmin" [class.bg-indigo-50]="c.esAdmin">
                       <div class="text-gray-700">{{ c.texto }}</div>
-                      <div class="text-xs text-gray-400 mt-0.5">{{ c.cadeteNombre }} · {{ c.creadoEn | date: 'short' }}</div>
+                      <div class="text-xs text-gray-400 mt-0.5">{{ c.cadeteNombre }} · {{ c.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</div>
                     </div>
                   }
                 </div>
@@ -902,7 +902,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                       @if (inc.descripcion) {
                         <div class="text-gray-600 mt-1">{{ inc.descripcion }}</div>
                       }
-                      <div class="text-xs text-gray-400 mt-0.5">{{ inc.creadaEn | date: 'short' }}</div>
+                      <div class="text-xs text-gray-400 mt-0.5">{{ inc.creadaEn | date: 'dd/MM/yyyy HH:mm' }}</div>
                     </div>
                   }
                 </div>

@@ -66,7 +66,7 @@ const ESTADO_CLASES: Record<string, string> = {
                     </span>
                   }
                 </div>
-                <span class="text-xs text-gray-400">Creado {{ s.creadoEn | date: 'short' }}</span>
+                <span class="text-xs text-gray-400">Creado {{ s.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
               </div>
 
               <div class="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
