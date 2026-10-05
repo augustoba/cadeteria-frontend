@@ -36,6 +36,7 @@ const NAV: NavItem[] = [
   { label: 'Configuración', path: '/configuracion', icon: '⚙️', permisoRequerido: 'configuracion' },
   { label: 'Usuarios', path: '/usuarios', icon: '👥', permisoRequerido: 'usuarios' },
   { label: 'Roles', path: '/roles', icon: '🔑', permisoRequerido: 'roles' },
+  { label: 'Sistema', path: '/sistema', icon: '🖥️', permisoRequerido: 'sistema' },
   { label: 'Ayuda', path: '/ayuda', icon: '❓' },
 ];
 

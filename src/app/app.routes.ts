@@ -124,6 +124,11 @@ export const routes: Routes = [
         canActivate: [permisoGuard('metricas')],
       },
       {
+        path: 'sistema',
+        loadComponent: () => import('./features/sistema/sistema.component').then((m) => m.SistemaComponent),
+        canActivate: [permisoGuard('sistema')],
+      },
+      {
         path: 'mi-cuenta',
         loadComponent: () => import('./features/mi-cuenta/mi-cuenta.component').then((m) => m.MiCuentaComponent),
       },
