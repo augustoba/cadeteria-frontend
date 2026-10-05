@@ -20,6 +20,8 @@ export interface DireccionFrecuente {
   vecesOrigen: number;
   vecesDestino: number;
   ultimaVez: string;
+  /** Identifica la dirección para quitarla de las sugerencias de ese cliente (2026-10-05). */
+  clave: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -159,6 +161,11 @@ export class PedidoService {
     return this.http
       .get<DireccionFrecuente[]>(apiUrl('/admin/pedidos/cliente/direcciones'), { params: { telefono } })
       .pipe(catchError(() => of([] as DireccionFrecuente[])));
+  }
+
+  /** La "x" de una dirección habitual: deja de ofrecérsela a ese cliente (no toca pedidos ni la base de direcciones). */
+  ocultarDireccionCliente(telefono: string, clave: string) {
+    return this.http.post<void>(apiUrl('/admin/pedidos/cliente/direcciones/ocultar'), { telefono, clave });
   }
 
   /**

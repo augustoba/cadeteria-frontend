@@ -88,7 +88,7 @@ import * as V from '../../core/utils/validaciones';
         @if (direccionesCliente().length) {
           <div class="rounded border border-brand-200 bg-brand-50 px-3 py-2 flex flex-col gap-1.5">
             <span class="text-xs font-semibold text-gray-600">📍 Direcciones que ya usó este cliente</span>
-            @for (d of direccionesCliente(); track d.direccion) {
+            @for (d of direccionesCliente(); track d.clave) {
               <div class="flex items-center gap-2 flex-wrap text-sm">
                 <span class="flex-1 min-w-0 truncate text-gray-800" [title]="d.direccion">
                   {{ d.direccion }}
@@ -99,6 +99,22 @@ import * as V from '../../core/utils/validaciones';
                 </span>
                 <button type="button" class="btn-dir" (click)="usarDireccion(d, 'origen')">Usar como origen</button>
                 <button type="button" class="btn-dir" (click)="usarDireccion(d, 'destino')">Usar como destino</button>
+                <!-- La "x" (2026-10-05): saca una dirección que quedó mal o que el cliente ya no usa. Pide confirmar: está al lado de botones de todos los días. -->
+                @if (quitando() === d.clave) {
+                  <span class="text-xs text-gray-600">¿Quitarla de la lista?</span>
+                  <button type="button" class="btn-dir" (click)="quitarDireccion(d)">Sí, quitar</button>
+                  <button type="button" class="btn-dir" (click)="quitando.set(null)">No</button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn-dir"
+                    title="Quitar esta dirección de las sugerencias de este cliente"
+                    aria-label="Quitar esta dirección de las sugerencias"
+                    (click)="quitando.set(d.clave)"
+                  >
+                    ✕
+                  </button>
+                }
               </div>
             }
           </div>
@@ -354,6 +370,8 @@ export class NuevoPedidoComponent implements OnInit {
   private readonly destinoPickerRef = viewChild<AddressPickerComponent>('destinoPickerRef');
   private readonly origenPickerRef = viewChild<AddressPickerComponent>('origenPickerRef');
   readonly direccionesCliente = signal<DireccionFrecuente[]>([]);
+  /** Clave de la dirección habitual que está pidiendo confirmación para quitarse. */
+  readonly quitando = signal<string | null>(null);
 
   /** Mejora 77 — franja horaria de atención configurable, solo avisa, no bloquea la carga. */
   readonly fueraDeHorario = computed(() => {
@@ -424,6 +442,15 @@ export class NuevoPedidoComponent implements OnInit {
     this.clienteAviso.set(null);
     this.direccionesCliente.set([]);
     this.telefono$.next(valor);
+  }
+
+  /** Quita una dirección habitual de las sugerencias de este cliente. Vuelve sola si se carga otro pedido ahí. */
+  quitarDireccion(d: DireccionFrecuente): void {
+    this.quitando.set(null);
+    this.pedidos.ocultarDireccionCliente(this.clienteTelefono.trim(), d.clave).subscribe({
+      next: () => this.direccionesCliente.update((lista) => lista.filter((x) => x.clave !== d.clave)),
+      error: () => this.error.set('No se pudo quitar la dirección. Probá de nuevo.'),
+    });
   }
 
   /** Carga una dirección habitual del cliente en origen o destino, con su piso/depto/observaciones. */
