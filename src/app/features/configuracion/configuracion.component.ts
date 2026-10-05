@@ -50,7 +50,7 @@ const CLAVES_SISTEMA = new Set([
   'busqueda_externa_activa',
   'version_minima_app', 'retencion_imagenes_pedido_dias', 'rate_limit_publico_max', 'rate_limit_publico_ventana_seg',
   'vapid_public_key', 'vapid_private_key', 'proximo_numero_pedido',
-  'geoapify_keys', 'locationiq_keys', 'google_geocoding_keys', 'graphhopper_key', 'open_route_service_key',
+  'geoapify_keys', 'locationiq_keys', 'google_geocoding_keys', 'here_geocoding_keys', 'graphhopper_key', 'open_route_service_key',
 ]);
 
 /** Listas de API keys por proveedor; la de la cadetería es la misma clave + "_cliente". */
@@ -58,6 +58,7 @@ const PROVEEDORES_KEYS = [
   { clave: 'geoapify_keys', nombre: 'Geoapify (direcciones)' },
   { clave: 'locationiq_keys', nombre: 'LocationIQ (direcciones)' },
   { clave: 'google_geocoding_keys', nombre: 'Google Geocoding ("buscar de nuevo")' },
+  { clave: 'here_geocoding_keys', nombre: 'HERE Geocoding ("buscar de nuevo", después de Google)' },
   { clave: 'graphhopper_key', nombre: 'GraphHopper (distancia)' },
   { clave: 'open_route_service_key', nombre: 'OpenRouteService (distancia)' },
 ];
@@ -637,6 +638,22 @@ const PROVEEDORES_KEYS = [
                   intento vuelve a probar los servicios gratuitos.
                 </span>
               </label>
+              <!-- HERE (2026-10-05): segundo intento de "buscar de nuevo", después de Google -->
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">HERE — API keys (direcciones, "buscar de nuevo")</span>
+                <textarea
+                  class="input"
+                  rows="2"
+                  [(ngModel)]="hereGeocodingKeys"
+                  name="hereGeocodingKeys"
+                  placeholder="Geocoding & Search de HERE (platform.here.com) — una por línea"
+                ></textarea>
+                <span class="text-xs text-gray-400">
+                  Se usa en "No está mi dirección — buscar de nuevo" cuando Google no la encuentra, se quedó sin cupo
+                  o no tiene key. Tope propio de 900 búsquedas por día por key (~27.000/mes). Lo que encuentra se
+                  guarda y se borra igual que lo de Google. Vacío = no se consulta a HERE.
+                </span>
+              </label>
               <!-- Buscar solo en la base propia (2026-10-03) -->
               <div class="sm:col-span-2 flex flex-col gap-2 rounded border border-gray-200 p-3">
                 <span class="text-sm font-medium text-gray-700">Buscador de direcciones</span>
@@ -654,16 +671,16 @@ const PROVEEDORES_KEYS = [
               </div>
               <!-- Ubicaciones de Google en la cache de direcciones (2026-09-25) -->
               <div class="sm:col-span-2 flex flex-col gap-2 rounded border border-gray-200 p-3">
-                <span class="text-sm font-medium text-gray-700">Direcciones encontradas con Google</span>
+                <span class="text-sm font-medium text-gray-700">Direcciones encontradas con Google o HERE</span>
                 <label class="flex items-center gap-2">
                   <span class="text-sm text-gray-700">Borrarlas después de</span>
                   <input type="number" min="0" max="365" step="1" class="input w-20" [(ngModel)]="googleCacheDias" name="googleCacheDias" />
                   <span class="text-sm text-gray-700">días</span>
                 </label>
                 <span class="text-xs text-gray-400 -mt-1">
-                  Las condiciones de Google permiten guardarlas hasta <strong>30 días</strong> (a septiembre de 2026);
+                  Las condiciones de Google y de HERE permiten guardarlas hasta <strong>30 días</strong> (a octubre de 2026);
                   si las cambian, se ajusta acá. En 0 no se guardan. Lo que ubica a mano el admin o un cadete no se
-                  borra nunca, y si confirma una dirección que vino de Google, deja de vencer.
+                  borra nunca, y si confirma una dirección que vino de Google o de HERE, deja de vencer.
                 </span>
                 <label class="flex items-center gap-2">
                   <input type="checkbox" [(ngModel)]="googleLinkVence" name="googleLinkVence" />
@@ -1191,6 +1208,7 @@ export class ConfiguracionComponent implements OnInit {
   recargoRetornoOrigen: number | null = 50;
   geoapifyKeys = '';
   googleGeocodingKeys = '';
+  hereGeocodingKeys = '';
   googleCacheDias: number | null = 30;
   googleLinkVence = false;
   busquedaExternaActiva = true;
@@ -1282,6 +1300,7 @@ export class ConfiguracionComponent implements OnInit {
       this.geoapifyKeys = v['geoapify_keys'] ?? '';
       this.cargarKeysCliente(v);
       this.googleGeocodingKeys = v['google_geocoding_keys'] ?? '';
+      this.hereGeocodingKeys = v['here_geocoding_keys'] ?? '';
       this.googleCacheDias = Number(v['google_cache_dias'] ?? 30);
       this.googleLinkVence = (v['google_link_vence'] ?? 'false') === 'true';
       this.busquedaExternaActiva = (v['busqueda_externa_activa'] ?? 'true') === 'true';
@@ -1362,6 +1381,7 @@ export class ConfiguracionComponent implements OnInit {
     const nombres: Record<string, string> = {
       geoapify: 'Geoapify (direcciones)',
       google: 'Google (direcciones, búsqueda ampliada)',
+      here: 'HERE (direcciones, búsqueda ampliada)',
       graphhopper: 'GraphHopper (distancia)',
       openrouteservice: 'OpenRouteService (distancia)',
     };
@@ -1485,6 +1505,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('recargo_retorno_origen_porcentaje', String(this.recargoRetornoOrigen ?? 0));
     agregarSiCambio('geoapify_keys', this.geoapifyKeys);
     agregarSiCambio('google_geocoding_keys', this.googleGeocodingKeys);
+    agregarSiCambio('here_geocoding_keys', this.hereGeocodingKeys);
     agregarSiCambio('google_cache_dias', String(this.googleCacheDias ?? 30));
     agregarSiCambio('google_link_vence', String(this.googleLinkVence));
     agregarSiCambio('busqueda_externa_activa', String(this.busquedaExternaActiva));
