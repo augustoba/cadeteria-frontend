@@ -4,13 +4,23 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CadeteService } from '../../core/services/cadete.service';
 import { LookupService } from '../../core/services/lookup.service';
-import { CadeteEstadoLog, CadeteInput, MovimientoCredito } from '../../core/models/cadete.model';
+import {
+  CadeteEstadoLog,
+  CadeteInput,
+  MovimientoCredito,
+  MSJ_DOMICILIO,
+  domicilioCompleto,
+  domicilioEditable,
+  domicilioEnBlanco,
+  domicilioVacio,
+} from '../../core/models/cadete.model';
+import { DomicilioCamposComponent } from '../../shared/domicilio-campos.component';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
 import * as V from '../../core/utils/validaciones';
 
 @Component({
   selector: 'app-cadete-form',
-  imports: [FormsModule, RouterLink, ImageUploadComponent, DatePipe, DecimalPipe],
+  imports: [FormsModule, RouterLink, ImageUploadComponent, DatePipe, DecimalPipe, DomicilioCamposComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -46,6 +56,11 @@ import * as V from '../../core/utils/validaciones';
             <input class="input" [(ngModel)]="telefono" name="telefono" />
           </label>
         </div>
+
+        <app-domicilio-campos
+          [domicilio]="domicilio"
+          [aviso]="editId ? 'Si este cadete todavía no tiene domicilio cargado, podés dejarlo en blanco y completarlo después.' : ''"
+        />
 
         <div class="grid sm:grid-cols-3 gap-4">
           <label class="flex flex-col gap-1">
@@ -324,6 +339,8 @@ export class CadeteFormComponent implements OnInit {
   nombre = '';
   apellido = '';
   dni = '';
+  /** Dónde vive: obligatorio al crear; al editar a un cadete anterior puede quedar en blanco. */
+  domicilio = domicilioVacio();
   telefono = '';
   tipoVehiculoId: string | null = null;
   vehiculoColor = '';
@@ -373,6 +390,7 @@ export class CadeteFormComponent implements OnInit {
         this.apellido = c.apellido;
         this.dni = c.dni;
         this.telefono = c.telefono;
+        this.domicilio = domicilioEditable(c.domicilio);
         this.tipoVehiculoId = c.tipoVehiculo.id;
         this.vehiculoColor = c.vehiculoColor ?? '';
         this.vehiculoPatente = c.vehiculoPatente ?? '';
@@ -434,6 +452,7 @@ export class CadeteFormComponent implements OnInit {
       [this.esMoto() && !V.vacioO(V.MARCA_MODELO, this.vehiculoModelo), V.MSJ.modelo],
       [this.esMoto() && !V.vacioO(V.COLOR, this.vehiculoColor), V.MSJ.color],
       [!this.editId && !this.mayorDeEdad, 'Confirmá que el cadete es mayor de 18 años: no se puede dar de alta a un menor.'],
+      [!domicilioCompleto(this.domicilio) && !(this.editId && domicilioEnBlanco(this.domicilio)), MSJ_DOMICILIO],
     ]);
     if (mal) {
       this.error.set(mal);
@@ -445,6 +464,7 @@ export class CadeteFormComponent implements OnInit {
       apellido: this.apellido,
       dni: this.dni,
       telefono: this.telefono,
+      domicilio: domicilioEnBlanco(this.domicilio) ? null : this.domicilio,
       fotoUrl: this.fotoUrl,
       tipoVehiculoId: this.tipoVehiculoId,
       vehiculoColor: this.esMoto() ? this.vehiculoColor || null : null,

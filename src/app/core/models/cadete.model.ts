@@ -2,6 +2,43 @@ import { Lookup } from './lookup.model';
 import { CadeteMetrica } from './metricas.model';
 import { Incidencia } from './incidencia.model';
 
+/** Dónde vive el cadete (2026-10-05): solo texto. Piso y departamento, solo si corresponde. */
+export interface Domicilio {
+  calle: string | null;
+  altura: string | null;
+  piso: string | null;
+  depto: string | null;
+  localidad: string | null;
+}
+
+export function domicilioVacio(): Domicilio {
+  return { calle: '', altura: '', piso: '', depto: '', localidad: '' };
+}
+
+/** Copia editable de lo que vino del backend (null = todavía no se cargó). */
+export function domicilioEditable(d: Domicilio | null | undefined): Domicilio {
+  return { calle: d?.calle ?? '', altura: d?.altura ?? '', piso: d?.piso ?? '', depto: d?.depto ?? '', localidad: d?.localidad ?? '' };
+}
+
+/** No tiene nada escrito. */
+export function domicilioEnBlanco(d: Domicilio): boolean {
+  return ![d.calle, d.altura, d.piso, d.depto, d.localidad].some((x) => !!x?.trim());
+}
+
+/** Tiene lo obligatorio: calle, altura y localidad. */
+export function domicilioCompleto(d: Domicilio): boolean {
+  return !!d.calle?.trim() && !!d.altura?.trim() && !!d.localidad?.trim();
+}
+
+/** "Lamadrid 450, piso 2, depto B — San Miguel de Tucumán"; '' si no hay domicilio. */
+export function domicilioTexto(d: Domicilio | null | undefined): string {
+  if (!d?.calle) return '';
+  const partes = [(d.calle + ' ' + (d.altura ?? '')).trim(), d.piso ? 'piso ' + d.piso : '', d.depto ? 'depto ' + d.depto : ''];
+  return partes.filter((x) => !!x).join(', ') + (d.localidad ? ' — ' + d.localidad : '');
+}
+
+export const MSJ_DOMICILIO = 'Falta el domicilio: calle, altura y localidad.';
+
 export interface Cadete {
   id: string;
   nombre: string;
@@ -62,6 +99,8 @@ export interface Cadete {
   /** Constancia de mayor de edad: cuándo y quién ("postulante" o el admin que lo cargó). null en los viejos. */
   mayorEdadDeclaradaEn?: string | null;
   mayorEdadDeclaradaPor?: string | null;
+  /** null = todavía no se cargó (cadetes anteriores al 2026-10-05). */
+  domicilio?: Domicilio | null;
 }
 
 export interface CadeteEstadoLog {
@@ -120,6 +159,8 @@ export interface CadeteInput {
   notasInternas: string | null;
   /** El admin confirma que verificó que es mayor de 18 — obligatorio al crear (2026-09-26). */
   mayorDeEdad?: boolean;
+  /** Obligatorio al crear; al editar, en blanco = no se toca. */
+  domicilio?: Domicilio | null;
 }
 
 /** Panorama completo de un cadete (estadísticas de todo su historial, no de un rango). */

@@ -1,3 +1,4 @@
+import { Domicilio } from './cadete.model';
 import { Lookup } from './lookup.model';
 
 export interface GenerarLinkResponse {
@@ -37,6 +38,8 @@ export interface CorreccionSolicitud {
   fotoTarjetaVerdeUrl: string | null;
   fotoTarjetaVerdeDorsoUrl: string | null;
   observaciones: ObservacionSolicitud[];
+  /** Lo que ya había cargado (null en las solicitudes anteriores al 2026-10-05). */
+  domicilio?: Domicilio | null;
 }
 
 /** Ya hay (o hubo) un cadete con ese DNI — con su última baja para saber por qué se fue. */
@@ -75,6 +78,8 @@ export interface SolicitudCadeteForm {
   fotoTarjetaVerdeDorsoUrl: string | null;
   /** Tildó "Soy mayor de 18 años" (2026-09-26) — el backend no acepta el formulario sin esto. */
   mayorDeEdad: boolean;
+  /** Dónde vive (2026-10-05): calle, altura y localidad obligatorias. */
+  domicilio: Domicilio;
 }
 
 export interface SolicitudCadete {
@@ -110,4 +115,6 @@ export interface SolicitudCadete {
   cadeteExistente: CadeteExistente | null;
   /** Cuándo declaró ser mayor de 18 (null en solicitudes anteriores a la casilla). */
   mayorEdadDeclaradaEn: string | null;
+  /** null en las solicitudes anteriores al 2026-10-05. */
+  domicilio?: Domicilio | null;
 }

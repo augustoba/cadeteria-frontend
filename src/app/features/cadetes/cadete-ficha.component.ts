@@ -7,6 +7,7 @@ import { TasaAceptacionChartComponent } from './tasa-aceptacion-chart.component'
 import { RegistrosEnElLugarComponent } from './registros-en-el-lugar.component';
 import { AvisosCalleCadeteComponent } from './avisos-calle-cadete.component';
 import { CelularCadeteComponent } from './celular-cadete.component';
+import { domicilioTexto } from '../../core/models/cadete.model';
 import { RecordatoriosCadeteComponent } from './recordatorios-cadete.component';
 
 type RangoFicha = 'hoy' | 'semana' | 'mes' | 'todo';
@@ -197,6 +198,7 @@ function inicioDeMesIso(): string {
                 <div><dt>DNI</dt><dd>{{ f.cadete.dni }}</dd></div>
                 <div><dt>Usuario de la app</dt><dd class="font-mono">{{ f.cadete.username }}</dd></div>
                 <div><dt>Teléfono</dt><dd>{{ f.cadete.telefono }}</dd></div>
+                <div><dt>Domicilio</dt><dd>{{ domicilioTexto(f.cadete.domicilio) || 'Sin cargar' }}</dd></div>
                 <div><dt>Estado</dt><dd>{{ f.cadete.estado.nombre }}{{ f.cadete.activo ? '' : ' (dado de baja)' }}</dd></div>
                 <div><dt>Zona actual</dt><dd>{{ f.cadete.zonaActual?.nombre || '—' }}</dd></div>
                 <div><dt>Modalidad de pago</dt><dd>{{ f.cadete.modalidadPago === 'SEMANAL' ? 'Cuota semanal' : 'Comisión por viaje' }}</dd></div>
@@ -538,6 +540,7 @@ function inicioDeMesIso(): string {
   ],
 })
 export class CadeteFichaComponent implements OnInit {
+  readonly domicilioTexto = domicilioTexto;
   private readonly cadetes = inject(CadeteService);
   private readonly route = inject(ActivatedRoute);
 

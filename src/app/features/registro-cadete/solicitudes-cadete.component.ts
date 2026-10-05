@@ -8,6 +8,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { LightboxService } from '../../core/services/lightbox.service';
 import { optimizarImagen } from '../../core/utils/imagen.util';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
+import { domicilioTexto } from '../../core/models/cadete.model';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
 
 const ESTADO_ETIQUETA: Record<string, string> = {
@@ -103,6 +104,9 @@ const ESTADO_CLASES: Record<string, string> = {
                 <span class="text-xs text-gray-400">Creado {{ s.creadoEn | date: 'short' }}</span>
               </div>
 
+              @if (domicilioTexto(s.domicilio); as dom) {
+                <p class="text-xs text-gray-600">🏠 Domicilio: {{ dom }}</p>
+              }
               @if (s.mayorEdadDeclaradaEn) {
                 <p class="text-xs text-gray-500">✔ Declaró ser mayor de 18 años el {{ s.mayorEdadDeclaradaEn | date: 'dd/MM/yyyy HH:mm' }}.</p>
               } @else if (s.estado === 'EN_REVISION') {
@@ -385,6 +389,7 @@ const ESTADO_CLASES: Record<string, string> = {
   ],
 })
 export class SolicitudesCadeteComponent implements OnInit {
+  readonly domicilioTexto = domicilioTexto;
   readonly service = inject(SolicitudCadeteService);
   private readonly toast = inject(ToastService);
   readonly lightbox = inject(LightboxService);
