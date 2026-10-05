@@ -15,12 +15,13 @@ import {
   domicilioVacio,
 } from '../../core/models/cadete.model';
 import { DomicilioCamposComponent } from '../../shared/domicilio-campos.component';
+import { CelularCadeteComponent } from './celular-cadete.component';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
 import * as V from '../../core/utils/validaciones';
 
 @Component({
   selector: 'app-cadete-form',
-  imports: [FormsModule, RouterLink, ImageUploadComponent, DatePipe, DecimalPipe, DomicilioCamposComponent],
+  imports: [FormsModule, RouterLink, ImageUploadComponent, DatePipe, DecimalPipe, DomicilioCamposComponent, CelularCadeteComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -61,6 +62,11 @@ import * as V from '../../core/utils/validaciones';
           [domicilio]="domicilio"
           [aviso]="editId ? 'Si este cadete todavía no tiene domicilio cargado, podés dejarlo en blanco y completarlo después.' : ''"
         />
+
+        <!-- 2026-10-05: "Habilitar nuevo celular" estaba solo en la ficha y no se encontraba; también acá, al editar. -->
+        @if (editId) {
+          <app-celular-cadete [cadeteId]="editId" />
+        }
 
         <div class="grid sm:grid-cols-3 gap-4">
           <label class="flex flex-col gap-1">
