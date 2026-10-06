@@ -264,6 +264,10 @@ import * as V from '../../core/utils/validaciones';
                 />
               </label>
             }
+            <label class="flex items-center gap-2 mt-6" title="El cadete vuelve al origen después de entregar — suma el recargo de Configuración → Tarifas">
+              <input type="checkbox" [ngModel]="retornaAlOrigen" (ngModelChange)="onRetornaAlOrigenChange($event)" name="retornaAlOrigen" />
+              <span class="text-sm font-medium text-gray-700">Regresa al origen</span>
+            </label>
           </div>
 
           <label class="flex flex-col gap-1">
@@ -356,6 +360,8 @@ export class NuevoPedidoComponent implements OnInit {
   montoDeclarado: number | null = null;
   llevaValores = false;
   montoValores: number | null = null;
+  /** El cadete vuelve al origen: suma recargo al precio sugerido y viaja al cadete en el detalle. */
+  retornaAlOrigen = false;
   detalle = '';
   origenPiso = '';
   origenDepto = '';
@@ -556,17 +562,24 @@ export class NuevoPedidoComponent implements OnInit {
         this.destinoPicked.lat,
         this.destinoPicked.lng,
         this.montoDeclarado,
-        false,
+        this.retornaAlOrigen,
         this.llevaValores ? this.montoValores : null,
       )
       .subscribe((c) => {
         if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
         this.precio = c.precioSugerido;
         this.precioSugeridoInfo =
-          c.metodo === 'DISTANCIA_ESTIMADA'
+          (c.metodo === 'DISTANCIA_ESTIMADA'
             ? `Sugerido por distancia estimada (~${c.distanciaKm?.toFixed(1)} km, no se pudo calcular la ruta)`
-            : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`;
+            : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`) +
+          (this.retornaAlOrigen ? ', con el recargo por volver al origen' : '');
       });
+  }
+
+  /** Volver al origen suma recargo (mismo criterio que la página pública "/pedir"). */
+  onRetornaAlOrigenChange(valor: boolean): void {
+    this.retornaAlOrigen = valor;
+    this.sugerirPrecio();
   }
 
   /** Si ya hay origen/destino y el precio sigue siendo el sugerido (no lo tocaron a mano), recalcula al cambiar el dinero declarado. */
@@ -649,7 +662,8 @@ export class NuevoPedidoComponent implements OnInit {
       montoDeclarado: this.montoDeclarado,
       llevaValores: this.llevaValores,
       montoValores: this.llevaValores ? this.montoValores : null,
-      detalle: this.detalle || null,
+      // Mismo texto que arma el backend para los pedidos de "/pedir" (SolicitudPedidoService).
+      detalle: ((this.retornaAlOrigen ? '🔁 Retorna al origen. ' : '') + this.detalle).trim() || null,
       origenPiso: this.origenPiso.trim() || null,
       origenDepto: this.origenDepto.trim() || null,
       origenObservaciones: this.origenObservaciones.trim() || null,
@@ -693,6 +707,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.montoDeclarado = null;
     this.llevaValores = false;
     this.montoValores = null;
+    this.retornaAlOrigen = false;
     this.detalle = '';
     this.destinoPiso = '';
     this.destinoDepto = '';
@@ -719,6 +734,7 @@ export class NuevoPedidoComponent implements OnInit {
     this.montoDeclarado = null;
     this.llevaValores = false;
     this.montoValores = null;
+    this.retornaAlOrigen = false;
     this.detalle = '';
     this.origenPiso = '';
     this.origenDepto = '';
