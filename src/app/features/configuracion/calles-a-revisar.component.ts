@@ -154,8 +154,15 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
                     {{ d.tipo === 'NOMBRE' ? 'las cuadras de "' + d.otraCalle + '" de altura parecida' : 'la cuadra anterior y la siguiente' }}.
                     Verde: donde la ubica Google, después de pegar el link.
                   </span>
+                  <span class="text-sm text-gray-700">
+                    Qué hacer: buscá en Google Maps <strong>{{ d.calle }} {{ alturaParaBuscar(d) }}</strong> (la mitad de la cuadra
+                    {{ d.cuadra }}, que va del {{ d.cuadra }} al {{ d.cuadra + 99 }}), copiá el link de la barra del navegador y
+                    pegalo acá. Solo se revisa el punto rojo; los azules son para comparar.
+                  </span>
                   <div class="flex flex-wrap items-center gap-2">
-                    <a [href]="buscarEnGoogle(d)" target="_blank" rel="noopener" class="boton">Buscar en Google Maps</a>
+                    <a [href]="buscarEnGoogle(d)" target="_blank" rel="noopener" class="boton">
+                      Buscar {{ d.calle }} {{ alturaParaBuscar(d) }} en Google Maps
+                    </a>
                     <input
                       type="text"
                       class="flex-1 min-w-48 rounded border border-gray-300 px-2 py-1 text-sm"
@@ -256,9 +263,19 @@ export class CallesARevisarComponent {
     this.sinDecidir.set(null);
   }
 
+  /**
+   * El punto de una cuadra es el del medio de la cuadra (la 2600 va del 2600 al 2699): se busca el
+   * 2650, no el 2600, que en Google es la esquina y dejaría el punto corrido media cuadra.
+   */
+  alturaParaBuscar(d: Duda): number {
+    return d.cuadra + 50;
+  }
+
   buscarEnGoogle(d: Duda): string {
-    const direccion = d.cuadra > 0 ? `${d.calle} ${d.cuadra}` : d.calle;
-    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${direccion}, ${d.localidad}, Tucumán`);
+    return (
+      'https://www.google.com/maps/search/?api=1&query=' +
+      encodeURIComponent(`${d.calle} ${this.alturaParaBuscar(d)}, ${d.localidad}, Tucumán`)
+    );
   }
 
   usarLink(d: Duda): void {
