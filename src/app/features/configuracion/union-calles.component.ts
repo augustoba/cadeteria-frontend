@@ -14,8 +14,12 @@ interface UnionCalle {
 }
 
 interface UnionHecha extends UnionCalle {
+  id: string;
   origen: string;
   cuando: string;
+  /** Las uniones desde el 2026-10-07 guardan cómo estaba todo antes y se pueden volver atrás una vez. */
+  sePuedeDeshacer: boolean;
+  deshechaEn: string | null;
 }
 
 /**
@@ -85,6 +89,13 @@ interface UnionHecha extends UnionCalle {
                   · {{ u.cuando | date: 'dd/MM/yyyy HH:mm' }} · {{ u.origen }} · cuadra {{ u.cuadra }} en {{ u.localidad }} a
                   {{ u.distanciaM }} m · {{ u.filasMovidas }} cuadras pasadas, {{ u.filasFusionadas }} repetidas
                 </span>
+                @if (u.deshechaEn) {
+                  <span class="text-xs text-amber-700">· deshecha el {{ u.deshechaEn | date: 'dd/MM/yyyy HH:mm' }}</span>
+                } @else if (u.sePuedeDeshacer) {
+                  <button type="button" class="ml-2 text-xs font-semibold text-brand-600 hover:underline" [disabled]="ocupado()" (click)="deshacer(u)">
+                    Deshacer
+                  </button>
+                }
               </li>
             }
           </ul>
@@ -154,6 +165,11 @@ export class UnionCallesComponent {
       this.pendientes.set(null);
       this.hechas.set(lista);
     });
+  }
+
+  /** Vuelve atrás una unión: las cuadras y las formas de escribir la calle quedan como estaban. */
+  deshacer(u: UnionHecha): void {
+    this.pedir(this.http.post<UnionHecha>(apiUrl(`/admin/configuracion/calles/uniones/${u.id}/deshacer`), {}), () => this.verHistorial());
   }
 
   private pedir<T>(pedido: import('rxjs').Observable<T>, alTerminar: (dato: T) => void): void {
