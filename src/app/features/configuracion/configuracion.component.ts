@@ -8,8 +8,6 @@ import { SeguridadService } from '../../core/services/seguridad.service';
 import { SaludService, Salud } from '../../core/services/salud.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AccesoLog } from '../../core/models/acceso-log.model';
-import { UnionCallesComponent } from './union-calles.component';
-import { CallesARevisarComponent } from './calles-a-revisar.component';
 import { ApkCadetesComponent } from './apk-cadetes.component';
 import { AvisoEnCaminoEditorComponent } from './aviso-en-camino-editor.component';
 
@@ -66,7 +64,7 @@ const PROVEEDORES_KEYS = [
 
 @Component({
   selector: 'app-configuracion',
-  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, AvisoEnCaminoEditorComponent, ApkCadetesComponent, UnionCallesComponent, CallesARevisarComponent],
+  imports: [FormsModule, DatePipe, DecimalPipe, RouterLink, AvisoEnCaminoEditorComponent, ApkCadetesComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
@@ -668,8 +666,10 @@ const PROVEEDORES_KEYS = [
                   los alias y la búsqueda por parecido) y lo que falte se carga pegando el link de Google Maps. No
                   cambia el "qué calle hay acá" del mapa.
                 </span>
-                <app-union-calles />
-                <app-calles-a-revisar />
+                <span class="text-xs text-gray-500 border-t border-gray-200 pt-2">
+                  Las calles a revisar y las calles con dos nombres ahora están en su propia pantalla:
+                  <a routerLink="/calles" class="font-semibold text-brand-600 hover:underline">Calles</a>.
+                </span>
               </div>
               <!-- Ubicaciones de Google en la cache de direcciones (2026-09-25) -->
               <div class="sm:col-span-2 flex flex-col gap-2 rounded border border-gray-200 p-3">

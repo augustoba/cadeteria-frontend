@@ -32,8 +32,8 @@ interface UnionHecha extends UnionCalle {
   selector: 'app-union-calles',
   imports: [DatePipe],
   template: `
-    <div class="flex flex-col gap-2 border-t border-gray-200 pt-3">
-      <span class="text-sm font-medium text-gray-700">Calles con dos nombres</span>
+    <div class="flex flex-col gap-2">
+      <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Calles con dos nombres</h2>
       <span class="text-xs text-gray-400 -mt-1">
         Cuando la misma calle quedó guardada con dos nombres ("Suipacha" y "Batalla de Suipacha"), el buscador ofrece
         las dos y lo que confirma un cadete con un nombre no corrige el otro. Son la misma calle si tienen la misma

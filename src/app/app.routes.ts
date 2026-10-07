@@ -119,6 +119,11 @@ export const routes: Routes = [
         canActivate: [permisoGuard('configuracion')],
       },
       {
+        path: 'calles',
+        loadComponent: () => import('./features/calles/calles.component').then((m) => m.CallesComponent),
+        canActivate: [permisoGuard('configuracion')],
+      },
+      {
         path: 'metricas',
         loadComponent: () => import('./features/metricas/metricas.component').then((m) => m.MetricasComponent),
         canActivate: [permisoGuard('metricas')],

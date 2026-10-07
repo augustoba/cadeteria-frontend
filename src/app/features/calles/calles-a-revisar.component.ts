@@ -13,7 +13,7 @@ interface Punto {
 
 interface Duda {
   id: string;
-  tipo: 'NOMBRE' | 'UBICACION';
+  tipo: 'NOMBRE' | 'UBICACION' | 'NOMBRE_VIEJO';
   calle: string;
   localidad: string;
   cuadra: number;
@@ -57,7 +57,12 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.map = L.map(this.mapEl.nativeElement, { attributionControl: false }).setView([-26.8241, -65.2226], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(this.map);
     this.capa = L.layerGroup().addTo(this.map);
-    this.dibujar();
+    // El recuadro recién toma su tamaño después de dibujarse: sin esto el mapa calcula el zoom para
+    // un recuadro chico y abre tan lejos que los puntos quedan encimados.
+    setTimeout(() => {
+      this.map?.invalidateSize();
+      this.dibujar();
+    });
   }
 
   ngOnChanges(): void {
@@ -100,13 +105,15 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
   selector: 'app-calles-a-revisar',
   imports: [FormsModule, MapaDudaComponent],
   template: `
-    <div class="flex flex-col gap-2 border-t border-gray-200 pt-3">
-      <span class="text-sm font-medium text-gray-700">Calles a revisar</span>
-      <span class="text-xs text-gray-400 -mt-1">
-        Calles y cuadras de la base propia que el sistema no puede dar por buenas solo: dos nombres que se escriben casi
-        igual, o una cuadra que no cae donde sus vecinas dicen. Buscá la dirección en Google Maps, copiá el link y pegalo:
-        si el resultado es claro el sistema decide solo (une los nombres, los deja como distintos o corrige la cuadra). Van
-        primero las cuadras más usadas. La lista se actualiza sola todas las noches.
+    <div class="flex flex-col gap-2">
+      <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Calles a revisar</h2>
+      <span class="text-xs text-gray-500">
+        Calles y cuadras que el sistema no puede dar por buenas solo. Hay tres clases:
+        <strong>Ubicación</strong> (una cuadra que no cae donde sus vecinas dicen), <strong>Nombre</strong> (dos nombres que
+        se escriben casi igual) y <strong>Nombre viejo</strong> (una cuadra repetida con el nombre que la calle tenía antes).
+        En las dos primeras, buscá la dirección en Google Maps, copiá el link y pegalo: si el resultado es claro el sistema
+        decide solo; si no, no cambia nada y te deja elegir. Van primero las cuadras más usadas. La lista se actualiza sola
+        todas las noches.
       </span>
       <div class="flex flex-wrap items-center gap-2">
         <button type="button" class="boton" [disabled]="ocupado()" (click)="cargar()">
@@ -114,7 +121,7 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
         </button>
         <button type="button" class="boton" [disabled]="ocupado()" (click)="actualizar()">Actualizar la lista</button>
         @if (lista(); as l) {
-          <span class="text-xs text-gray-500">{{ l.length }} pendientes ({{ deNombre() }} de nombre, {{ l.length - deNombre() }} de ubicación)</span>
+          <span class="text-xs text-gray-500">{{ l.length }} pendientes ({{ cuantas('UBICACION') }} de ubicación, {{ cuantas('NOMBRE') }} de nombre, {{ cuantas('NOMBRE_VIEJO') }} de nombre viejo)</span>
         }
       </div>
 
@@ -135,9 +142,7 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
                 <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <strong>{{ d.calle }} {{ d.cuadra }}</strong>
                   <span class="text-xs text-gray-500">{{ d.localidad }}</span>
-                  <span class="text-xs rounded px-1.5 py-0.5" [class]="d.tipo === 'NOMBRE' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'">
-                    {{ d.tipo === 'NOMBRE' ? 'Nombre' : 'Ubicación' }}
-                  </span>
+                  <span class="text-xs rounded px-1.5 py-0.5" [class]="colorDe(d)">{{ etiquetaDe(d) }}</span>
                   @if (d.usos > 1) {
                     <span class="text-xs text-gray-500">usada {{ d.usos }} veces</span>
                   }
@@ -151,13 +156,29 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
                   <app-mapa-duda [duda]="d" />
                   <span class="text-xs text-gray-400">
                     Rojo: esta cuadra. Azul:
-                    {{ d.tipo === 'NOMBRE' ? 'las cuadras de "' + d.otraCalle + '" de altura parecida' : 'la cuadra anterior y la siguiente' }}.
-                    Verde: donde la ubica Google, después de pegar el link.
+                    {{ d.tipo === 'UBICACION' ? 'la cuadra anterior y la siguiente' : 'las cuadras de "' + d.otraCalle + '" de altura parecida' }}.
+                    @if (d.tipo !== 'NOMBRE_VIEJO') {
+                      Verde: donde la ubica Google, después de pegar el link.
+                    }
                   </span>
+                  @if (d.tipo === 'NOMBRE_VIEJO') {
+                    <span class="text-sm text-gray-700">
+                      Qué hacer: no hace falta buscar nada. Esta cuadra está guardada dos veces: como
+                      <strong>{{ d.calle }}</strong> (el nombre de antes) y como <strong>{{ d.otraCalle }}</strong> (el de hoy). Al quitar la
+                      repetida queda solo la de hoy, y quien escriba el nombre de antes la sigue encontrando.
+                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <button type="button" class="boton boton-fuerte" [disabled]="ocupado()" (click)="marcar(d, 'QUITAR')">
+                        Quitar la repetida (queda "{{ d.otraCalle }}")
+                      </button>
+                      <button type="button" class="boton" [disabled]="ocupado()" (click)="marcar(d, 'DISTINTAS')">Son calles distintas, dejar las dos</button>
+                    </div>
+                  } @else {
                   <span class="text-sm text-gray-700">
                     Qué hacer: buscá en Google Maps <strong>{{ d.calle }} {{ alturaParaBuscar(d) }}</strong> (la mitad de la cuadra
                     {{ d.cuadra }}, que va del {{ d.cuadra }} al {{ d.cuadra + 99 }}), copiá el link de la barra del navegador y
-                    pegalo acá. Solo se revisa el punto rojo; los azules son para comparar.
+                    pegalo acá. Solo se revisa el punto rojo; los azules son para comparar. Si Google la ubica mal, mové el pin en
+                    Google Maps hasta el lugar correcto y copiá ese link.
                   </span>
                   <div class="flex flex-wrap items-center gap-2">
                     <a [href]="buscarEnGoogle(d)" target="_blank" rel="noopener" class="boton">
@@ -177,6 +198,13 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
                   </div>
                   @if (sinDecidir()) {
                     <p class="text-sm text-amber-700">{{ sinDecidir() }}</p>
+                    @if (d.tipo === 'UBICACION' && d.linkLat !== null) {
+                      <div>
+                        <button type="button" class="boton" [disabled]="ocupado()" (click)="marcar(d, 'USAR_GOOGLE')">
+                          Usar igual el punto de Google (el verde)
+                        </button>
+                      </div>
+                    }
                   }
                   <div class="flex flex-wrap items-center gap-2">
                     <span class="text-xs text-gray-500">O elegí a mano:</span>
@@ -190,6 +218,7 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
                       <button type="button" class="boton" [disabled]="ocupado()" (click)="marcar(d, 'NO_EXISTE')">Esa cuadra no existe</button>
                     }
                   </div>
+                  }
                 }
               </li>
             }
@@ -243,7 +272,18 @@ export class CallesARevisarComponent {
   readonly abierta = signal<string | null>(null);
   readonly mostrar = signal(25);
   readonly visibles = computed(() => (this.lista() ?? []).slice(0, this.mostrar()));
-  readonly deNombre = computed(() => (this.lista() ?? []).filter((d) => d.tipo === 'NOMBRE').length);
+
+  cuantas(tipo: Duda['tipo']): number {
+    return (this.lista() ?? []).filter((d) => d.tipo === tipo).length;
+  }
+
+  etiquetaDe(d: Duda): string {
+    return d.tipo === 'NOMBRE' ? 'Nombre' : d.tipo === 'NOMBRE_VIEJO' ? 'Nombre viejo' : 'Ubicación';
+  }
+
+  colorDe(d: Duda): string {
+    return d.tipo === 'NOMBRE' ? 'bg-amber-100 text-amber-800' : d.tipo === 'NOMBRE_VIEJO' ? 'bg-violet-100 text-violet-800' : 'bg-sky-100 text-sky-800';
+  }
   link = '';
 
   cargar(): void {
@@ -284,7 +324,7 @@ export class CallesARevisarComponent {
     this.pedir(this.http.post<Resultado>(apiUrl(`${this.base}/${d.id}/link`), { link }), (r) => this.alResolver(r));
   }
 
-  marcar(d: Duda, decision: 'MISMA' | 'DISTINTAS' | 'ESTA_BIEN' | 'NO_EXISTE'): void {
+  marcar(d: Duda, decision: 'MISMA' | 'DISTINTAS' | 'ESTA_BIEN' | 'NO_EXISTE' | 'QUITAR' | 'USAR_GOOGLE'): void {
     this.pedir(this.http.post<Resultado>(apiUrl(`${this.base}/${d.id}/marcar`), { decision }), (r) => this.alResolver(r));
   }
 

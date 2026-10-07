@@ -34,6 +34,7 @@ const NAV: NavItem[] = [
   { label: 'Incidencias', path: '/incidencias', icon: '🎫' },
   { label: 'Métricas', path: '/metricas', icon: '📊', permisoRequerido: 'metricas' },
   { label: 'Configuración', path: '/configuracion', icon: '⚙️', permisoRequerido: 'configuracion' },
+  { label: 'Calles', path: '/calles', icon: '🛣️', permisoRequerido: 'configuracion' },
   { label: 'Usuarios', path: '/usuarios', icon: '👥', permisoRequerido: 'usuarios' },
   { label: 'Roles', path: '/roles', icon: '🔑', permisoRequerido: 'roles' },
   { label: 'Sistema', path: '/sistema', icon: '🖥️', permisoRequerido: 'sistema' },
