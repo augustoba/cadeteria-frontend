@@ -47,7 +47,9 @@ function globo(color: string, texto: string): L.DivIcon {
   template: `<div #mapEl class="h-56 w-full rounded border border-gray-200"></div>`,
 })
 export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
-  @Input({ required: true }) duda!: Duda;
+  /** Solo lo que el mapa dibuja: sirve también para las cuadras a buscar. */
+  @Input({ required: true }) duda!: Pick<Duda, 'cuadra' | 'lat' | 'lng' | 'linkLat' | 'linkLng' | 'cercanas'>;
+  @Input() colorCuadra = '#dc2626';
   @ViewChild('mapEl', { static: true }) private readonly mapEl!: ElementRef<HTMLDivElement>;
 
   private map: L.Map | null = null;
@@ -85,7 +87,7 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
     if (d.lat != null && d.lng != null) {
       puntos.push([d.lat, d.lng]);
-      L.marker([d.lat, d.lng], { icon: globo('#dc2626', String(d.cuadra)), zIndexOffset: 500 }).addTo(this.capa);
+      L.marker([d.lat, d.lng], { icon: globo(this.colorCuadra, String(d.cuadra)), zIndexOffset: 500 }).addTo(this.capa);
     }
     if (d.linkLat != null && d.linkLng != null) {
       puntos.push([d.linkLat, d.linkLng]);
