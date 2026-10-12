@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CadeteService } from '../../core/services/cadete.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
@@ -22,25 +22,219 @@ function domingoDe(lunesIso: string): string {
   return domingo.toISOString().slice(0, 10);
 }
 
+/** Cómo está cada cadete con el cobro, para la lista y la cabecera del detalle. */
+type EstadoCobro = 'AL_DIA' | 'PARCIAL' | 'DEBE' | 'CON_CREDITO' | 'SIN_CREDITO';
+
+function estadoCobro(c: Cadete): EstadoCobro {
+  if (c.modalidadPago === 'PORCENTAJE') return c.creditoDisponible > 0 ? 'CON_CREDITO' : 'SIN_CREDITO';
+  if (!c.habilitadoPago) return 'DEBE';
+  return c.pagoSemanalVenceEn ? 'PARCIAL' : 'AL_DIA';
+}
+
+const PUEDE_TRABAJAR: Record<EstadoCobro, boolean> = {
+  AL_DIA: true,
+  PARCIAL: true,
+  CON_CREDITO: true,
+  DEBE: false,
+  SIN_CREDITO: false,
+};
+
 /**
  * Pantalla "Pagos" unificada — antes esto y la lista de Cadetes tenían DOS mecanismos de
  * pago semanal totalmente separados: un log simple "Pagado sí/no" acá (PagoSemanalService,
  * no tocaba nada más) y el habilitadoPago real del cadete (el único que de verdad lo
  * habilita a recibir viajes), editable solo desde un botón en la lista de Cadetes. Un admin
  * podía marcar "Pagado" acá creyendo que ya estaba resuelto y el cadete seguía bloqueado
- * para que le asignen pedidos. Ahora todo el flujo de pago real vive acá, en un solo lugar.
+ * para que le asignen pedidos. Ahora todo el flujo de pago real vive acá, en un solo lugar:
+ * habilitar (registrando el pago), deshabilitar por falta de pago (sin darlo de baja) y
+ * cargar crédito.
  */
 @Component({
   selector: 'app-pagos',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, DatePipe],
   template: `
     <div class="flex flex-col gap-4">
-      @if (pendientesSemanal().length > 0) {
+      @if (sinPoderTrabajar().length > 0) {
         <div class="bg-amber-50 border border-amber-200 rounded px-4 py-3 text-sm text-amber-800">
-          ⚠️ {{ pendientesSemanal().length }} cadete(s) semanal(es) sin habilitar para trabajar esta semana:
-          {{ nombresPendientes() }}
+          {{ sinPoderTrabajar().length }} cadete(s) no pueden trabajar por falta de pago: {{ nombresSinPoderTrabajar() }}
         </div>
       }
+
+      <div class="bg-white rounded shadow-sm flex flex-col md:flex-row min-h-[24rem]">
+        <aside class="md:w-72 border-b md:border-b-0 md:border-r border-gray-200 shrink-0">
+          <div class="bg-brand-600 text-white px-4 py-3 rounded-t md:rounded-tr-none font-semibold">Cadetes</div>
+          <div class="overflow-y-auto max-h-[32rem]">
+            @for (c of listado(); track c.id) {
+              <button
+                type="button"
+                class="w-full text-left px-4 py-2 text-sm border-b border-gray-100 hover:bg-gray-50 flex items-center gap-2"
+                [class.bg-brand-50]="c.id === seleccionado()?.id"
+                (click)="elegir(c)"
+              >
+                <span class="min-w-0 truncate">{{ c.nombre }} {{ c.apellido }}</span>
+                <span class="ml-auto shrink-0 px-2 py-0.5 rounded text-xs font-medium" [class]="claseChip(c)">
+                  {{ textoChip(c) }}
+                </span>
+              </button>
+            } @empty {
+              <p class="text-sm text-gray-400 p-4">Sin cadetes activos.</p>
+            }
+          </div>
+        </aside>
+
+        <div class="flex-1 p-4 min-w-0">
+          @if (seleccionado(); as c) {
+            @if (mensaje(); as m) {
+              <div class="rounded bg-emerald-50 text-emerald-700 text-sm px-3 py-2 mb-3">{{ m }}</div>
+            }
+
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+              <div>
+                <h1 class="font-semibold text-gray-800 text-lg">{{ c.nombre }} {{ c.apellido }}</h1>
+                <p class="text-sm text-gray-500">
+                  {{ c.modalidadPago === 'SEMANAL' ? 'Paga una cuota fija por semana' : 'Paga con crédito: se le descuenta un % de cada viaje' }}
+                </p>
+              </div>
+              <span class="px-3 py-1 rounded text-sm font-medium" [class]="claseChip(c)">
+                {{ puedeTrabajar(c) ? 'Puede trabajar' : 'No puede trabajar' }}
+              </span>
+            </div>
+
+            @if (c.modalidadPago === 'SEMANAL') {
+              <section class="border border-gray-200 rounded p-4 mb-4 max-w-xl">
+                <h2 class="text-sm font-semibold text-gray-700 mb-2">Esta semana</h2>
+                @switch (estado(c)) {
+                  @case ('AL_DIA') {
+                    <p class="text-sm text-gray-700">
+                      Pagó la cuota
+                      @if (c.pagoSemanalMontoPagado != null) {
+                        ($ {{ c.pagoSemanalMontoPagado | number: '1.0-0' }})
+                      }
+                      — está habilitado hasta el lunes.
+                    </p>
+                  }
+                  @case ('PARCIAL') {
+                    <p class="text-sm text-gray-700">
+                      Pagó $ {{ c.pagoSemanalMontoPagado | number: '1.0-0' }} de $ {{ cuotaDe(c) | number: '1.0-0' }}. Tiene hasta
+                      el {{ c.pagoSemanalVenceEn | date: 'dd/MM HH:mm' }} para completar; si no, se deshabilita solo.
+                    </p>
+                  }
+                  @case ('DEBE') {
+                    <p class="text-sm text-gray-700">
+                      No pagó la semana: no puede entrar a la app ni recibir viajes hasta que registres el pago.
+                    </p>
+                  }
+                }
+                @if (puedeTrabajar(c)) {
+                  @if (confirmandoDeshabilitar()) {
+                    <div class="mt-3 rounded bg-red-50 border border-red-200 p-3 text-sm text-red-800 flex flex-col gap-2">
+                      <p>
+                        Deja de recibir viajes y no puede volver a entrar a la app hasta que registres el pago. Si tiene
+                        viajes sin terminar, los termina. No es una baja: la cuenta sigue activa.
+                      </p>
+                      <div class="flex gap-2">
+                        <button
+                          type="button"
+                          class="btn bg-red-600 hover:bg-red-700"
+                          [disabled]="cadetes.saving()"
+                          (click)="deshabilitar()"
+                        >
+                          Sí, deshabilitar
+                        </button>
+                        <button type="button" class="btn-sec" (click)="confirmandoDeshabilitar.set(false)">Cancelar</button>
+                      </div>
+                    </div>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn bg-red-600 hover:bg-red-700 mt-3"
+                      (click)="confirmandoDeshabilitar.set(true)"
+                    >
+                      Deshabilitar por falta de pago
+                    </button>
+                  }
+                }
+              </section>
+
+              <section class="border border-gray-200 rounded p-4 mb-4 max-w-xl flex flex-col gap-3">
+                <h2 class="text-sm font-semibold text-gray-700">
+                  {{ puedeTrabajar(c) ? 'Registrar otro pago' : 'Registrar pago y habilitar' }}
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label class="flex flex-col gap-1">
+                    <span class="text-sm text-gray-700">Cuota de la semana</span>
+                    <input type="number" min="0" step="1" class="input" [(ngModel)]="montoSemanalModal" name="montoSemanalModal" />
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-sm text-gray-700">Pagó ahora</span>
+                    <input type="number" min="0" step="1" class="input" [(ngModel)]="montoPagadoModal" name="montoPagadoModal" />
+                  </label>
+                </div>
+                <p class="text-xs text-gray-400 -mt-1">La cuota se recuerda para las próximas semanas.</p>
+                @if (faltaCalculado() > 0) {
+                  <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
+                    Falta $ {{ faltaCalculado() | number: '1.0-0' }}. Poné hasta cuándo tiene para completarlo; pasada esa fecha
+                    se deshabilita solo.
+                  </div>
+                  <label class="flex flex-col gap-1 sm:max-w-xs">
+                    <span class="text-sm text-gray-700">Vence</span>
+                    <input type="datetime-local" class="input" [(ngModel)]="venceEnModal" name="venceEnModal" />
+                  </label>
+                }
+                <button
+                  type="button"
+                  class="btn bg-emerald-600 hover:bg-emerald-700 self-start"
+                  [disabled]="cadetes.saving() || montoPagadoModal == null"
+                  (click)="confirmarPagoSemanal()"
+                >
+                  {{ puedeTrabajar(c) ? 'Guardar pago' : 'Guardar pago y habilitar' }}
+                </button>
+              </section>
+            } @else {
+              <section class="border border-gray-200 rounded p-4 mb-4 max-w-xl flex flex-col gap-3">
+                <h2 class="text-sm font-semibold text-gray-700">Crédito</h2>
+                <p class="text-2xl font-semibold" [class]="c.creditoDisponible > 0 ? 'text-gray-800' : 'text-red-600'">
+                  $ {{ c.creditoDisponible | number: '1.0-0' }}
+                </p>
+                @if (c.creditoDisponible <= 0) {
+                  <p class="text-sm text-gray-700">
+                    Sin crédito no puede entrar a la app ni recibir viajes. Cargale lo que transfirió para habilitarlo.
+                  </p>
+                } @else {
+                  <p class="text-sm text-gray-500">Recibe viajes mientras le alcance para la comisión de cada uno.</p>
+                }
+                <label class="flex flex-col gap-1 sm:max-w-xs">
+                  <span class="text-sm text-gray-700">Agregar crédito (lo que transfirió)</span>
+                  <input type="number" min="0" step="1" class="input" [(ngModel)]="montoCreditoModal" name="montoCreditoModal" />
+                </label>
+                <button
+                  type="button"
+                  class="btn bg-emerald-600 hover:bg-emerald-700 self-start"
+                  [disabled]="cadetes.saving() || !montoCreditoModal"
+                  (click)="confirmarCredito()"
+                >
+                  Agregar crédito
+                </button>
+              </section>
+            }
+
+            <details class="max-w-xl text-sm">
+              <summary class="cursor-pointer text-gray-500 select-none">Cambiar cómo paga</summary>
+              <div class="mt-2 flex flex-col gap-2">
+                <select class="input sm:max-w-xs" [ngModel]="c.modalidadPago" (ngModelChange)="cambiarModalidad($event)">
+                  <option value="SEMANAL">Semanal (cuota fija)</option>
+                  <option value="PORCENTAJE">Porcentaje (crédito)</option>
+                </select>
+                <p class="text-xs text-gray-400">
+                  Si pasa a semanal, queda sin habilitar hasta que registres el pago de la semana.
+                </p>
+              </div>
+            </details>
+          } @else {
+            <p class="text-gray-400 text-sm py-6 text-center">Elegí un cadete para ver o cargar sus pagos.</p>
+          }
+        </div>
+      </div>
 
       <div class="bg-white rounded shadow-sm">
         <div
@@ -81,108 +275,6 @@ function domingoDe(lunesIso: string): string {
           </div>
         }
       </div>
-
-      <div class="bg-white rounded shadow-sm flex min-h-[24rem]">
-        <aside class="w-64 border-r border-gray-200 shrink-0">
-          <div class="bg-brand-600 text-white px-4 py-3 rounded-tl font-semibold">Cadetes</div>
-          <div class="overflow-y-auto max-h-[32rem]">
-            @for (c of cadetes.cadetes(); track c.id) {
-              <button
-                type="button"
-                class="w-full text-left px-4 py-2 text-sm border-b border-gray-100 hover:bg-gray-50 flex items-center gap-2"
-                [class.bg-brand-50]="c.id === seleccionado()?.id"
-                (click)="elegir(c)"
-              >
-                @if (c.modalidadPago === 'SEMANAL' && !c.habilitadoPago) {
-                  <span title="No habilitado para trabajar esta semana">⚠️</span>
-                }
-                {{ c.nombre }} {{ c.apellido }}
-                <span class="text-xs text-gray-400 ml-auto">{{ c.modalidadPago === 'SEMANAL' ? '💵' : '%' }}</span>
-              </button>
-            } @empty {
-              <p class="text-sm text-gray-400 p-4">Sin cadetes cargados.</p>
-            }
-          </div>
-        </aside>
-
-        <div class="flex-1 p-4">
-          @if (!seleccionado()) {
-            <p class="text-gray-400 text-sm py-6 text-center">Elegí un cadete para ver o cargar sus pagos.</p>
-          } @else {
-            @if (mensaje(); as m) {
-              <div class="rounded bg-emerald-50 text-emerald-700 text-sm px-3 py-2 mb-3">{{ m }}</div>
-            }
-            <h1 class="font-semibold text-gray-700 mb-3">
-              Pagos de {{ seleccionado()!.nombre }} {{ seleccionado()!.apellido }}
-            </h1>
-
-            <label class="flex flex-col gap-1 max-w-xs mb-4">
-              <span class="text-sm font-medium text-gray-700">Modelo de cobro</span>
-              <select class="input" [ngModel]="seleccionado()!.modalidadPago" (ngModelChange)="cambiarModalidad($event)">
-                <option value="SEMANAL">Semanal (cuota fija)</option>
-                <option value="PORCENTAJE">Porcentaje (crédito)</option>
-              </select>
-            </label>
-
-            @if (seleccionado()!.modalidadPago === 'SEMANAL') {
-              <div class="border border-gray-200 rounded p-4 flex flex-col gap-3 max-w-sm">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Estado esta semana</span>
-                  <span
-                    class="px-2 py-0.5 rounded text-xs font-medium"
-                    [class]="seleccionado()!.habilitadoPago ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'"
-                  >
-                    {{ seleccionado()!.habilitadoPago ? 'Habilitado para trabajar' : 'No habilitado — debe la semana' }}
-                  </span>
-                </div>
-                <label class="flex flex-col gap-1">
-                  <span class="text-sm font-medium text-gray-700">Monto de la semana (precio de la cuota)</span>
-                  <input type="number" min="0" step="1" class="input" [(ngModel)]="montoSemanalModal" name="montoSemanalModal" />
-                </label>
-                <p class="text-xs text-gray-400 -mt-2">Se recuerda para las próximas semanas — cambialo cuando quieras.</p>
-                <label class="flex flex-col gap-1">
-                  <span class="text-sm font-medium text-gray-700">Monto pagado ahora</span>
-                  <input type="number" min="0" step="1" class="input" [(ngModel)]="montoPagadoModal" name="montoPagadoModal" />
-                </label>
-                @if (faltaCalculado() > 0) {
-                  <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
-                    Falta $ {{ faltaCalculado() | number: '1.0-0' }} — poné hasta cuándo tiene para completarlo, si no se
-                    lo vuelve a deshabilitar solo pasada esa fecha.
-                  </div>
-                  <label class="flex flex-col gap-1">
-                    <span class="text-sm font-medium text-gray-700">Vence (para completar el resto)</span>
-                    <input type="datetime-local" class="input" [(ngModel)]="venceEnModal" name="venceEnModal" />
-                  </label>
-                }
-                <button
-                  type="button"
-                  class="btn bg-emerald-600 hover:bg-emerald-700 self-start"
-                  [disabled]="cadetes.saving() || montoPagadoModal == null"
-                  (click)="confirmarPagoSemanal()"
-                >
-                  ✔ Guardar pago
-                </button>
-              </div>
-            } @else {
-              <div class="border border-gray-200 rounded p-4 flex flex-col gap-3 max-w-sm">
-                <p class="text-sm text-gray-600">Crédito actual: $ {{ seleccionado()!.creditoDisponible | number: '1.0-0' }}</p>
-                <label class="flex flex-col gap-1">
-                  <span class="text-sm font-medium text-gray-700">Agregar crédito (lo que transfirió)</span>
-                  <input type="number" min="0" step="1" class="input" [(ngModel)]="montoCreditoModal" name="montoCreditoModal" />
-                </label>
-                <button
-                  type="button"
-                  class="btn bg-emerald-600 hover:bg-emerald-700 self-start"
-                  [disabled]="cadetes.saving() || !montoCreditoModal"
-                  (click)="confirmarCredito()"
-                >
-                  ✔ Agregar crédito
-                </button>
-              </div>
-            }
-          }
-        </div>
-      </div>
     </div>
   `,
   styles: [
@@ -200,6 +292,15 @@ function domingoDe(lunesIso: string): string {
         padding: 0.5rem 1rem;
         border-radius: 0.25rem;
       }
+      .btn-sec {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        border: 1px solid #d1d5db;
+        background: white;
+        color: #374151;
+      }
       .btn:disabled {
         opacity: 0.6;
       }
@@ -211,16 +312,25 @@ export class PagosComponent implements OnInit {
   private readonly config = inject(ConfiguracionService);
   private readonly metricasSvc = inject(MetricasService);
 
-  readonly seleccionado = signal<Cadete | null>(null);
+  private readonly seleccionadoId = signal<string | null>(null);
+  /** Siempre la versión fresca de la lista: así el detalle se actualiza solo después de cada acción. */
+  readonly seleccionado = computed(() => this.cadetes.cadetes().find((c) => c.id === this.seleccionadoId()) ?? null);
   readonly mensaje = signal<string | null>(null);
+  readonly confirmandoDeshabilitar = signal(false);
 
-  readonly arqueoAbierto = signal(true);
+  readonly arqueoAbierto = signal(false);
   readonly arqueoCadetes = signal<CadeteMetrica[]>([]);
   readonly semanaArqueo = signal(lunesDeEstaSemana());
 
-  readonly pendientesSemanal = computed(() =>
-    this.cadetes.cadetes().filter((c) => c.modalidadPago === 'SEMANAL' && !c.habilitadoPago),
+  /** Solo los activos (los dados de baja no pagan), con los que no pueden trabajar primero. */
+  readonly listado = computed(() =>
+    this.cadetes
+      .cadetes()
+      .filter((c) => c.activo)
+      .sort((a, b) => Number(this.puedeTrabajar(a)) - Number(this.puedeTrabajar(b)) || a.nombre.localeCompare(b.nombre)),
   );
+
+  readonly sinPoderTrabajar = computed(() => this.listado().filter((c) => !this.puedeTrabajar(c)));
 
   montoSemanalModal: number | null = null;
   montoPagadoModal: number | null = null;
@@ -233,8 +343,43 @@ export class PagosComponent implements OnInit {
     this.cargarArqueoSemana();
   }
 
-  nombresPendientes(): string {
-    return this.pendientesSemanal()
+  estado(c: Cadete): EstadoCobro {
+    return estadoCobro(c);
+  }
+
+  puedeTrabajar(c: Cadete): boolean {
+    return PUEDE_TRABAJAR[estadoCobro(c)];
+  }
+
+  textoChip(c: Cadete): string {
+    switch (estadoCobro(c)) {
+      case 'AL_DIA':
+        return 'Al día';
+      case 'PARCIAL':
+        return 'Pago parcial';
+      case 'DEBE':
+        return 'Debe la semana';
+      case 'CON_CREDITO':
+        return `$ ${Math.round(c.creditoDisponible).toLocaleString('es-AR')}`;
+      case 'SIN_CREDITO':
+        return 'Sin crédito';
+    }
+  }
+
+  claseChip(c: Cadete): string {
+    switch (estadoCobro(c)) {
+      case 'AL_DIA':
+      case 'CON_CREDITO':
+        return 'bg-emerald-100 text-emerald-700';
+      case 'PARCIAL':
+        return 'bg-amber-100 text-amber-800';
+      default:
+        return 'bg-red-100 text-red-700';
+    }
+  }
+
+  nombresSinPoderTrabajar(): string {
+    return this.sinPoderTrabajar()
       .map((c) => `${c.nombre} ${c.apellido}`)
       .join(', ');
   }
@@ -253,10 +398,15 @@ export class PagosComponent implements OnInit {
     return Number(this.config.valores()['pago_semanal_monto'] ?? 5000);
   }
 
+  cuotaDe(c: Cadete): number {
+    return c.montoSemanalActual ?? this.montoSemanalPorDefecto();
+  }
+
   elegir(c: Cadete): void {
     this.mensaje.set(null);
-    this.seleccionado.set(c);
-    this.montoSemanalModal = c.montoSemanalActual ?? this.montoSemanalPorDefecto();
+    this.confirmandoDeshabilitar.set(false);
+    this.seleccionadoId.set(c.id);
+    this.montoSemanalModal = this.cuotaDe(c);
     this.montoPagadoModal = null;
     this.venceEnModal = '';
     this.montoCreditoModal = null;
@@ -272,8 +422,6 @@ export class PagosComponent implements OnInit {
     if (!c || c.modalidadPago === modalidadPago) return;
     this.cadetes.cambiarModalidadPago(c.id, modalidadPago, () => {
       this.mensaje.set('Modelo de cobro actualizado.');
-      const actualizado = this.cadetes.cadetes().find((x) => x.id === c.id);
-      if (actualizado) this.elegir(actualizado);
     });
   }
 
@@ -285,11 +433,20 @@ export class PagosComponent implements OnInit {
       c.id,
       { montoPagado: this.montoPagadoModal, venceEn, montoSemanal: this.montoSemanalModal },
       () => {
-        this.mensaje.set('Pago guardado — el cadete ya puede recibir viajes.');
-        const actualizado = this.cadetes.cadetes().find((x) => x.id === c.id);
-        if (actualizado) this.seleccionado.set(actualizado);
+        this.mensaje.set('Pago guardado: ya puede entrar a la app y recibir viajes.');
+        this.montoPagadoModal = null;
+        this.venceEnModal = '';
       },
     );
+  }
+
+  deshabilitar(): void {
+    const c = this.seleccionado();
+    if (!c) return;
+    this.cadetes.deshabilitarPagoSemanal(c.id, () => {
+      this.confirmandoDeshabilitar.set(false);
+      this.mensaje.set('Deshabilitado por falta de pago. Se vuelve a habilitar cuando registres el pago.');
+    });
   }
 
   confirmarCredito(): void {
@@ -298,8 +455,6 @@ export class PagosComponent implements OnInit {
     this.cadetes.acreditar(c.id, this.montoCreditoModal, () => {
       this.mensaje.set('Crédito agregado.');
       this.montoCreditoModal = null;
-      const actualizado = this.cadetes.cadetes().find((x) => x.id === c.id);
-      if (actualizado) this.seleccionado.set(actualizado);
     });
   }
 }

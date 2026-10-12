@@ -88,6 +88,11 @@ export class CadeteService {
     this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/pago-semanal/habilitar`), input), onSuccess);
   }
 
+  /** Lo deshabilita por falta de pago sin darlo de baja (2026-10-11). */
+  deshabilitarPagoSemanal(id: string, onSuccess?: () => void): void {
+    this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/pago-semanal/deshabilitar`), {}), onSuccess);
+  }
+
   /** Carga crédito a un cadete PORCENTAJE tras recibir su transferencia (ronda 7). */
   acreditar(id: string, monto: number, onSuccess?: () => void): void {
     this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/credito`), { monto }), onSuccess);
