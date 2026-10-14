@@ -27,6 +27,8 @@ export interface Pedido {
   montoValores: number | null;
   /** El cadete vuelve al origen después de entregar (2026-10-14); también va como texto en el detalle. */
   retornaAlOrigen?: boolean;
+  /** Plata propia que el cadete tiene que tener encima (2026-10-14), null si no hace falta. */
+  montoDisponer?: number | null;
   detalle: string | null;
   /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
   origenPiso: string | null;
@@ -157,6 +159,8 @@ export interface PedidoInput {
   montoValores: number | null;
   /** El cadete vuelve al origen después de entregar (2026-10-14); también va como texto en el detalle. */
   retornaAlOrigen?: boolean;
+  /** Plata propia que el cadete tiene que tener encima (2026-10-14), null si no hace falta. */
+  montoDisponer?: number | null;
   detalle: string | null;
   /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
   origenPiso: string | null;

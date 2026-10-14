@@ -31,6 +31,8 @@ export class CotizacionService {
     retornaAlOrigen = false,
     /** Valor de los objetos de valor declarados: suma recargo igual que el dinero. */
     montoValores?: number | null,
+    /** Plata propia que el cadete tiene que tener encima (2026-10-14): mismo recargo. */
+    montoDisponer?: number | null,
   ) {
     let params = new HttpParams().set('origenLat', origenLat).set('origenLng', origenLng);
     if (destinoLat != null && destinoLng != null) {
@@ -41,6 +43,9 @@ export class CotizacionService {
     }
     if (montoValores != null && montoValores > 0) {
       params = params.set('montoValores', montoValores);
+    }
+    if (montoDisponer != null && montoDisponer > 0) {
+      params = params.set('montoDisponer', montoDisponer);
     }
     if (retornaAlOrigen) {
       params = params.set('retornaAlOrigen', true);

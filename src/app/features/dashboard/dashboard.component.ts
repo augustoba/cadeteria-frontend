@@ -616,6 +616,12 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
                   <div class="text-xs text-gray-400">Dinero</div>
                   <div class="font-medium text-gray-800">$ {{ p.montoDeclarado }}</div>
                 </div>
+                @if (p.montoDisponer) {
+                  <div>
+                    <div class="text-xs text-gray-400">El cadete debe disponer de</div>
+                    <div class="font-medium text-gray-800">$ {{ p.montoDisponer }}</div>
+                  </div>
+                }
               </div>
               <button type="button" class="text-xs text-gray-400 hover:underline mt-2" (click)="verHistorialPrecio(p.id)">
                 {{ historialPrecioAbierto() ? '▲ Ocultar historial de precio' : '▼ Ver historial de precio' }}

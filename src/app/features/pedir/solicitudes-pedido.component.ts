@@ -84,6 +84,9 @@ const ESTADO_CLASES: Record<string, string> = {
                 </span>
                 <span>{{ s.llevaDinero ? '💵 Lleva dinero' + (s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '') : 'No lleva dinero' }}</span>
                 <span>{{ s.llevaValores ? '💎 Transporta valores' + (s.montoValores ? ' ($' + s.montoValores + ')' : '') : 'No transporta valores' }}</span>
+                @if (s.montoDisponer) {
+                  <span>💵 El cadete debe disponer de {{ '$' + s.montoDisponer }}</span>
+                }
                 <span>{{ s.retornaAlOrigen ? '🔁 Retorna al origen' : 'No retorna al origen' }}</span>
                 @if (s.requiereMoto) {
                   <span>🏍️ Pidió moto</span>
@@ -324,7 +327,7 @@ export class SolicitudesPedidoComponent implements OnInit {
 
   /** Sugerencia de precio por GPS (mejora 2026-09-16) — por zona si el origen cae en una con precio cargado, si no por distancia real. */
   sugerirPrecio(s: SolicitudPedido): void {
-    this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng, this.montoModal[s.id], s.retornaAlOrigen, s.montoValores).subscribe((c) => {
+    this.cotizacion.cotizar(s.origenLat, s.origenLng, s.destinoLat, s.destinoLng, this.montoModal[s.id], s.retornaAlOrigen, s.montoValores, s.montoDisponer).subscribe((c) => {
       if (c.precioSugerido == null) {
         this.toast.error('No hay "precio por km" configurado — cargalo a mano.');
         return;

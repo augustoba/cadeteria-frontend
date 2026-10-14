@@ -15,6 +15,8 @@ export interface SolicitudPedido {
   llevaValores: boolean;
   montoValores: number | null;
   retornaAlOrigen: boolean;
+  /** Plata propia que el cadete tiene que tener encima (2026-10-14), null si no hace falta. */
+  montoDisponer: number | null;
   clienteNombre: string;
   clienteTelefono: string;
   detalle: string | null;
@@ -51,6 +53,8 @@ export interface SolicitudPedidoInput {
   /** Lo pide el cliente — el admin lo puede cambiar al revisar. */
   requiereMoto: boolean;
   retornaAlOrigen: boolean;
+  /** Plata propia que el cadete tiene que tener encima (2026-10-14), null si no hace falta. */
+  montoDisponer: number | null;
   clienteNombre: string;
   clienteTelefono: string;
   detalle: string | null;

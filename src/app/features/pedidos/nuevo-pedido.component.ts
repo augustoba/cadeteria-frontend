@@ -264,6 +264,24 @@ import * as V from '../../core/utils/validaciones';
                 />
               </label>
             }
+            <label class="flex items-center gap-2 mt-6" title="El cadete tiene que tener plata propia encima (ej. pagar algo al retirar) — suma recargo igual que el dinero">
+              <input type="checkbox" [ngModel]="disponeDinero" (ngModelChange)="onDisponeDineroChange($event)" name="disponeDinero" />
+              <span class="text-sm font-medium text-gray-700">El cadete debe disponer de dinero</span>
+            </label>
+            @if (disponeDinero) {
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">¿Cuánto?</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="input"
+                  [ngModel]="montoDisponer"
+                  (ngModelChange)="onMontoDisponerChange($event)"
+                  name="montoDisponer"
+                />
+              </label>
+            }
             <label class="flex items-center gap-2 mt-6" title="El cadete vuelve al origen después de entregar — suma el recargo de Configuración → Tarifas">
               <input type="checkbox" [ngModel]="retornaAlOrigen" (ngModelChange)="onRetornaAlOrigenChange($event)" name="retornaAlOrigen" />
               <span class="text-sm font-medium text-gray-700">Regresa al origen</span>
@@ -360,6 +378,9 @@ export class NuevoPedidoComponent implements OnInit {
   montoDeclarado: number | null = null;
   llevaValores = false;
   montoValores: number | null = null;
+  /** El cadete tiene que tener plata propia encima (2026-10-14): lo ve en la oferta y suma recargo. */
+  disponeDinero = false;
+  montoDisponer: number | null = null;
   /** El cadete vuelve al origen: suma recargo al precio sugerido y viaja al cadete en el detalle. */
   retornaAlOrigen = false;
   detalle = '';
@@ -564,6 +585,7 @@ export class NuevoPedidoComponent implements OnInit {
         this.montoDeclarado,
         this.retornaAlOrigen,
         this.llevaValores ? this.montoValores : null,
+        this.disponeDinero ? this.montoDisponer : null,
       )
       .subscribe((c) => {
         if ((this.precio != null && this.precioSugeridoInfo == null) || c.precioSugerido == null) return;
@@ -599,6 +621,17 @@ export class NuevoPedidoComponent implements OnInit {
     this.sugerirPrecio();
   }
 
+  /** El dinero que el cadete tiene que tener encima suma recargo igual que el dinero (2026-10-14). */
+  onDisponeDineroChange(valor: boolean): void {
+    this.disponeDinero = valor;
+    this.sugerirPrecio();
+  }
+
+  onMontoDisponerChange(valor: number | null): void {
+    this.montoDisponer = valor;
+    this.sugerirPrecio();
+  }
+
   guardar(seguirCargando: boolean, mismoOrigen = false): void {
     this.error.set(null);
     this.guardadoAviso.set(null);
@@ -631,6 +664,10 @@ export class NuevoPedidoComponent implements OnInit {
     }
     if (this.precio == null || this.precio < 0) {
       this.error.set('Ingresá el precio del pedido.');
+      return;
+    }
+    if (this.disponeDinero && !(this.montoDisponer != null && this.montoDisponer > 0)) {
+      this.error.set('Indicá cuánto dinero tiene que tener el cadete.');
       return;
     }
 
@@ -677,6 +714,7 @@ export class NuevoPedidoComponent implements OnInit {
       origenFuente: this.origenPicked.fuente,
       destinoFuente: this.destinoPicked.fuente,
       retornaAlOrigen: this.retornaAlOrigen,
+      montoDisponer: this.disponeDinero ? this.montoDisponer : null,
     };
 
     this.pedidos.crear(input, () => {
@@ -708,6 +746,8 @@ export class NuevoPedidoComponent implements OnInit {
     this.montoDeclarado = null;
     this.llevaValores = false;
     this.montoValores = null;
+    this.disponeDinero = false;
+    this.montoDisponer = null;
     this.retornaAlOrigen = false;
     this.detalle = '';
     this.destinoPiso = '';
@@ -735,6 +775,8 @@ export class NuevoPedidoComponent implements OnInit {
     this.montoDeclarado = null;
     this.llevaValores = false;
     this.montoValores = null;
+    this.disponeDinero = false;
+    this.montoDisponer = null;
     this.retornaAlOrigen = false;
     this.detalle = '';
     this.origenPiso = '';

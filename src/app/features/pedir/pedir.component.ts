@@ -201,6 +201,26 @@ import * as V from '../../core/utils/validaciones';
             }
 
             <label class="check flex items-center gap-3">
+              <input type="checkbox" [ngModel]="disponeDinero" (ngModelChange)="onDisponeDineroChange($event)" name="disponeDinero" />
+              <span class="text-sm text-gray-700">¿El cadete tiene que tener dinero? (por ejemplo, para pagar algo al retirar)</span>
+            </label>
+            @if (disponeDinero) {
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">¿Cuánto tiene que tener? <span class="text-red-600">*</span></span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  class="input"
+                  [ngModel]="montoDisponer"
+                  (ngModelChange)="onMontoDisponerChange($event)"
+                  name="montoDisponer"
+                />
+              </label>
+            }
+
+            <label class="check flex items-center gap-3">
               <input type="checkbox" [(ngModel)]="requiereMoto" name="requiereMoto" />
               <span class="text-sm text-gray-700">¿Necesitás que vaya en moto?</span>
             </label>
@@ -333,6 +353,9 @@ export class PedirComponent {
   }
   llevaValores = false;
   montoValores: number | null = null;
+  /** El cadete tiene que tener plata propia encima (2026-10-14): suma recargo igual que el dinero. */
+  disponeDinero = false;
+  montoDisponer: number | null = null;
   requiereMoto = false;
   retornaAlOrigen = false;
   origenPiso = '';
@@ -436,6 +459,17 @@ export class PedirComponent {
     this.debounceMontoDeclarado = setTimeout(() => this.actualizarEstimado(), 500);
   }
 
+  onDisponeDineroChange(valor: boolean): void {
+    this.disponeDinero = valor;
+    this.actualizarEstimado();
+  }
+
+  onMontoDisponerChange(valor: number | null): void {
+    this.montoDisponer = valor;
+    clearTimeout(this.debounceMontoDeclarado);
+    this.debounceMontoDeclarado = setTimeout(() => this.actualizarEstimado(), 500);
+  }
+
   onRetornaAlOrigenChange(valor: boolean): void {
     this.retornaAlOrigen = valor;
     this.actualizarEstimado();
@@ -468,6 +502,7 @@ export class PedirComponent {
         montoDeclarado,
         this.retornaAlOrigen,
         this.llevaValores ? this.montoValores : null,
+        this.disponeDinero ? this.montoDisponer : null,
       )
       .subscribe({
         next: (c) => {
@@ -523,6 +558,10 @@ export class PedirComponent {
       this.fallar('Marcaste que transporta objetos de valor: indicá cuánto valen.');
       return;
     }
+    if (this.disponeDinero && !(Number(this.montoDisponer) > 0)) {
+      this.fallar('Marcaste que el cadete tiene que tener dinero: indicá cuánto.');
+      return;
+    }
     if (this.verificarTelefono() && (!this.telefonoVerificado() || !this.verificacionToken)) {
       this.fallar('Verificá el teléfono antes de enviar el pedido.');
       return;
@@ -559,6 +598,7 @@ export class PedirComponent {
       montoValores: this.llevaValores ? this.montoValores : null,
       requiereMoto: this.requiereMoto,
       retornaAlOrigen: this.retornaAlOrigen,
+      montoDisponer: this.disponeDinero ? this.montoDisponer : null,
       clienteNombre: this.clienteNombre.trim(),
       clienteTelefono: this.clienteTelefono.trim(),
       detalle: this.detalle.trim() || null,
