@@ -384,7 +384,8 @@ const PROVEEDORES_KEYS = [
               }
             </div>
             <p class="text-xs text-gray-400 -mt-2">
-              Ejemplo con mínimo $2000 hasta 2 km y $320/km: un viaje de 5 km cobra $2000 + 3 km × $320 = $2960.
+              Ejemplo con mínimo $2000 hasta 2 km y $320/km: un viaje de 5 km cobra $2000 + 3 km × $320 = $2960, que se redondea para arriba a $3000 (el precio sugerido
+              siempre va de a $100, porque el cadete no tiene cambio).
             </p>
             <div class="grid sm:grid-cols-2 gap-4 max-w-sm">
               <label class="flex flex-col gap-1">
@@ -408,7 +409,7 @@ const PROVEEDORES_KEYS = [
               <input type="number" min="0" max="200" step="1" class="input" [(ngModel)]="recargoRetornoOrigen" name="recargoRetornoOrigen" />
               <span class="text-xs text-gray-400">
                 Porcentaje del precio del viaje que se suma cuando el cliente pide que el cadete vuelva al origen (no se
-                aplica sobre el recargo por dinero). Ej. con 50%: un viaje de $2960 con vuelta sale $4440. En 0, sin recargo.
+                aplica sobre el recargo por dinero). Ej. con 50%: un viaje de $2960 con vuelta sale $4440, redondeado a $4500. En 0, sin recargo.
               </span>
             </label>
           </section>

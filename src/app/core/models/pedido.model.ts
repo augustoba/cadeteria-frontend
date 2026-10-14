@@ -25,6 +25,8 @@ export interface Pedido {
   llevaValores: boolean;
   /** Valor declarado de los objetos de valor, null si no lleva. */
   montoValores: number | null;
+  /** El cadete vuelve al origen después de entregar (2026-10-14); también va como texto en el detalle. */
+  retornaAlOrigen?: boolean;
   detalle: string | null;
   /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
   origenPiso: string | null;
@@ -153,6 +155,8 @@ export interface PedidoInput {
   llevaValores: boolean;
   /** Valor declarado de los objetos de valor, null si no lleva. */
   montoValores: number | null;
+  /** El cadete vuelve al origen después de entregar (2026-10-14); también va como texto en el detalle. */
+  retornaAlOrigen?: boolean;
   detalle: string | null;
   /** Piso, depto y observaciones de cada dirección (mejora 2026-09-24), opcionales. */
   origenPiso: string | null;

@@ -14,6 +14,15 @@ import { Cadete } from '../../core/models/cadete.model';
 import { Pedido } from '../../core/models/pedido.model';
 import { AvisosCalleCapa } from './avisos-calle-capa';
 
+/**
+ * Los plugins (markercluster, heat) se cuelgan del `L` global (`window.L`). En el build de
+ * producción el `import * as L` es una copia de Leaflet hecha antes de que se agreguen, así que
+ * `L.markerClusterGroup` no existía y el Mapa quedaba vacío (2026-10-14). Con `ng serve` andaba.
+ */
+const leafletConPlugins = (globalThis as unknown as {
+  L: typeof L & { heatLayer: (puntos: unknown, opciones: unknown) => L.Layer };
+}).L;
+
 /** Centro de San Miguel de Tucumán (zona Centro) — mismo punto que usa el buscador de direcciones. */
 const CENTRO_DEFAULT: [number, number] = [-26.8306, -65.2038];
 
@@ -82,7 +91,7 @@ export class MapaComponent implements OnInit, OnDestroy {
   private map: L.Map | null = null;
   private readonly capaZonas = L.layerGroup();
   /** Mejora 80 — agrupa marcadores cercanos (útil con muchos cadetes a la vez, evita amontonarlos sin poder distinguirlos). */
-  private readonly capaCadetes = L.markerClusterGroup();
+  private readonly capaCadetes = leafletConPlugins.markerClusterGroup();
   private readonly capaPedidos = L.layerGroup();
 
   /** Mejora 92 — heatmap de demanda (origen de pedidos de los últimos 30 días), toggle aparte del resto de las capas. */
@@ -292,7 +301,7 @@ export class MapaComponent implements OnInit, OnDestroy {
       .get<[number, number][]>(apiUrl('/admin/metricas/heatmap'), { params: { desde: fmt(desde), hasta: fmt(hasta) } })
       .subscribe((puntos) => {
         if (!this.heatmapActivo || !this.map) return;
-        this.capaHeatmap = (L as unknown as { heatLayer: (p: unknown, o: unknown) => L.Layer }).heatLayer(puntos, {
+        this.capaHeatmap = leafletConPlugins.heatLayer(puntos, {
           radius: 25,
           blur: 20,
         });

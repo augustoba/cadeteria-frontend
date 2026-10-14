@@ -676,6 +676,7 @@ export class NuevoPedidoComponent implements OnInit {
       paradasAdicionales: paradasAdicionales.length ? paradasAdicionales : null,
       origenFuente: this.origenPicked.fuente,
       destinoFuente: this.destinoPicked.fuente,
+      retornaAlOrigen: this.retornaAlOrigen,
     };
 
     this.pedidos.crear(input, () => {
