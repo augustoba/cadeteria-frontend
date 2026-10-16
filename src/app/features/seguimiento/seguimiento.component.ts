@@ -108,16 +108,13 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
               } @else {
                 {{ estadoTexto(s.estado) }}
               }
-              @if (s.etaMinutos != null) {
-                <span class="font-semibold"> Llega en ~{{ s.etaMinutos }} min.</span>
-              }
             </div>
 
-            @if (s.cadeteLat != null && s.cadeteLng != null) {
+            @if ((s.origenLat != null && s.origenLng != null) || (s.destinoLat != null && s.destinoLng != null)) {
               <div class="h-56 rounded overflow-hidden border border-gray-200">
                 <app-seguimiento-mapa
-                  [cadeteLat]="s.cadeteLat"
-                  [cadeteLng]="s.cadeteLng"
+                  [origenLat]="s.origenLat"
+                  [origenLng]="s.origenLng"
                   [destinoLat]="s.destinoLat"
                   [destinoLng]="s.destinoLng"
                 />
@@ -125,9 +122,16 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
             }
 
             <div class="text-sm flex flex-col gap-1">
-              <div><span class="text-gray-500">Origen:</span> {{ s.origenDireccion }}</div>
-              <div><span class="text-gray-500">Destino:</span> {{ s.destinoDireccion }}</div>
+              <div><span class="text-green-600">●</span> <span class="text-gray-500">Origen:</span> {{ s.origenDireccion }}</div>
+              <div><span class="text-red-600">●</span> <span class="text-gray-500">Destino:</span> {{ s.destinoDireccion }}</div>
+              <div><span class="text-gray-500">Vuelve al origen:</span> {{ s.retornaAlOrigen ? 'Sí' : 'No' }}</div>
+              @if (s.detalle) {
+                <div class="whitespace-pre-line"><span class="text-gray-500">Detalle:</span> {{ s.detalle }}</div>
+              }
               <div><span class="text-gray-500">Precio:</span> $ {{ s.precio }}</div>
+              @if (s.montoDisponer) {
+                <div>👛 El cadete tiene que tener $ {{ s.montoDisponer }} (dinero a disponer).</div>
+              }
               @if (s.llevaDinero) {
                 <div>💵 Declaraste llevar dinero{{ s.montoDeclarado ? ' ($' + s.montoDeclarado + ')' : '' }}.</div>
               }

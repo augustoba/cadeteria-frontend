@@ -28,13 +28,17 @@ export interface Seguimiento {
   puedeCalificar: boolean;
   calificacionEstrellas: number | null;
   calificacionComentario: string | null;
-  /** Solo mientras el pedido está "En curso" — tracking en vivo estilo Uber. */
-  cadeteLat: number | null;
-  cadeteLng: number | null;
+  /** Dinero propio que el cadete tiene que tener encima — null si no hace falta. */
+  montoDisponer: number | null;
+  /** El cadete vuelve al origen después de entregar. */
+  retornaAlOrigen: boolean;
+  /** Detalle del pedido — null si no se cargó. */
+  detalle: string | null;
+  /** Origen y destino para el mapa (sin la ubicación del cadete, 2026-10-16). */
+  origenLat: number | null;
+  origenLng: number | null;
   destinoLat: number | null;
   destinoLng: number | null;
-  /** Minutos estimados de llegada — null si no se pudo calcular. */
-  etaMinutos: number | null;
   /** El cadete ya retiró el pedido en el origen. */
   retirado: boolean;
   /** Foto que sacó el cadete al retirar (desde que retiró). */
