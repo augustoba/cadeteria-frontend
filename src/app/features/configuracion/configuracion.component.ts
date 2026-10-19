@@ -3,7 +3,7 @@ import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ConfiguracionService, EstadoApiKey, SimulacionTarifa } from '../../core/services/configuracion.service';
+import { CambioConfiguracion, ConfiguracionService, EstadoApiKey, SimulacionTarifa } from '../../core/services/configuracion.service';
 import { SeguridadService } from '../../core/services/seguridad.service';
 import { SaludService, Salud } from '../../core/services/salud.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -463,11 +463,19 @@ const PROVEEDORES_KEYS = [
               <span class="text-sm text-gray-700">Controlar que "Retirado" y "Entregado" se marquen en el lugar</span>
             </label>
             <p class="text-xs text-gray-400 -mt-2">
-              Prendido, el cadete tiene que estar a menos de 150 m del retiro, la parada o el destino (si la dirección
+              Prendido, el cadete tiene que estar a menos de {{ enLugarRadioM ?? 150 }} m del retiro, la parada o el destino (si la dirección
               está mal ubicada puede marcar con "Estoy en el lugar" y una foto), y no puede marcar con GPS falso.
               Apagado, marca desde donde sea: solo queda anotado a qué distancia lo hizo. En los dos casos tiene que
               marcar "Retirado" antes de poder entregar. Los cadetes lo toman al abrir el viaje.
             </p>
+            <label class="flex flex-col gap-1 max-w-sm">
+              <span class="text-sm font-medium text-gray-700">Distancia para marcar "Retirado" y "Entregado" (metros)</span>
+              <input type="number" min="20" max="1000" step="10" class="input" [(ngModel)]="enLugarRadioM" name="enLugarRadioM" />
+              <span class="text-xs text-gray-400">
+                Hasta cuántos metros del retiro, la parada o el destino puede marcar el cadete. Si el GPS del celular
+                anda impreciso se le suma ese error. Entre 20 y 1000 m; vacío = 150.
+              </span>
+            </label>
             <label class="flex flex-col gap-1 max-w-sm">
               <span class="text-sm font-medium text-gray-700">Minutos mínimos entre "Retirado" y "Finalizar"</span>
               <input type="number" min="0" step="1" class="input" [(ngModel)]="minutosMinimosRetiroEntrega" name="minutosMinimosRetiroEntrega" />
@@ -1089,6 +1097,46 @@ const PROVEEDORES_KEYS = [
             </div>
           </section>
 
+          <section class="flex flex-col gap-3 border-t border-gray-200 pt-4">
+            <details (toggle)="alAbrirHistorial($event)">
+              <summary class="cursor-pointer select-none text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Historial de cambios
+              </summary>
+              <p class="text-xs text-gray-500 mt-2 max-w-lg">
+                Quién cambió cada opción, de qué valor a cuál y cuándo (los últimos 300). Las claves y contraseñas
+                figuran como "(oculto)". Se registra desde el 19/10/2026.
+              </p>
+              <div class="overflow-x-auto max-h-96 border border-gray-200 rounded mt-2">
+                <table class="w-full text-sm border-collapse">
+                  <thead class="sticky top-0 bg-gray-50">
+                    <tr class="text-left text-gray-500 border-b border-gray-200">
+                      <th class="py-2 px-3 font-medium">Cuándo</th>
+                      <th class="py-2 px-3 font-medium">Quién</th>
+                      <th class="py-2 px-3 font-medium">Opción</th>
+                      <th class="py-2 px-3 font-medium">Antes</th>
+                      <th class="py-2 px-3 font-medium">Ahora</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (c of historialCambios(); track $index) {
+                      <tr class="border-b border-gray-100 align-top">
+                        <td class="py-1.5 px-3 whitespace-nowrap">{{ c.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
+                        <td class="py-1.5 px-3">{{ c.cambiadoPorUsername }}</td>
+                        <td class="py-1.5 px-3 font-mono text-xs">{{ c.clave }}</td>
+                        <td class="py-1.5 px-3 text-gray-500 break-all">{{ c.valorAnterior ?? '(sin cargar)' }}</td>
+                        <td class="py-1.5 px-3 break-all">{{ c.valorNuevo }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="py-4 text-center text-gray-400">Todavía no hay cambios registrados.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+
           <app-apk-cadetes />
 
           <section class="flex flex-col gap-3 border-t border-gray-200 pt-4">
@@ -1184,6 +1232,8 @@ export class ConfiguracionComponent implements OnInit {
   fotoEntregaObligatoria = true;
   /** Retirado/Entregado solo en el lugar (2026-09-28): interruptor por si en producción frena de más. */
   enLugarControlActivo = true;
+  /** Radio del control en el lugar (2026-10-19): antes solo en la base, default 150 m. */
+  enLugarRadioM: number | null = 150;
   /** Espera mínima entre Retirado y Finalizar (2026-09-29); 0 = sin espera. */
   minutosMinimosRetiroEntrega: number | null = 10;
   /** Un celular por cadete (2026-09-29): interruptor por si en producción traba a alguien. */
@@ -1220,6 +1270,7 @@ export class ConfiguracionComponent implements OnInit {
   openRouteServiceKey = '';
   openRouteServiceUrl = '';
   readonly estadoApiKeys = signal<EstadoApiKey[]>([]);
+  readonly historialCambios = signal<CambioConfiguracion[]>([]);
   readonly cargandoEstadoApiKeys = signal(false);
   maxIntentosLogin: number | null = null;
   bloqueoLoginMin: number | null = null;
@@ -1278,6 +1329,7 @@ export class ConfiguracionComponent implements OnInit {
       this.fotoRetiroObligatoria = (v['foto_retiro_obligatoria'] ?? 'false') === 'true';
       this.fotoEntregaObligatoria = (v['foto_entrega_obligatoria'] ?? 'true') === 'true';
       this.enLugarControlActivo = (v['en_lugar_control_activo'] ?? 'true') === 'true';
+      this.enLugarRadioM = Number(v['en_lugar_radio_m'] ?? 150);
       this.minutosMinimosRetiroEntrega = Number(v['minutos_minimos_retiro_entrega'] ?? 10);
       this.celularUnicoActivo = (v['celular_unico_activo'] ?? 'true') === 'true';
       this.recordatoriosActivo = (v['recordatorios_entrar_activo'] ?? 'true') !== 'false';
@@ -1349,6 +1401,13 @@ export class ConfiguracionComponent implements OnInit {
 
   separarKeys(texto: string | undefined): string[] {
     return (texto ?? '').split(/[,\n]/).map((k) => k.trim()).filter(Boolean);
+  }
+
+  /** Se pide al abrir el desplegable, no al entrar a la pantalla. */
+  alAbrirHistorial(e: Event): void {
+    if ((e.target as HTMLDetailsElement).open) {
+      this.config.historial().subscribe((h) => this.historialCambios.set(h));
+    }
   }
 
   cargarEstadoApiKeys(): void {
@@ -1484,6 +1543,10 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('foto_retiro_obligatoria', String(this.fotoRetiroObligatoria));
     agregarSiCambio('foto_entrega_obligatoria', String(this.fotoEntregaObligatoria));
     agregarSiCambio('en_lugar_control_activo', String(this.enLugarControlActivo));
+    // Clave sin cargar: no se escribe el 150 del form (el backend ya usa ese default).
+    const radio = this.enLugarRadioM == null ? 150 : Math.min(1000, Math.max(20, Math.round(this.enLugarRadioM)));
+    this.enLugarRadioM = radio;
+    if (v['en_lugar_radio_m'] != null || radio !== 150) agregarSiCambio('en_lugar_radio_m', String(radio));
     agregarSiCambio('minutos_minimos_retiro_entrega', String(this.minutosMinimosRetiroEntrega ?? 10));
     agregarSiCambio('celular_unico_activo', String(this.celularUnicoActivo));
     agregarSiCambio('checklist_documentacion_obligatorio', String(this.checklistDocumentacionObligatorio));

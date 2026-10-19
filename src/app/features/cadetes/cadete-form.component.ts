@@ -7,6 +7,7 @@ import { LookupService } from '../../core/services/lookup.service';
 import {
   CadeteEstadoLog,
   CadeteInput,
+  MOVIMIENTO_CREDITO,
   MovimientoCredito,
   MSJ_DOMICILIO,
   domicilioCompleto,
@@ -258,11 +259,11 @@ import * as V from '../../core/utils/validaciones';
                 </thead>
                 <tbody>
                   @for (m of movimientosCredito(); track m.id) {
-                    <tr class="border-b border-gray-100">
-                      <td class="py-1.5 px-3">
-                        {{ m.tipo === 'ACREDITACION' ? '💰 Acreditación' : m.tipo === 'COMISION' ? '➖ Comisión' : '↩ Reembolso' }}
+                    <tr class="border-b border-gray-100" [title]="m.motivo ?? ''">
+                      <td class="py-1.5 px-3" [class.line-through]="m.anuladoPorId">
+                        {{ tipoMovimiento[m.tipo].texto }}{{ m.anuladoPorId ? ' (anulada)' : '' }}
                       </td>
-                      <td class="py-1.5 px-3">$ {{ m.monto | number: '1.0-0' }}</td>
+                      <td class="py-1.5 px-3">{{ tipoMovimiento[m.tipo].resta ? '−' : '' }}$ {{ m.monto | number: '1.0-0' }}</td>
                       <td class="py-1.5 px-3">$ {{ m.saldoResultante | number: '1.0-0' }}</td>
                       <td class="py-1.5 px-3">{{ m.pedidoNumero ? '#' + m.pedidoNumero : '—' }}</td>
                       <td class="py-1.5 px-3 whitespace-nowrap">{{ m.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</td>
@@ -390,6 +391,7 @@ export class CadeteFormComponent implements OnInit {
   mayorDeEdad = false;
 
   readonly movimientosCredito = signal<MovimientoCredito[]>([]);
+  readonly tipoMovimiento = MOVIMIENTO_CREDITO;
   readonly historialEstado = signal<CadeteEstadoLog[]>([]);
 
   readonly error = signal<string | null>(null);

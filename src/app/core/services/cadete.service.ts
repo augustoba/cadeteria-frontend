@@ -98,6 +98,16 @@ export class CadeteService {
     this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/credito`), { monto }), onSuccess);
   }
 
+  /** Anula una carga de crédito equivocada con un movimiento contrario (2026-10-19). */
+  anularAcreditacion(id: string, movimientoId: string, motivo: string, onSuccess?: () => void): void {
+    this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/credito/${movimientoId}/anular`), { motivo }), onSuccess);
+  }
+
+  /** Suma o resta crédito a mano, con motivo (2026-10-19). */
+  ajustarCredito(id: string, monto: number, operacion: 'SUMAR' | 'RESTAR', motivo: string, onSuccess?: () => void): void {
+    this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/credito/ajuste`), { monto, operacion, motivo }), onSuccess);
+  }
+
   /** Cambiar el modelo de cobro desde la pantalla "Pagos" unificada. */
   cambiarModalidadPago(id: string, modalidadPago: 'SEMANAL' | 'PORCENTAJE', onSuccess?: () => void): void {
     this.store.mutate(this.http.patch(apiUrl(`/admin/cadetes/${id}/modalidad-pago`), { modalidadPago }), onSuccess);

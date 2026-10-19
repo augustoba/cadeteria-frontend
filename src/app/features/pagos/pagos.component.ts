@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CadeteService } from '../../core/services/cadete.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { MetricasService } from '../../core/services/metricas.service';
-import { Cadete } from '../../core/models/cadete.model';
+import { Cadete, MOVIMIENTO_CREDITO, MovimientoCredito } from '../../core/models/cadete.model';
 import { CadeteMetrica } from '../../core/models/metricas.model';
 
 function lunesDeEstaSemana(): string {
@@ -216,6 +216,101 @@ const PUEDE_TRABAJAR: Record<EstadoCobro, boolean> = {
                   Agregar crédito
                 </button>
               </section>
+
+              <section class="border border-gray-200 rounded p-4 mb-4 max-w-xl flex flex-col gap-3">
+                <h2 class="text-sm font-semibold text-gray-700">Últimos movimientos</h2>
+                <p class="text-xs text-gray-400 -mt-2">
+                  Si cargaste un crédito por error, anulalo: se resta con un movimiento nuevo y la carga queda tachada.
+                  Puede dejarlo en negativo; así no entra a la app hasta que cargue.
+                </p>
+                <div class="overflow-x-auto border border-gray-200 rounded">
+                  <table class="w-full text-sm border-collapse">
+                    <thead class="bg-gray-50">
+                      <tr class="text-left text-gray-500 border-b border-gray-200">
+                        <th class="py-2 px-3 font-medium">Tipo</th>
+                        <th class="py-2 px-3 font-medium">Monto</th>
+                        <th class="py-2 px-3 font-medium">Saldo</th>
+                        <th class="py-2 px-3 font-medium">Cuándo</th>
+                        <th class="py-2 px-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (m of movimientos(); track m.id) {
+                        <tr class="border-b border-gray-100 align-top">
+                          <td class="py-1.5 px-3">
+                            <span [class.line-through]="m.anuladoPorId">{{ tipoMovimiento[m.tipo].texto }}</span>
+                            @if (m.pedidoNumero) {
+                              <span class="text-gray-400"> #{{ m.pedidoNumero }}</span>
+                            }
+                            @if (m.motivo) {
+                              <p class="text-xs text-gray-500">{{ m.motivo }}</p>
+                            }
+                          </td>
+                          <td class="py-1.5 px-3 whitespace-nowrap">
+                            {{ tipoMovimiento[m.tipo].resta ? '−' : '' }}$ {{ m.monto | number: '1.0-0' }}
+                          </td>
+                          <td class="py-1.5 px-3 whitespace-nowrap">$ {{ m.saldoResultante | number: '1.0-0' }}</td>
+                          <td class="py-1.5 px-3 whitespace-nowrap text-gray-500">{{ m.creadoEn | date: 'dd/MM HH:mm' }}</td>
+                          <td class="py-1.5 px-3 text-right">
+                            @if (m.tipo === 'ACREDITACION' && !m.anuladoPorId && anulandoId() !== m.id) {
+                              <button type="button" class="text-xs text-red-600 hover:underline" (click)="empezarAnular(m.id)">
+                                Anular
+                              </button>
+                            }
+                          </td>
+                        </tr>
+                        @if (anulandoId() === m.id) {
+                          <tr class="border-b border-gray-100">
+                            <td colspan="5" class="px-3 py-2 bg-red-50">
+                              <div class="flex flex-col gap-2 text-sm text-red-800">
+                                <span>Se le restan $ {{ m.monto | number: '1.0-0' }} del crédito.</span>
+                                <input class="input" maxlength="255" placeholder="Motivo (ej. cargué 5000 en vez de 500)"
+                                  [(ngModel)]="motivoAnular" name="motivoAnular" />
+                                <div class="flex gap-2">
+                                  <button type="button" class="btn bg-red-600 hover:bg-red-700"
+                                    [disabled]="cadetes.saving() || !motivoAnular.trim()" (click)="anular(m.id)">
+                                    Sí, anular
+                                  </button>
+                                  <button type="button" class="btn-sec" (click)="anulandoId.set(null)">Cancelar</button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      } @empty {
+                        <tr>
+                          <td colspan="5" class="py-4 text-center text-gray-400">Todavía no hay movimientos.</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+
+                <details class="text-sm">
+                  <summary class="cursor-pointer text-gray-500 select-none">Ajustar el crédito a mano</summary>
+                  <div class="mt-2 flex flex-col gap-2">
+                    <p class="text-xs text-gray-400">
+                      Para lo que no es una carga, por ejemplo cobrarle la diferencia de una comisión. Queda en el
+                      historial con el motivo y tu usuario.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <select class="input" [(ngModel)]="ajusteOperacion" name="ajusteOperacion">
+                        <option value="RESTAR">Restar</option>
+                        <option value="SUMAR">Sumar</option>
+                      </select>
+                      <input type="number" min="0" step="1" class="input" placeholder="Monto"
+                        [(ngModel)]="ajusteMonto" name="ajusteMonto" />
+                    </div>
+                    <input class="input" maxlength="255" placeholder="Motivo (ej. diferencia de comisión pedido 1500108)"
+                      [(ngModel)]="ajusteMotivo" name="ajusteMotivo" />
+                    <button type="button" class="btn bg-brand-600 hover:bg-brand-700 self-start"
+                      [disabled]="cadetes.saving() || !ajusteMonto || ajusteMonto <= 0 || !ajusteMotivo.trim()"
+                      (click)="ajustar()">
+                      Guardar ajuste
+                    </button>
+                  </div>
+                </details>
+              </section>
             }
 
             <details class="max-w-xl text-sm">
@@ -337,6 +432,15 @@ export class PagosComponent implements OnInit {
   venceEnModal = '';
   montoCreditoModal: number | null = null;
 
+  /** Corregir el crédito (2026-10-19): historial con "Anular" y ajuste a mano. */
+  readonly movimientos = signal<MovimientoCredito[]>([]);
+  readonly tipoMovimiento = MOVIMIENTO_CREDITO;
+  readonly anulandoId = signal<string | null>(null);
+  motivoAnular = '';
+  ajusteOperacion: 'SUMAR' | 'RESTAR' = 'RESTAR';
+  ajusteMonto: number | null = null;
+  ajusteMotivo = '';
+
   ngOnInit(): void {
     this.cadetes.ensureLoaded();
     this.config.ensureLoaded();
@@ -410,6 +514,43 @@ export class PagosComponent implements OnInit {
     this.montoPagadoModal = null;
     this.venceEnModal = '';
     this.montoCreditoModal = null;
+    this.anulandoId.set(null);
+    this.ajusteMonto = null;
+    this.ajusteMotivo = '';
+    this.movimientos.set([]);
+    if (c.modalidadPago === 'PORCENTAJE') this.cargarMovimientos(c.id);
+  }
+
+  private cargarMovimientos(id: string): void {
+    this.cadetes.historialCredito(id).subscribe((m) => {
+      if (this.seleccionadoId() === id) this.movimientos.set(m.slice(0, 15));
+    });
+  }
+
+  empezarAnular(movimientoId: string): void {
+    this.motivoAnular = '';
+    this.anulandoId.set(movimientoId);
+  }
+
+  anular(movimientoId: string): void {
+    const c = this.seleccionado();
+    if (!c || !this.motivoAnular.trim()) return;
+    this.cadetes.anularAcreditacion(c.id, movimientoId, this.motivoAnular.trim(), () => {
+      this.anulandoId.set(null);
+      this.mensaje.set('Carga anulada.');
+      this.cargarMovimientos(c.id);
+    });
+  }
+
+  ajustar(): void {
+    const c = this.seleccionado();
+    if (!c || !this.ajusteMonto || this.ajusteMonto <= 0 || !this.ajusteMotivo.trim()) return;
+    this.cadetes.ajustarCredito(c.id, this.ajusteMonto, this.ajusteOperacion, this.ajusteMotivo.trim(), () => {
+      this.mensaje.set('Ajuste guardado.');
+      this.ajusteMonto = null;
+      this.ajusteMotivo = '';
+      this.cargarMovimientos(c.id);
+    });
   }
 
   faltaCalculado(): number {
@@ -455,6 +596,7 @@ export class PagosComponent implements OnInit {
     this.cadetes.acreditar(c.id, this.montoCreditoModal, () => {
       this.mensaje.set('Crédito agregado.');
       this.montoCreditoModal = null;
+      this.cargarMovimientos(c.id);
     });
   }
 }

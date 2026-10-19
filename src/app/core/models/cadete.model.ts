@@ -175,13 +175,31 @@ export interface CadeteEstadoLog {
 
 export interface MovimientoCredito {
   id: string;
-  tipo: 'ACREDITACION' | 'COMISION' | 'REEMBOLSO';
+  tipo: TipoMovimientoCredito;
   monto: number;
   saldoResultante: number;
   pedidoNumero: number | null;
   creadoEn: string;
   creadoPorUsername: string | null;
+  /** En ANULACION y AJUSTE_* (2026-10-19). */
+  motivo: string | null;
+  /** En una ACREDITACION anulada: el movimiento que la anuló. */
+  anuladoPorId: string | null;
+  /** En una ANULACION: la ACREDITACION que anula. */
+  anulaMovimientoId: string | null;
 }
+
+export type TipoMovimientoCredito = 'ACREDITACION' | 'COMISION' | 'REEMBOLSO' | 'ANULACION' | 'AJUSTE_SUMA' | 'AJUSTE_RESTA';
+
+/** Texto y signo de cada tipo, para el historial de crédito (ficha y Pagos). */
+export const MOVIMIENTO_CREDITO: Record<TipoMovimientoCredito, { texto: string; resta: boolean }> = {
+  ACREDITACION: { texto: '💰 Acreditación', resta: false },
+  COMISION: { texto: '➖ Comisión', resta: true },
+  REEMBOLSO: { texto: '↩ Reembolso', resta: false },
+  ANULACION: { texto: '🚫 Anulación', resta: true },
+  AJUSTE_SUMA: { texto: '✏️ Ajuste (+)', resta: false },
+  AJUSTE_RESTA: { texto: '✏️ Ajuste (−)', resta: true },
+};
 
 export interface AvisoGeneral {
   id: string;

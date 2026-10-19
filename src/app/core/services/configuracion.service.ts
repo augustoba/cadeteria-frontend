@@ -101,4 +101,18 @@ export class ConfiguracionService {
   estadoApiKeys() {
     return this.http.get<EstadoApiKey[]>(apiUrl('/admin/configuracion/api-keys/estado'));
   }
+
+  /** Últimos cambios guardados en Configuración: quién, qué y cuándo (2026-10-19). */
+  historial() {
+    return this.http.get<CambioConfiguracion[]>(apiUrl('/admin/configuracion/historial'));
+  }
+}
+
+export interface CambioConfiguracion {
+  clave: string;
+  /** null = la clave no estaba cargada (regía el valor por defecto). */
+  valorAnterior: string | null;
+  valorNuevo: string | null;
+  cambiadoPorUsername: string;
+  cambiadoEn: string;
 }
