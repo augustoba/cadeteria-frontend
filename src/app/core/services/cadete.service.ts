@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { apiUrl } from '../config/site-config';
-import { AvisoGeneral, Cadete, CadeteEstadoLog, CadeteFicha, CadeteInput, HabilitarPagoSemanalInput, MovimientoCredito } from '../models/cadete.model';
+import { AvisoGeneral, Cadete, CadeteEstadoLog, CadeteFicha, CadeteInput, HabilitarPagoSemanalInput, MovimientoCredito, PagoSemanalMovimiento } from '../models/cadete.model';
 import { CollectionStore } from '../state/collection-store';
 
 @Injectable({ providedIn: 'root' })
@@ -86,6 +86,19 @@ export class CadeteService {
   /** Habilita a un cadete SEMANAL para trabajar esta semana, con pago completo o parcial (ronda 7). */
   habilitarPagoSemanal(id: string, input: HabilitarPagoSemanalInput, onSuccess?: () => void): void {
     this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/pago-semanal/habilitar`), input), onSuccess);
+  }
+
+  /** Pagos de la cuota de esta semana, con los anulados (2026-10-19). */
+  pagosSemanales(id: string) {
+    return this.http.get<PagoSemanalMovimiento[]>(apiUrl(`/admin/cadetes/${id}/pago-semanal/movimientos`));
+  }
+
+  /** Anula un pago de esta semana cargado por error; venceEn solo si queda un parcial sin vencimiento. */
+  anularPagoSemanal(id: string, movimientoId: string, motivo: string, venceEn: string | null, onSuccess?: () => void): void {
+    this.store.mutate(
+      this.http.post(apiUrl(`/admin/cadetes/${id}/pago-semanal/${movimientoId}/anular`), { motivo, venceEn }),
+      onSuccess,
+    );
   }
 
   /** Lo deshabilita por falta de pago sin darlo de baja (2026-10-11). */

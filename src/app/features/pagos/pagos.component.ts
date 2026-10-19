@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CadeteService } from '../../core/services/cadete.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { MetricasService } from '../../core/services/metricas.service';
-import { Cadete, MOVIMIENTO_CREDITO, MovimientoCredito } from '../../core/models/cadete.model';
+import { Cadete, MOVIMIENTO_CREDITO, MovimientoCredito, PagoSemanalMovimiento } from '../../core/models/cadete.model';
 import { CadeteMetrica } from '../../core/models/metricas.model';
 
 function lunesDeEstaSemana(): string {
@@ -170,7 +170,12 @@ const PUEDE_TRABAJAR: Record<EstadoCobro, boolean> = {
                     <input type="number" min="0" step="1" class="input" [(ngModel)]="montoPagadoModal" name="montoPagadoModal" />
                   </label>
                 </div>
-                <p class="text-xs text-gray-400 -mt-1">La cuota se recuerda para las próximas semanas.</p>
+                <p class="text-xs text-gray-400 -mt-1">
+                  La cuota se recuerda para las próximas semanas.
+                  @if (yaPagado(c) > 0) {
+                    Lo que pagó ahora se suma a los $ {{ yaPagado(c) | number: '1.0-0' }} que ya pagó esta semana.
+                  }
+                </p>
                 @if (faltaCalculado() > 0) {
                   <div class="rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
                     Falta $ {{ faltaCalculado() | number: '1.0-0' }}. Poné hasta cuándo tiene para completarlo; pasada esa fecha
@@ -189,6 +194,76 @@ const PUEDE_TRABAJAR: Record<EstadoCobro, boolean> = {
                 >
                   {{ puedeTrabajar(c) ? 'Guardar pago' : 'Guardar pago y habilitar' }}
                 </button>
+              </section>
+
+              <section class="border border-gray-200 rounded p-4 mb-4 max-w-xl flex flex-col gap-3">
+                <h2 class="text-sm font-semibold text-gray-700">Pagos de esta semana</h2>
+                <p class="text-xs text-gray-400 -mt-2">
+                  Si cargaste un pago por error, anulalo y cargalo bien. Si no queda nada pagado se deshabilita (si
+                  tiene un viaje en curso, lo termina).
+                </p>
+                <div class="overflow-x-auto border border-gray-200 rounded">
+                  <table class="w-full text-sm border-collapse">
+                    <thead class="bg-gray-50">
+                      <tr class="text-left text-gray-500 border-b border-gray-200">
+                        <th class="py-2 px-3 font-medium">Monto</th>
+                        <th class="py-2 px-3 font-medium">Cuándo</th>
+                        <th class="py-2 px-3 font-medium">Quién</th>
+                        <th class="py-2 px-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (p of pagosSemana(); track p.id) {
+                        <tr class="border-b border-gray-100 align-top">
+                          <td class="py-1.5 px-3 whitespace-nowrap">
+                            <span [class.line-through]="p.anuladoEn">$ {{ p.monto | number: '1.0-0' }}</span>
+                            @if (p.anuladoEn) {
+                              <p class="text-xs text-gray-500">Anulado: {{ p.motivoAnulacion }}</p>
+                            }
+                          </td>
+                          <td class="py-1.5 px-3 whitespace-nowrap text-gray-500">{{ p.creadoEn | date: 'dd/MM HH:mm' }}</td>
+                          <td class="py-1.5 px-3">{{ p.creadoPorUsername ?? '(antes del historial)' }}</td>
+                          <td class="py-1.5 px-3 text-right">
+                            @if (!p.anuladoEn && anulandoPagoId() !== p.id) {
+                              <button type="button" class="text-xs text-red-600 hover:underline" (click)="empezarAnularPago(p.id)">
+                                Anular
+                              </button>
+                            }
+                          </td>
+                        </tr>
+                        @if (anulandoPagoId() === p.id) {
+                          <tr class="border-b border-gray-100">
+                            <td colspan="4" class="px-3 py-2 bg-red-50">
+                              <div class="flex flex-col gap-2 text-sm text-red-800">
+                                <span>Se le descuentan $ {{ p.monto | number: '1.0-0' }} de lo pagado esta semana.</span>
+                                <input class="input" maxlength="255" placeholder="Motivo (ej. era de otro cadete)"
+                                  [(ngModel)]="motivoAnularPago" name="motivoAnularPago" />
+                                @if (quedaParcialSinVencimiento(c, p.monto)) {
+                                  <label class="flex flex-col gap-1 sm:max-w-xs">
+                                    <span>Queda un pago parcial: ¿hasta cuándo tiene para completarlo?</span>
+                                    <input type="datetime-local" class="input" [(ngModel)]="venceAnularPago" name="venceAnularPago" />
+                                  </label>
+                                }
+                                <div class="flex gap-2">
+                                  <button type="button" class="btn bg-red-600 hover:bg-red-700"
+                                    [disabled]="cadetes.saving() || !motivoAnularPago.trim() || (quedaParcialSinVencimiento(c, p.monto) && !venceAnularPago)"
+                                    (click)="anularPago(p.id)">
+                                    Sí, anular
+                                  </button>
+                                  <button type="button" class="btn-sec" (click)="anulandoPagoId.set(null)">Cancelar</button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      } @empty {
+                        <tr>
+                          <td colspan="4" class="py-4 text-center text-gray-400">Todavía no registró pagos esta semana.</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
               </section>
             } @else {
               <section class="border border-gray-200 rounded p-4 mb-4 max-w-xl flex flex-col gap-3">
@@ -441,6 +516,12 @@ export class PagosComponent implements OnInit {
   ajusteMonto: number | null = null;
   ajusteMotivo = '';
 
+  /** Pagos semanales de esta semana con "Anular" (2026-10-19). */
+  readonly pagosSemana = signal<PagoSemanalMovimiento[]>([]);
+  readonly anulandoPagoId = signal<string | null>(null);
+  motivoAnularPago = '';
+  venceAnularPago = '';
+
   ngOnInit(): void {
     this.cadetes.ensureLoaded();
     this.config.ensureLoaded();
@@ -518,7 +599,44 @@ export class PagosComponent implements OnInit {
     this.ajusteMonto = null;
     this.ajusteMotivo = '';
     this.movimientos.set([]);
+    this.pagosSemana.set([]);
+    this.anulandoPagoId.set(null);
     if (c.modalidadPago === 'PORCENTAJE') this.cargarMovimientos(c.id);
+    else this.cargarPagosSemana(c.id);
+  }
+
+  private cargarPagosSemana(id: string): void {
+    this.cadetes.pagosSemanales(id).subscribe((p) => {
+      if (this.seleccionadoId() === id) this.pagosSemana.set(p);
+    });
+  }
+
+  /** Lo que ya pagó esta semana (el backend lo lleva como la suma de los pagos no anulados). */
+  yaPagado(c: Cadete): number {
+    return c.pagoSemanalMontoPagado ?? 0;
+  }
+
+  /** Al anular ese pago queda una parte de la cuota y no tiene hasta cuándo completarla. */
+  quedaParcialSinVencimiento(c: Cadete, monto: number): boolean {
+    const queda = this.yaPagado(c) - monto;
+    return queda > 0 && queda < this.cuotaDe(c) && !c.pagoSemanalVenceEn;
+  }
+
+  empezarAnularPago(id: string): void {
+    this.motivoAnularPago = '';
+    this.venceAnularPago = '';
+    this.anulandoPagoId.set(id);
+  }
+
+  anularPago(movimientoId: string): void {
+    const c = this.seleccionado();
+    if (!c || !this.motivoAnularPago.trim()) return;
+    const venceEn = this.venceAnularPago ? new Date(this.venceAnularPago).toISOString() : null;
+    this.cadetes.anularPagoSemanal(c.id, movimientoId, this.motivoAnularPago.trim(), venceEn, () => {
+      this.anulandoPagoId.set(null);
+      this.mensaje.set('Pago anulado.');
+      this.cargarPagosSemana(c.id);
+    });
   }
 
   private cargarMovimientos(id: string): void {
@@ -554,8 +672,9 @@ export class PagosComponent implements OnInit {
   }
 
   faltaCalculado(): number {
-    if (this.montoSemanalModal == null || this.montoPagadoModal == null) return 0;
-    return Math.max(0, this.montoSemanalModal - this.montoPagadoModal);
+    const c = this.seleccionado();
+    if (!c || this.montoSemanalModal == null || this.montoPagadoModal == null) return 0;
+    return Math.max(0, this.montoSemanalModal - this.yaPagado(c) - this.montoPagadoModal);
   }
 
   cambiarModalidad(modalidadPago: 'SEMANAL' | 'PORCENTAJE'): void {
@@ -577,6 +696,7 @@ export class PagosComponent implements OnInit {
         this.mensaje.set('Pago guardado: ya puede entrar a la app y recibir viajes.');
         this.montoPagadoModal = null;
         this.venceEnModal = '';
+        this.cargarPagosSemana(c.id);
       },
     );
   }

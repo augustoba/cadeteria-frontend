@@ -189,6 +189,18 @@ export interface MovimientoCredito {
   anulaMovimientoId: string | null;
 }
 
+/** Un pago de la cuota semanal (2026-10-19); los de la semana se suman salvo los anulados. */
+export interface PagoSemanalMovimiento {
+  id: string;
+  monto: number;
+  creadoEn: string;
+  /** null = lo pagado antes de que existiera el historial. */
+  creadoPorUsername: string | null;
+  anuladoEn: string | null;
+  anuladoPorUsername: string | null;
+  motivoAnulacion: string | null;
+}
+
 export type TipoMovimientoCredito = 'ACREDITACION' | 'COMISION' | 'REEMBOLSO' | 'ANULACION' | 'AJUSTE_SUMA' | 'AJUSTE_RESTA';
 
 /** Texto y signo de cada tipo, para el historial de crédito (ficha y Pagos). */
