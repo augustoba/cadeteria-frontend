@@ -17,6 +17,7 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
 
 type Accion =
   | 'asignar'
+  | 'editar'
   | 'reasignar'
   | 'anular'
   | 'quitar'
@@ -215,6 +216,12 @@ export function claseEstadoPedido(estadoId: string): string {
                     <div class="menu">
                       @if (tieneAccionPrincipal(p)) {
                         <button type="button" class="bg-gray-500 hover:bg-gray-600" (click)="emitirYCerrar('detalle', p)">Detalle</button>
+                      }
+                      <!-- Solo sin cadete (2026-10-24): desde que se le ofrece a alguien no se toca, hay que Quitar primero. -->
+                      @if (mostrarAcciones && (p.estado.id === 'SIN_ASIGNAR' || p.estado.id === 'PROGRAMADO')) {
+                        <button type="button" class="bg-brand-600 hover:bg-brand-700" (click)="emitirYCerrar('editar', p)">
+                          ✏️ Editar
+                        </button>
                       }
                       @if (mostrarAcciones && p.cadeteAsignado) {
                         <button type="button" class="bg-indigo-600 hover:bg-indigo-700" (click)="emitirYCerrar('reasignar', p)">

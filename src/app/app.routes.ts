@@ -56,6 +56,11 @@ export const routes: Routes = [
         path: 'pedidos/nuevo',
         loadComponent: () => import('./features/pedidos/nuevo-pedido.component').then((m) => m.NuevoPedidoComponent),
       },
+      {
+        // Mismo formulario que el alta, precargado (2026-10-24): solo para pedidos sin asignar.
+        path: 'pedidos/:id/editar',
+        loadComponent: () => import('./features/pedidos/nuevo-pedido.component').then((m) => m.NuevoPedidoComponent),
+      },
       { path: 'mapa', loadComponent: () => import('./features/mapa/mapa.component').then((m) => m.MapaComponent) },
       { path: 'cadetes', loadComponent: () => import('./features/cadetes/cadetes.component').then((m) => m.CadetesComponent) },
       {

@@ -38,6 +38,11 @@ export class PedidoService {
     this.store.mutate(this.http.post(apiUrl('/admin/pedidos'), input), onSuccess);
   }
 
+  /** Corregir un pedido mal cargado (2026-10-24) — el backend solo lo deja sin asignar o programado. */
+  editar(id: string, input: PedidoInput, onSuccess?: () => void): void {
+    this.store.mutate(this.http.put(apiUrl(`/admin/pedidos/${id}`), input), onSuccess);
+  }
+
   cargar(tipo: TipoListaPedidos): void {
     this.store.setQuery({ tipo });
   }

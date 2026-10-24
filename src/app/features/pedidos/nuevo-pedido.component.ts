@@ -1,12 +1,12 @@
-import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild, viewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { DireccionFrecuente, PedidoService } from '../../core/services/pedido.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { CotizacionService } from '../../core/services/cotizacion.service';
-import { ParadaInput, PedidoInput } from '../../core/models/pedido.model';
+import { ParadaInput, Pedido, PedidoInput } from '../../core/models/pedido.model';
 import { ClienteAviso } from '../../core/models/cliente.model';
 import { AvisoClienteComponent } from '../../shared/aviso-cliente.component';
 import { AddressPickerComponent, PickedAddress } from '../../shared/address-picker.component';
@@ -18,6 +18,17 @@ import * as V from '../../core/utils/validaciones';
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="flex items-center justify-end gap-2 px-4 py-3 border-b border-gray-200">
+        @if (editandoId()) {
+          <span class="mr-auto font-semibold text-gray-700">✏️ Editando pedido #{{ editandoNumero() }}</span>
+          <button
+            type="button"
+            class="btn bg-emerald-700 hover:bg-emerald-800"
+            [disabled]="pedidos.saving() || !editable()"
+            (click)="guardar(false)"
+          >
+            💾 Guardar cambios
+          </button>
+        } @else {
         <button
           type="button"
           class="btn bg-indigo-600 hover:bg-indigo-700"
@@ -38,6 +49,7 @@ import * as V from '../../core/utils/validaciones';
         <button type="button" class="btn bg-emerald-700 hover:bg-emerald-800" [disabled]="pedidos.saving()" (click)="guardar(false)">
           ✅ Guardar
         </button>
+        }
         <button type="button" class="btn bg-red-500 hover:bg-red-600" (click)="volver()">↩ Volver</button>
       </div>
 
@@ -201,7 +213,7 @@ import * as V from '../../core/utils/validaciones';
               <div class="flex items-start gap-2 border border-gray-200 rounded p-3">
                 <span class="text-xs font-semibold text-gray-400 mt-2">{{ $index + 1 }}</span>
                 <div class="flex-1">
-                  <app-address-picker (addressPicked)="onParadaPicked(parada.idLocal, $event)" />
+                  <app-address-picker #paradaPickerRef (addressPicked)="onParadaPicked(parada.idLocal, $event)" />
                 </div>
                 <button
                   type="button"
@@ -232,6 +244,13 @@ import * as V from '../../core/utils/validaciones';
               />
               @if (precioSugeridoInfo) {
                 <span class="text-xs text-emerald-600">💰 {{ precioSugeridoInfo }} — lo podés cambiar.</span>
+              }
+              <!-- Editando no se pisa el precio cargado: si cambiaron las direcciones se ofrece el nuevo sugerido. -->
+              @if (sugeridoEdicion() != null && sugeridoEdicion() !== precio) {
+                <span class="text-xs text-amber-700">
+                  Con estos datos el sugerido es {{ '$' + sugeridoEdicion() }}.
+                  <button type="button" class="underline font-semibold" (click)="precio = sugeridoEdicion()">Usarlo</button>
+                </span>
               }
             </label>
             <label class="flex flex-col gap-1">
@@ -356,6 +375,16 @@ export class NuevoPedidoComponent implements OnInit {
   private readonly clientes = inject(ClienteService);
   private readonly cotizacion = inject(CotizacionService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  /** Con id en la ruta (pedidos/:id/editar) es una edición (2026-10-24), si no, un alta. */
+  readonly editandoId = signal<string | null>(null);
+  readonly editandoNumero = signal<number | null>(null);
+  /** false si el pedido ya tiene cadete: se muestra igual pero no se deja guardar. */
+  readonly editable = signal(true);
+  /** Precio sugerido para las direcciones nuevas al editar; no pisa el precio cargado. */
+  readonly sugeridoEdicion = signal<number | null>(null);
+  private readonly paradaPickerRefs = viewChildren<AddressPickerComponent>('paradaPickerRef');
 
   clienteNombre = '';
   clienteTelefono = '';
@@ -461,7 +490,75 @@ export class NuevoPedidoComponent implements OnInit {
 
   ngOnInit(): void {
     this.config.ensureLoaded();
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.editandoId.set(id);
+      this.pedidos.detalle(id).subscribe({
+        next: (p) => this.precargar(p),
+        error: () => this.error.set('No se pudo cargar el pedido. Volvé al dashboard y probá de nuevo.'),
+      });
+    }
   }
+
+  /** Llena el formulario con el pedido a editar. */
+  private precargar(p: Pedido): void {
+    this.editandoNumero.set(p.numero);
+    if (p.estado.id !== 'SIN_ASIGNAR' && p.estado.id !== 'PROGRAMADO') {
+      this.editable.set(false);
+      this.error.set('Este pedido ya tiene cadete: no se puede editar. Quitáselo primero desde el dashboard.');
+    }
+    this.clienteNombre = p.clienteNombre;
+    this.clienteTelefono = p.clienteTelefono;
+    this.telefono$.next(p.clienteTelefono);
+    this.programado = p.estado.id === 'PROGRAMADO' && !!p.fechaProgramada;
+    if (this.programado && p.fechaProgramada) {
+      const f = new Date(p.fechaProgramada);
+      const dos = (n: number) => String(n).padStart(2, '0');
+      this.fecha = `${f.getFullYear()}-${dos(f.getMonth() + 1)}-${dos(f.getDate())}`;
+      this.hora = `${dos(f.getHours())}:${dos(f.getMinutes())}`;
+    }
+    this.requiereMoto = p.requiereMoto;
+    this.precio = p.precio;
+    this.precioSugeridoInfo = null;
+    this.montoDeclarado = p.montoDeclarado || null;
+    this.llevaValores = p.llevaValores;
+    this.montoValores = p.montoValores;
+    this.disponeDinero = (p.montoDisponer ?? 0) > 0;
+    this.montoDisponer = p.montoDisponer ?? null;
+    this.retornaAlOrigen = !!p.retornaAlOrigen;
+    // guardar() vuelve a poner el "🔁 Retorna al origen." adelante; acá se saca para no duplicarlo.
+    this.detalle = (p.detalle ?? '').replace(/^🔁 Retorna al origen\.\s*/, '');
+    this.origenPiso = p.origenPiso ?? '';
+    this.origenDepto = p.origenDepto ?? '';
+    this.origenObservaciones = p.origenObservaciones ?? '';
+    this.destinoPiso = p.destinoPiso ?? '';
+    this.destinoDepto = p.destinoDepto ?? '';
+    this.destinoObservaciones = p.destinoObservaciones ?? '';
+
+    // fuente null: ya es una dirección conocida, no hay nada que aprender
+    const origen: PickedAddress = { address: p.origenDireccion, lat: p.origenLat, lng: p.origenLng, approximate: false, fuente: null };
+    const destino: PickedAddress = { address: p.destinoDireccion, lat: p.destinoLat, lng: p.destinoLng, approximate: false, fuente: null };
+    this.origenPicked = origen;
+    this.destinoPicked = destino;
+    this.origenPickerRef()?.setValue(origen);
+    this.destinoPickerRef()?.setValue(destino);
+
+    const paradas = [...(p.paradas ?? [])].sort((a, b) => a.orden - b.orden);
+    this.paradas.set(
+      paradas.map((pa) => ({
+        idLocal: this.siguienteIdLocal++,
+        picked: { address: pa.direccion, lat: pa.lat, lng: pa.lng, approximate: false, fuente: null },
+      })),
+    );
+    // Los pickers de las paradas aparecen recién en el próximo render.
+    setTimeout(() => {
+      this.paradaPickerRefs().forEach((ref, i) => ref.setValue(this.paradas()[i]?.picked ?? null));
+      this.precargaLista = true;
+    });
+  }
+
+  /** Hasta que termina de precargar, los cambios son del formulario llenándose, no del admin. */
+  private precargaLista = false;
 
   onTelefonoChange(valor: string): void {
     this.clienteTelefono = valor;
@@ -575,6 +672,10 @@ export class NuevoPedidoComponent implements OnInit {
    */
   private sugerirPrecio(): void {
     if (!this.origenPicked || !this.destinoPicked) return;
+    if (this.editandoId()) {
+      this.sugerirPrecioEdicion();
+      return;
+    }
     if (this.precio != null && this.precioSugeridoInfo == null) return;
     this.cotizacion
       .cotizar(
@@ -596,6 +697,23 @@ export class NuevoPedidoComponent implements OnInit {
             : `Sugerido por distancia (~${c.distanciaKm?.toFixed(1)} km)`) +
           (this.retornaAlOrigen ? ', con el recargo por volver al origen' : '');
       });
+  }
+
+  /** Editando, el precio ya está acordado: el sugerido solo se ofrece si el admin cambió algo después de abrir. */
+  private sugerirPrecioEdicion(): void {
+    if (!this.precargaLista || !this.origenPicked || !this.destinoPicked) return;
+    this.cotizacion
+      .cotizar(
+        this.origenPicked.lat,
+        this.origenPicked.lng,
+        this.destinoPicked.lat,
+        this.destinoPicked.lng,
+        this.montoDeclarado,
+        this.retornaAlOrigen,
+        this.llevaValores ? this.montoValores : null,
+        this.disponeDinero ? this.montoDisponer : null,
+      )
+      .subscribe((c) => this.sugeridoEdicion.set(c.precioSugerido ?? null));
   }
 
   /** Volver al origen suma recargo (mismo criterio que la página pública "/pedir"). */
@@ -716,6 +834,12 @@ export class NuevoPedidoComponent implements OnInit {
       retornaAlOrigen: this.retornaAlOrigen,
       montoDisponer: this.disponeDinero ? this.montoDisponer : null,
     };
+
+    const editandoId = this.editandoId();
+    if (editandoId) {
+      this.pedidos.editar(editandoId, input, () => this.router.navigateByUrl('/'));
+      return;
+    }
 
     this.pedidos.crear(input, () => {
       if (!seguirCargando) {

@@ -67,3 +67,12 @@ export interface ClientesPagina {
   pagina: number;
   totalPaginas: number;
 }
+
+/** Un cambio de teléfono hecho desde la ficha (2026-10-24). */
+export interface TelefonoCambio {
+  telefonoAnterior: string;
+  telefonoNuevo: string;
+  pedidosMovidos: number;
+  cambiadoPorUsername: string;
+  cambiadoEn: string;
+}

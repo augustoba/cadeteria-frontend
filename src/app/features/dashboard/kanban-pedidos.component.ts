@@ -5,6 +5,7 @@ import { claseEstadoPedido } from './tabla-pedidos.component';
 
 type Accion =
   | 'asignar'
+  | 'editar'
   | 'reasignar'
   | 'anular'
   | 'quitar'
@@ -104,6 +105,9 @@ const COLUMNAS: Columna[] = [
                   @if (col.estadoId === 'SIN_ASIGNAR') {
                     <button type="button" class="btn-mini bg-indigo-600 hover:bg-indigo-700" (click)="accion.emit({ accion: 'asignar', pedido: p })">
                       Asignar
+                    </button>
+                    <button type="button" class="btn-mini bg-brand-600 hover:bg-brand-700" (click)="accion.emit({ accion: 'editar', pedido: p })">
+                      ✏️ Editar
                     </button>
                   }
                   @if (p.cadeteAsignado) {

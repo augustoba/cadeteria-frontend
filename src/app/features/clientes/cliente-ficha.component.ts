@@ -1,9 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClienteService } from '../../core/services/cliente.service';
-import { ClienteFicha } from '../../core/models/cliente.model';
+import { ClienteFicha, TelefonoCambio } from '../../core/models/cliente.model';
 
 const ESTADO_CLASES: Record<string, string> = {
   FINALIZADO: 'bg-emerald-100 text-emerald-700',
@@ -18,6 +18,7 @@ const ESTADO_CLASES: Record<string, string> = {
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         <h1 class="font-semibold text-gray-700">Ficha de cliente — {{ telefono }}</h1>
         <div class="flex gap-2">
+          <button type="button" class="btn bg-brand-600 hover:bg-brand-700" (click)="abrirCambioTelefono()">📞 Cambiar teléfono</button>
           <button type="button" class="btn bg-emerald-600 hover:bg-emerald-700" [disabled]="clientes.saving()" (click)="guardar()">
             💾 Guardar
           </button>
@@ -31,6 +32,31 @@ const ESTADO_CLASES: Record<string, string> = {
         <div class="p-4 flex flex-col gap-5">
           @if (guardado()) {
             <div class="rounded bg-emerald-50 text-emerald-700 text-sm px-3 py-2">Guardado.</div>
+          }
+          @if (avisoCambio()) {
+            <div class="rounded bg-emerald-50 text-emerald-700 text-sm px-3 py-2">{{ avisoCambio() }}</div>
+          }
+
+          @if (cambiandoTelefono()) {
+            <div class="rounded border border-brand-200 bg-brand-50 p-3 flex flex-col gap-2">
+              <span class="text-sm font-medium text-gray-700">Teléfono nuevo</span>
+              <div class="flex gap-2 flex-wrap items-center">
+                <input class="input" [(ngModel)]="telefonoNuevo" name="telefonoNuevo" placeholder="Ej: 3794123456" />
+                <button
+                  type="button"
+                  class="btn bg-emerald-600 hover:bg-emerald-700"
+                  [disabled]="enviandoTelefono() || !telefonoNuevo.trim()"
+                  (click)="confirmarCambioTelefono()"
+                >
+                  ✔ Cambiar
+                </button>
+                <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cambiandoTelefono.set(false)">Cancelar</button>
+              </div>
+              <p class="text-xs text-gray-500">
+                Pasan al número nuevo la ficha, los {{ ficha()!.cliente.cantidadPedidos }} pedidos (también los viejos), sus
+                direcciones y los reportes. Si el número nuevo ya es de otro cliente, no se puede.
+              </p>
+            </div>
           }
 
           <div class="grid sm:grid-cols-3 gap-4">
@@ -145,6 +171,20 @@ const ESTADO_CLASES: Record<string, string> = {
               </tbody>
             </table>
           </div>
+
+          @if (cambiosTelefono().length) {
+            <div class="border-t border-gray-200 pt-4">
+              <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Cambios de teléfono</h2>
+              <ul class="text-sm text-gray-600 flex flex-col gap-1">
+                @for (c of cambiosTelefono(); track c.cambiadoEn) {
+                  <li>
+                    {{ c.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }} — {{ c.telefonoAnterior }} → {{ c.telefonoNuevo }}
+                    ({{ c.pedidosMovidos }} {{ c.pedidosMovidos === 1 ? 'pedido' : 'pedidos' }}), por {{ c.cambiadoPorUsername }}
+                  </li>
+                }
+              </ul>
+            </div>
+          }
         </div>
       }
     </div>
@@ -178,6 +218,7 @@ const ESTADO_CLASES: Record<string, string> = {
 export class ClienteFichaComponent implements OnInit {
   readonly clientes = inject(ClienteService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   telefono = '';
   readonly ficha = signal<ClienteFicha | null>(null);
@@ -191,12 +232,46 @@ export class ClienteFichaComponent implements OnInit {
   activo = true;
   modalidadFacturacion: 'CONTADO' | 'CUENTA_CORRIENTE' = 'CONTADO';
 
+  readonly cambiandoTelefono = signal(false);
+  readonly enviandoTelefono = signal(false);
+  readonly avisoCambio = signal<string | null>(null);
+  readonly cambiosTelefono = signal<TelefonoCambio[]>([]);
+  telefonoNuevo = '';
+
   ngOnInit(): void {
-    this.telefono = this.route.snapshot.paramMap.get('telefono') ?? '';
-    this.cargar();
+    // Con paramMap y no snapshot: después de cambiar el teléfono se navega a la ficha del número nuevo.
+    this.route.paramMap.subscribe((params) => {
+      this.telefono = params.get('telefono') ?? '';
+      this.cargar();
+    });
+  }
+
+  abrirCambioTelefono(): void {
+    this.telefonoNuevo = '';
+    this.avisoCambio.set(null);
+    this.cambiandoTelefono.set(true);
+  }
+
+  confirmarCambioTelefono(): void {
+    const anterior = this.telefono;
+    this.enviandoTelefono.set(true);
+    // Si el backend lo rechaza (número de otro cliente, inválido) el motivo sale en el aviso de error general.
+    this.clientes.cambiarTelefono(anterior, this.telefonoNuevo.trim()).subscribe({
+      next: (c) => {
+        this.enviandoTelefono.set(false);
+        this.cambiandoTelefono.set(false);
+        this.avisoCambio.set(`✅ Teléfono cambiado: ${anterior} → ${c.telefono}.`);
+        this.router.navigate(['/clientes', c.telefono]);
+      },
+      error: () => this.enviandoTelefono.set(false),
+    });
   }
 
   private cargar(): void {
+    this.clientes.cambiosTelefono(this.telefono).subscribe({
+      next: (lista) => this.cambiosTelefono.set(lista),
+      error: () => this.cambiosTelefono.set([]),
+    });
     this.clientes.ficha(this.telefono).subscribe((f) => {
       this.ficha.set(f);
       this.nombreContacto = f.cliente.nombreContacto ?? '';

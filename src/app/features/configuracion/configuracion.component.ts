@@ -583,9 +583,18 @@ const PROVEEDORES_KEYS = [
                 <span class="text-xs text-gray-400">% que se descuenta del crédito de un cadete Porcentaje apenas acepta un viaje.</span>
               </label>
               <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium text-gray-700">Avisar cadete si su crédito baja de ($)</span>
+                <span class="text-sm font-medium text-gray-700">Crédito bajo: avisar al cadete si baja de ($)</span>
                 <input type="number" min="0" step="1" class="input" [(ngModel)]="creditoBajoAlertaUmbral" name="creditoBajoAlertaUmbral" />
-                <span class="text-xs text-gray-400">Push una sola vez cuando el saldo cruza este umbral hacia abajo.</span>
+                <span class="text-xs text-gray-400">
+                  Le llega un push apenas queda por debajo, y en el Inicio de la app ve un cartel hasta que cargue.
+                </span>
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-gray-700">Repetir el aviso de crédito bajo cada (minutos)</span>
+                <input type="number" min="0" step="1" class="input" [(ngModel)]="creditoBajoRepetirMin" name="creditoBajoRepetirMin" />
+                <span class="text-xs text-gray-400">
+                  Mientras siga por debajo y tenga la app abierta. 0 = avisar una sola vez.
+                </span>
               </label>
             </div>
           </section>
@@ -1277,6 +1286,7 @@ export class ConfiguracionComponent implements OnInit {
   pagoSemanalMonto: number | null = null;
   comisionPorcentaje: number | null = null;
   creditoBajoAlertaUmbral: number | null = null;
+  creditoBajoRepetirMin: number | null = 60;
   smsTemplateAceptado = '';
   reclamoSeguimientoMin: number | null = 10;
   reclamoCierreMin: number | null = 10;
@@ -1368,6 +1378,7 @@ export class ConfiguracionComponent implements OnInit {
       this.pagoSemanalMonto = Number(v['pago_semanal_monto'] ?? 5000);
       this.comisionPorcentaje = Number(v['comision_porcentaje'] ?? 10);
       this.creditoBajoAlertaUmbral = Number(v['credito_bajo_alerta_umbral'] ?? 500);
+      this.creditoBajoRepetirMin = Number(v['credito_bajo_repetir_min'] ?? 60);
       this.smsTemplateAceptado = v['sms_template_aceptado'] ?? 'Tu pedido esta en camino, seguilo aca: {link}';
       this.reclamoSeguimientoMin = Number(v['reclamo_seguimiento_min'] ?? 10);
       this.reclamoCierreMin = Number(v['reclamo_cierre_min'] ?? 10);
@@ -1584,6 +1595,7 @@ export class ConfiguracionComponent implements OnInit {
     agregarSiCambio('pago_semanal_monto', String(this.pagoSemanalMonto ?? ''));
     agregarSiCambio('comision_porcentaje', String(this.comisionPorcentaje ?? ''));
     agregarSiCambio('credito_bajo_alerta_umbral', String(this.creditoBajoAlertaUmbral ?? ''));
+    agregarSiCambio('credito_bajo_repetir_min', String(this.creditoBajoRepetirMin ?? 60));
     agregarSiCambio('sms_template_aceptado', this.smsTemplateAceptado);
     agregarSiCambio('reclamo_seguimiento_min', String(this.reclamoSeguimientoMin ?? 10));
     agregarSiCambio('reclamo_cierre_min', String(this.reclamoCierreMin ?? 10));

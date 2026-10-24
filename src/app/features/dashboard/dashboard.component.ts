@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Comentario, Pedido, PrecioLog } from '../../core/models/pedido.model';
 import { Cadete } from '../../core/models/cadete.model';
 import { PedidoService, TipoListaPedidos } from '../../core/services/pedido.service';
@@ -1078,6 +1078,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   readonly lightbox = inject(LightboxService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly config = inject(ConfiguracionService);
   private desuscribirPedidos: (() => void) | null = null;
 
@@ -1400,6 +1401,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   onAccion(ev: {
     accion:
       | 'asignar'
+      | 'editar'
       | 'reasignar'
       | 'anular'
       | 'quitar'
@@ -1442,6 +1444,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     if (accion === 'asignar') {
       this.abrirModalAsignar(pedido, false);
+    } else if (accion === 'editar') {
+      this.router.navigate(['/pedidos', pedido.id, 'editar']);
     } else if (accion === 'reasignar') {
       this.abrirModalAsignar(pedido, true);
     } else if (accion === 'anular') {
