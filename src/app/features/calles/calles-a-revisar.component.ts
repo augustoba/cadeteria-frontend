@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import * as L from 'leaflet';
@@ -26,7 +27,34 @@ interface Duda {
   linkLat: number | null;
   linkLng: number | null;
   cercanas: Punto[];
+  /** Ya la miró alguien: la dejó pendiente o su link no alcanzó. */
+  paraDespues: boolean;
+  resultado: string | null;
 }
+
+interface DudaResuelta {
+  id: string;
+  calle: string;
+  localidad: string;
+  cuadra: number;
+  otraCalle: string;
+  estado: string;
+  resultado: string | null;
+  resueltaPor: string | null;
+  resueltaEn: string | null;
+}
+
+type Solapa = 'NUEVAS' | 'PENDIENTES' | 'RESUELTAS';
+
+const NOMBRE_ESTADO: Record<string, string> = {
+  UNIDA: 'Unida',
+  DISTINTAS: 'Calles distintas',
+  CORREGIDA: 'Corregida',
+  ESTA_BIEN: 'Está bien',
+  NO_EXISTE: 'No existe',
+  YA_CIERRA: 'Se resolvió sola',
+  QUITADA: 'Repetida quitada',
+};
 
 interface Resultado {
   estado: string;
@@ -105,7 +133,7 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
  */
 @Component({
   selector: 'app-calles-a-revisar',
-  imports: [FormsModule, MapaDudaComponent],
+  imports: [DatePipe, FormsModule, MapaDudaComponent],
   template: `
     <div class="flex flex-col gap-2">
       <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Calles a revisar</h2>
@@ -123,9 +151,24 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
         </button>
         <button type="button" class="boton" [disabled]="ocupado()" (click)="actualizar()">Actualizar la lista</button>
         @if (lista(); as l) {
-          <span class="text-xs text-gray-500">{{ l.length }} pendientes ({{ cuantas('UBICACION') }} de ubicación, {{ cuantas('NOMBRE') }} de nombre, {{ cuantas('NOMBRE_VIEJO') }} de nombre viejo)</span>
+          <span class="text-xs text-gray-500">{{ l.length }} sin resolver ({{ cuantas('UBICACION') }} de ubicación, {{ cuantas('NOMBRE') }} de nombre, {{ cuantas('NOMBRE_VIEJO') }} de nombre viejo)</span>
         }
       </div>
+      @if (lista()) {
+        <div class="flex items-center gap-1 text-xs" role="group" aria-label="Qué dudas ver">
+          @for (s of solapas; track s.id) {
+            <button
+              type="button"
+              class="px-2 py-1 rounded border"
+              [class]="solapa() === s.id ? 'bg-brand-600 border-brand-600 text-white' : 'border-gray-300 text-gray-600'"
+              [attr.aria-pressed]="solapa() === s.id"
+              (click)="elegirSolapa(s.id)"
+            >
+              {{ s.nombre }} {{ cuantasEn(s.id) }}
+            </button>
+          }
+        </div>
+      }
 
       @if (error()) {
         <p class="text-sm text-red-600">{{ error() }}</p>
@@ -134,9 +177,38 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
         <p class="text-sm text-emerald-700">{{ aviso() }}</p>
       }
 
-      @if (lista(); as l) {
-        @if (!l.length) {
-          <p class="text-sm text-emerald-700">No hay calles para revisar.</p>
+      @if (lista() && solapa() === 'RESUELTAS') {
+        @if (!resueltas().length) {
+          <p class="text-sm text-gray-500">Todavía no hay dudas resueltas.</p>
+        } @else {
+          <ul class="text-sm text-gray-700 border border-gray-200 rounded divide-y divide-gray-100">
+            @for (r of resueltas().slice(0, mostrar()); track r.id) {
+              <li class="px-3 py-2 flex flex-col gap-1">
+                <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <strong>{{ r.calle }} {{ r.cuadra }}</strong>
+                  <span class="text-xs text-gray-500">{{ r.localidad }}</span>
+                  <span class="text-xs rounded px-1.5 py-0.5 bg-emerald-100 text-emerald-800">{{ nombreEstado(r.estado) }}</span>
+                  <span class="ml-auto text-xs text-gray-500">
+                    {{ r.resueltaPor ?? 'Automática' }}{{ r.resueltaEn ? ' · ' + (r.resueltaEn | date: 'dd/MM/yyyy HH:mm') : '' }}
+                  </span>
+                </div>
+                @if (r.resultado) {
+                  <span class="text-xs text-gray-600">{{ r.resultado }}</span>
+                }
+              </li>
+            }
+          </ul>
+          @if (resueltas().length > mostrar()) {
+            <div>
+              <button type="button" class="boton" (click)="mostrar.set(mostrar() + 25)">Mostrar 25 más</button>
+            </div>
+          }
+        }
+      } @else if (lista()) {
+        @if (!enSolapa().length) {
+          <p class="text-sm text-emerald-700">
+            {{ solapa() === 'NUEVAS' ? 'No hay calles nuevas para revisar.' : 'No hay dudas pendientes.' }}
+          </p>
         } @else {
           <ul class="text-sm text-gray-700 border border-gray-200 rounded divide-y divide-gray-100">
             @for (d of visibles(); track d.id) {
@@ -148,11 +220,21 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
                   @if (d.usos > 1) {
                     <span class="text-xs text-gray-500">usada {{ d.usos }} veces</span>
                   }
-                  <button type="button" class="ml-auto text-xs font-semibold text-brand-600 hover:underline" (click)="abrir(d)">
-                    {{ abierta() === d.id ? 'Cerrar' : 'Revisar' }}
-                  </button>
+                  <span class="ml-auto flex items-baseline gap-3">
+                    @if (d.paraDespues) {
+                      <button type="button" class="text-xs text-gray-600 hover:underline" [disabled]="ocupado()" (click)="pasarANuevas(d)">Pasar a nuevas</button>
+                    } @else {
+                      <button type="button" class="text-xs text-gray-600 hover:underline" [disabled]="ocupado()" (click)="dejarPendiente(d)">Dejar pendiente</button>
+                    }
+                    <button type="button" class="text-xs font-semibold text-brand-600 hover:underline" (click)="abrir(d)">
+                      {{ abierta() === d.id ? 'Cerrar' : 'Revisar' }}
+                    </button>
+                  </span>
                 </div>
                 <span class="text-xs text-gray-600">{{ d.motivo }}</span>
+                @if (d.paraDespues && d.resultado && abierta() !== d.id) {
+                  <span class="text-xs text-amber-700">El link no alcanzó: {{ d.resultado }}</span>
+                }
 
                 @if (abierta() === d.id) {
                   <app-mapa-duda [duda]="d" />
@@ -225,7 +307,7 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
               </li>
             }
           </ul>
-          @if (l.length > mostrar()) {
+          @if (enSolapa().length > mostrar()) {
             <div>
               <button type="button" class="boton" (click)="mostrar.set(mostrar() + 25)">Mostrar 25 más</button>
             </div>
@@ -273,10 +355,36 @@ export class CallesARevisarComponent {
   readonly lista = signal<Duda[] | null>(null);
   readonly abierta = signal<string | null>(null);
   readonly mostrar = signal(25);
-  readonly visibles = computed(() => (this.lista() ?? []).slice(0, this.mostrar()));
+  readonly solapas: { id: Solapa; nombre: string }[] = [
+    { id: 'NUEVAS', nombre: 'Nuevas' },
+    { id: 'PENDIENTES', nombre: 'Pendientes' },
+    { id: 'RESUELTAS', nombre: 'Resueltas' },
+  ];
+  readonly solapa = signal<Solapa>('NUEVAS');
+  readonly resueltas = signal<DudaResuelta[]>([]);
+  readonly enSolapa = computed(() =>
+    (this.lista() ?? []).filter((d) => d.paraDespues === (this.solapa() === 'PENDIENTES')),
+  );
+  readonly visibles = computed(() => this.enSolapa().slice(0, this.mostrar()));
 
   cuantas(tipo: Duda['tipo']): number {
     return (this.lista() ?? []).filter((d) => d.tipo === tipo).length;
+  }
+
+  cuantasEn(s: Solapa): number {
+    if (s === 'RESUELTAS') return this.resueltas().length;
+    return (this.lista() ?? []).filter((d) => d.paraDespues === (s === 'PENDIENTES')).length;
+  }
+
+  elegirSolapa(s: Solapa): void {
+    this.solapa.set(s);
+    this.mostrar.set(25);
+    this.abierta.set(null);
+    this.sinDecidir.set(null);
+  }
+
+  nombreEstado(estado: string): string {
+    return NOMBRE_ESTADO[estado] ?? estado;
   }
 
   etiquetaDe(d: Duda): string {
@@ -290,6 +398,15 @@ export class CallesARevisarComponent {
 
   cargar(): void {
     this.pedir(this.http.get<Duda[]>(apiUrl(this.base)), (l) => this.lista.set(l));
+    this.pedir(this.http.get<DudaResuelta[]>(apiUrl(this.base + '/resueltas')), (r) => this.resueltas.set(r));
+  }
+
+  dejarPendiente(d: Duda): void {
+    this.pedir(this.http.post<void>(apiUrl(`${this.base}/${d.id}/dejar-pendiente`), {}), () => this.cargar());
+  }
+
+  pasarANuevas(d: Duda): void {
+    this.pedir(this.http.post<void>(apiUrl(`${this.base}/${d.id}/pasar-a-nuevas`), {}), () => this.cargar());
   }
 
   actualizar(): void {
@@ -302,7 +419,8 @@ export class CallesARevisarComponent {
   abrir(d: Duda): void {
     this.abierta.set(this.abierta() === d.id ? null : d.id);
     this.link = '';
-    this.sinDecidir.set(null);
+    // En Pendientes vuelve el motivo del link anterior, y con él "Usar igual el punto de Google".
+    this.sinDecidir.set(d.paraDespues ? d.resultado : null);
   }
 
   /**
@@ -338,6 +456,8 @@ export class CallesARevisarComponent {
       this.pedir(this.http.get<Duda[]>(apiUrl(this.base)), (l) => {
         this.lista.set(l);
         this.abierta.set(abierta);
+        // Si el link no alcanzó, la duda pasó a Pendientes: se la sigue mostrando abierta ahí.
+        if (l.find((d) => d.id === abierta)?.paraDespues) this.solapa.set('PENDIENTES');
       });
       return;
     }

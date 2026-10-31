@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, effect, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import * as L from 'leaflet';
@@ -13,6 +13,7 @@ import { RealtimeService } from '../../core/services/realtime.service';
 import { Cadete } from '../../core/models/cadete.model';
 import { Pedido } from '../../core/models/pedido.model';
 import { AvisosCalleCapa } from './avisos-calle-capa';
+import { FiltroEstado, FiltroVehiculo, buscarCadetes, pasaFiltros, tieneUbicacion } from './filtro-cadetes';
 
 /**
  * Los plugins (markercluster, heat) se cuelgan del `L` global (`window.L`). En el build de
@@ -32,8 +33,24 @@ const COLOR_ESTADO_CADETE: Record<string, string> = {
   DESCONECTADO: '#6b7280',
 };
 
+const OPCIONES_ESTADO: { id: FiltroEstado; nombre: string }[] = [
+  { id: 'TODOS', nombre: 'Todos' },
+  { id: 'LIBRE', nombre: 'Libres' },
+  { id: 'OCUPADO', nombre: 'Ocupados' },
+];
+
+const OPCIONES_VEHICULO: { id: FiltroVehiculo; nombre: string }[] = [
+  { id: 'TODOS', nombre: 'Todos' },
+  { id: 'MOTO', nombre: 'Motos' },
+  { id: 'BICI', nombre: 'Bicis' },
+];
+
+function colorDeEstado(estadoId: string): string {
+  return COLOR_ESTADO_CADETE[estadoId] ?? '#6b7280';
+}
+
 function cadeteIcon(estadoId: string): L.DivIcon {
-  const color = COLOR_ESTADO_CADETE[estadoId] ?? '#6b7280';
+  const color = colorDeEstado(estadoId);
   return L.divIcon({
     className: '',
     html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.5)"></div>`,
@@ -57,7 +74,67 @@ function cadeteIcon(estadoId: string): L.DivIcon {
           <span class="flex items-center gap-1" title="Avisos de la calle de los cadetes (vencen a la hora)">🚓🚧💥✊ Avisos de la calle</span>
         </div>
       </div>
-      <div class="px-4 py-2 border-b border-gray-200 flex items-center gap-3 text-xs">
+      <div class="px-4 py-2 border-b border-gray-200 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <div class="relative w-56">
+          <input
+            type="search"
+            class="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+            placeholder="Buscar cadete"
+            aria-label="Buscar cadete"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event); listaAbierta.set(true)"
+            (focus)="listaAbierta.set(true)"
+            (blur)="listaAbierta.set(false)"
+            (keydown.escape)="listaAbierta.set(false)"
+            (keydown.enter)="elegirPrimero()"
+          />
+          @if (listaAbierta()) {
+            <ul class="absolute left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg z-[1100]">
+              @for (c of resultados(); track c.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-gray-100 disabled:opacity-60 disabled:hover:bg-transparent"
+                    [disabled]="!tieneUbicacion(c)"
+                    (mousedown)="$event.preventDefault(); elegirCadete(c)"
+                  >
+                    <span class="dot shrink-0" [style.background]="colorEstado(c.estado.id)"></span>
+                    <span class="flex-1 truncate">{{ c.apellido }}, {{ c.nombre }}</span>
+                    <span class="text-gray-500 shrink-0">{{ tieneUbicacion(c) ? c.tipoVehiculo.nombre : 'sin ubicación' }}</span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="px-2 py-1.5 text-gray-500">Ningún cadete coincide</li>
+              }
+            </ul>
+          }
+        </div>
+        <div class="flex items-center gap-1" role="group" aria-label="Filtrar por estado">
+          @for (o of opcionesEstado; track o.id) {
+            <button
+              type="button"
+              class="px-2 py-1 rounded border"
+              [class]="filtroEstado() === o.id ? 'bg-brand-600 border-brand-600 text-white' : 'border-gray-300 text-gray-600'"
+              [attr.aria-pressed]="filtroEstado() === o.id"
+              (click)="filtroEstado.set(o.id)"
+            >
+              {{ o.nombre }} {{ cuantos(o.id, filtroVehiculo()) }}
+            </button>
+          }
+        </div>
+        <div class="flex items-center gap-1" role="group" aria-label="Filtrar por vehículo">
+          @for (o of opcionesVehiculo; track o.id) {
+            <button
+              type="button"
+              class="px-2 py-1 rounded border"
+              [class]="filtroVehiculo() === o.id ? 'bg-brand-600 border-brand-600 text-white' : 'border-gray-300 text-gray-600'"
+              [attr.aria-pressed]="filtroVehiculo() === o.id"
+              (click)="filtroVehiculo.set(o.id)"
+            >
+              {{ o.nombre }} {{ cuantos(filtroEstado(), o.id) }}
+            </button>
+          }
+        </div>
         <label class="flex items-center gap-1.5">
           <input type="checkbox" [(ngModel)]="heatmapActivo" (ngModelChange)="onToggleHeatmap($event)" />
           <span class="text-gray-600">🔥 Heatmap de demanda (últimos 30 días)</span>
@@ -102,6 +179,15 @@ export class MapaComponent implements OnInit, OnDestroy {
   private cadeteObjetivoId: string | null = null;
   private centradoEnObjetivo = false;
 
+  readonly opcionesEstado = OPCIONES_ESTADO;
+  readonly opcionesVehiculo = OPCIONES_VEHICULO;
+  readonly filtroEstado = signal<FiltroEstado>('TODOS');
+  readonly filtroVehiculo = signal<FiltroVehiculo>('TODOS');
+  readonly busqueda = signal('');
+  readonly listaAbierta = signal(false);
+  readonly resultados = computed(() => buscarCadetes(this.cadetes.cadetes(), this.busqueda()));
+  readonly tieneUbicacion = tieneUbicacion;
+
   /** Punto suelto a marcar (viene de "Ver ubicación" en el detalle de un pedido, para
    * verificar que el retiro/entrega del cadete coincide con la dirección declarada). */
   private readonly capaVerificacion = L.layerGroup();
@@ -131,6 +217,8 @@ export class MapaComponent implements OnInit, OnDestroy {
     });
     effect(() => {
       const cadetes = this.cadetes.cadetes();
+      this.filtroEstado();
+      this.filtroVehiculo();
       this.dibujarCadetes(cadetes);
     });
     effect(() => {
@@ -251,7 +339,7 @@ export class MapaComponent implements OnInit, OnDestroy {
     this.capaCadetes.clearLayers();
     let marcadorObjetivo: L.Marker | null = null;
     for (const c of cadetes) {
-      if (c.lat == null || c.lng == null) continue;
+      if (!this.seVeEnElMapa(c, this.filtroEstado(), this.filtroVehiculo()) || c.lat == null || c.lng == null) continue;
       const popup = `
         <strong>${c.nombre} ${c.apellido}</strong><br>
         ${c.tipoVehiculo.nombre} · ${c.estado.nombre}<br>
@@ -263,9 +351,44 @@ export class MapaComponent implements OnInit, OnDestroy {
 
     if (marcadorObjetivo && !this.centradoEnObjetivo) {
       this.centradoEnObjetivo = true;
-      this.map?.setView(marcadorObjetivo.getLatLng(), 16);
-      marcadorObjetivo.openPopup();
+      const marcador: L.Marker = marcadorObjetivo;
+      // Si quedó dentro de un grupo, primero hay que abrirlo: sin eso el cartel no se muestra.
+      this.capaCadetes.zoomToShowLayer(marcador, () => {
+        this.map?.setView(marcador.getLatLng(), Math.max(this.map.getZoom(), 16));
+        marcador.openPopup();
+      });
     }
+  }
+
+  private seVeEnElMapa(c: Cadete, estado: FiltroEstado, vehiculo: FiltroVehiculo): boolean {
+    return c.activo && tieneUbicacion(c) && pasaFiltros(c, estado, vehiculo);
+  }
+
+  /** Cuántos cadetes se verían con esa combinación de filtros. */
+  cuantos(estado: FiltroEstado, vehiculo: FiltroVehiculo): number {
+    return this.cadetes.cadetes().filter((c) => this.seVeEnElMapa(c, estado, vehiculo)).length;
+  }
+
+  readonly colorEstado = colorDeEstado;
+
+  elegirCadete(c: Cadete): void {
+    if (!tieneUbicacion(c)) return;
+    this.listaAbierta.set(false);
+    this.busqueda.set('');
+    this.cadeteObjetivoId = c.id;
+    this.centradoEnObjetivo = false;
+    if (this.seVeEnElMapa(c, this.filtroEstado(), this.filtroVehiculo())) {
+      this.dibujarCadetes(this.cadetes.cadetes());
+    } else {
+      // Lo centra el redibujo que dispara el cambio de filtros.
+      this.filtroEstado.set('TODOS');
+      this.filtroVehiculo.set('TODOS');
+    }
+  }
+
+  elegirPrimero(): void {
+    const primero = this.resultados().find(tieneUbicacion);
+    if (primero) this.elegirCadete(primero);
   }
 
   private dibujarPedidos(pedidos: Pedido[]): void {
