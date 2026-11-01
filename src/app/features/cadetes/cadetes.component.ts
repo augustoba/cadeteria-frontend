@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CadeteService } from '../../core/services/cadete.service';
 import { IncidenciaService } from '../../core/services/incidencia.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AvisoGeneral, Cadete, CadeteEstadoLog } from '../../core/models/cadete.model';
 import { PrioridadIncidencia } from '../../core/models/incidencia.model';
@@ -130,6 +131,11 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
                       @if (c.estado.id !== 'LIBRE') {
                         <button type="button" class="btn-mini bg-emerald-600 hover:bg-emerald-700" (click)="marcarLibre(c)">
                           Libre
+                        </button>
+                      }
+                      @if (c.estado.id !== 'DESCONECTADO' && puedeDesconectar) {
+                        <button type="button" class="btn-mini bg-gray-600 hover:bg-gray-700" (click)="cadetes.desconectar(c.id)">
+                          Desconectar
                         </button>
                       }
                     </div>
@@ -452,6 +458,7 @@ export class CadetesComponent implements OnInit {
   readonly cadetes = inject(CadeteService);
   readonly incidencias = inject(IncidenciaService);
   private readonly toast = inject(ToastService);
+  readonly puedeDesconectar = inject(AuthService).tienePermiso('desconectar_cadete');
 
   readonly cadeteParaBaja = signal<Cadete | null>(null);
   motivoBajaModal = '';

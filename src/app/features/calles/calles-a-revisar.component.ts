@@ -14,7 +14,7 @@ interface Punto {
 
 interface Duda {
   id: string;
-  tipo: 'NOMBRE' | 'UBICACION' | 'NOMBRE_VIEJO';
+  tipo: 'NOMBRE' | 'UBICACION' | 'NOMBRE_VIEJO' | 'NOMBRE_CRUZADO';
   calle: string;
   localidad: string;
   cuadra: number;
@@ -151,7 +151,7 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
         </button>
         <button type="button" class="boton" [disabled]="ocupado()" (click)="actualizar()">Actualizar la lista</button>
         @if (lista(); as l) {
-          <span class="text-xs text-gray-500">{{ l.length }} sin resolver ({{ cuantas('UBICACION') }} de ubicación, {{ cuantas('NOMBRE') }} de nombre, {{ cuantas('NOMBRE_VIEJO') }} de nombre viejo)</span>
+          <span class="text-xs text-gray-500">{{ l.length }} sin resolver ({{ cuantas('UBICACION') }} de ubicación, {{ cuantas('NOMBRE') }} de nombre, {{ cuantas('NOMBRE_VIEJO') }} de nombre viejo, {{ cuantas('NOMBRE_CRUZADO') }} con dos nombres)</span>
         }
       </div>
       @if (lista()) {
@@ -241,13 +241,27 @@ export class MapaDudaComponent implements AfterViewInit, OnChanges, OnDestroy {
                   <span class="text-xs text-gray-400">
                     Rojo: esta cuadra. Azul:
                     {{ d.tipo === 'UBICACION' ? 'la cuadra anterior y la siguiente' : 'las cuadras de "' + d.otraCalle + '" de altura parecida' }}.
-                    @if (d.tipo !== 'NOMBRE_VIEJO') {
+                    @if (d.tipo === 'NOMBRE' || d.tipo === 'UBICACION') {
                       Verde: donde la ubica Google, después de pegar el link.
                     }
                   </span>
-                  @if (d.tipo === 'NOMBRE_VIEJO') {
+                  @if (d.tipo === 'NOMBRE_CRUZADO') {
                     <span class="text-sm text-gray-700">
-                      Qué hacer: no hace falta buscar nada. Esta cuadra está guardada dos veces: como
+                      Qué hacer: elegí con qué nombre queda toda la calle. No se pierde ninguna cuadra: las alturas repetidas se juntan
+                      y quien escriba el otro nombre la sigue encontrando. Se puede deshacer desde "Dos nombres".
+                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <button type="button" class="boton boton-fuerte" [disabled]="ocupado()" (click)="dejarNombre(d, 'DEJAR_CALLE', d.calle)">
+                        Dejar "{{ d.calle }}"
+                      </button>
+                      <button type="button" class="boton boton-fuerte" [disabled]="ocupado()" (click)="dejarNombre(d, 'DEJAR_OTRA', d.otraCalle)">
+                        Dejar "{{ d.otraCalle }}"
+                      </button>
+                      <button type="button" class="boton" [disabled]="ocupado()" (click)="marcar(d, 'DISTINTAS')">Son calles distintas, dejar las dos</button>
+                    </div>
+                  } @else if (d.tipo === 'NOMBRE_VIEJO') {
+                    <span class="text-sm text-gray-700">
+                      Qué hacer: elegí una de las dos opciones de abajo, no hace falta buscar en Google. Esta cuadra está guardada dos veces: como
                       <strong>{{ d.calle }}</strong> (el nombre de antes) y como <strong>{{ d.otraCalle }}</strong> (el de hoy). Al quitar la
                       repetida queda solo la de hoy, y quien escriba el nombre de antes la sigue encontrando.
                     </span>
@@ -388,10 +402,12 @@ export class CallesARevisarComponent {
   }
 
   etiquetaDe(d: Duda): string {
+    if (d.tipo === 'NOMBRE_CRUZADO') return 'Dos nombres';
     return d.tipo === 'NOMBRE' ? 'Nombre' : d.tipo === 'NOMBRE_VIEJO' ? 'Nombre viejo' : 'Ubicación';
   }
 
   colorDe(d: Duda): string {
+    if (d.tipo === 'NOMBRE_CRUZADO') return 'bg-rose-100 text-rose-800';
     return d.tipo === 'NOMBRE' ? 'bg-amber-100 text-amber-800' : d.tipo === 'NOMBRE_VIEJO' ? 'bg-violet-100 text-violet-800' : 'bg-sky-100 text-sky-800';
   }
   link = '';
@@ -444,7 +460,12 @@ export class CallesARevisarComponent {
     this.pedir(this.http.post<Resultado>(apiUrl(`${this.base}/${d.id}/link`), { link }), (r) => this.alResolver(r));
   }
 
-  marcar(d: Duda, decision: 'MISMA' | 'DISTINTAS' | 'ESTA_BIEN' | 'NO_EXISTE' | 'QUITAR' | 'USAR_GOOGLE'): void {
+  /** Cambia toda la calle de una vez: por eso pide confirmación, aunque se pueda deshacer. */
+  dejarNombre(d: Duda, decision: 'DEJAR_CALLE' | 'DEJAR_OTRA', nombre: string): void {
+    if (confirm(`¿Dejar "${nombre}" en toda la calle?`)) this.marcar(d, decision);
+  }
+
+  marcar(d: Duda, decision: 'MISMA' | 'DISTINTAS' | 'ESTA_BIEN' | 'NO_EXISTE' | 'QUITAR' | 'USAR_GOOGLE' | 'DEJAR_CALLE' | 'DEJAR_OTRA'): void {
     this.pedir(this.http.post<Resultado>(apiUrl(`${this.base}/${d.id}/marcar`), { decision }), (r) => this.alResolver(r));
   }
 

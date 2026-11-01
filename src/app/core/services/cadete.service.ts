@@ -66,6 +66,11 @@ export class CadeteService {
     this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/libre`), {}));
   }
 
+  /** Lo pasa a Desconectado y le corta la sesión; el backend lo rechaza si tiene viajes u ofertas. */
+  desconectar(id: string): void {
+    this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/desconectar`), {}));
+  }
+
   /** Aviso operativo a todos los cadetes conectados ahora (ej. "cerramos temprano"). */
   avisoGeneral(mensaje: string, onSuccess?: () => void) {
     return this.http.post(apiUrl('/admin/cadetes/aviso'), { mensaje }).subscribe(() => onSuccess?.());
