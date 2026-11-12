@@ -53,6 +53,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/primeros-pasos/primeros-pasos.component').then((m) => m.PrimerosPasosComponent),
       },
       {
+        // Historial de pedidos con filtros (2026-11-11).
+        path: 'pedidos',
+        loadComponent: () => import('./features/pedidos/pedidos.component').then((m) => m.PedidosComponent),
+      },
+      {
         path: 'pedidos/nuevo',
         loadComponent: () => import('./features/pedidos/nuevo-pedido.component').then((m) => m.NuevoPedidoComponent),
       },

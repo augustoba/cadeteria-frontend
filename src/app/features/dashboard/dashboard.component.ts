@@ -1,21 +1,19 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Comentario, Pedido, PrecioLog } from '../../core/models/pedido.model';
+import { Pedido } from '../../core/models/pedido.model';
 import { Cadete } from '../../core/models/cadete.model';
 import { PedidoService, TipoListaPedidos } from '../../core/services/pedido.service';
 import { CadeteService } from '../../core/services/cadete.service';
-import { IncidenciaService } from '../../core/services/incidencia.service';
-import { Incidencia, PrioridadIncidencia } from '../../core/models/incidencia.model';
 import { RealtimeService } from '../../core/services/realtime.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { LightboxService } from '../../core/services/lightbox.service';
-import { TablaPedidosComponent, claseEstadoPedido } from './tabla-pedidos.component';
+import { TablaPedidosComponent } from './tabla-pedidos.component';
 import { CadetesLibresComponent } from './cadetes-libres.component';
 import { KanbanPedidosComponent } from './kanban-pedidos.component';
 import { LoadingSkeletonComponent } from '../../shared/loading-skeleton.component';
+import { PedidoDetalleModalComponent } from '../../shared/pedido-detalle-modal.component';
+import { NuevaIncidenciaModalComponent } from '../../shared/nueva-incidencia-modal.component';
 
 /** "finalizados" ya no pasa por `PedidoService.cargar()`/`TipoListaPedidos` — tiene su propio estado paginado, ver `cargarFinalizadosPagina()`. */
 type TipoTab = TipoListaPedidos | 'finalizados';
@@ -55,7 +53,7 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
 
 @Component({
   selector: 'app-dashboard',
-  imports: [TablaPedidosComponent, KanbanPedidosComponent, CadetesLibresComponent, RouterLink, FormsModule, DatePipe, LoadingSkeletonComponent],
+  imports: [TablaPedidosComponent, KanbanPedidosComponent, CadetesLibresComponent, RouterLink, FormsModule, LoadingSkeletonComponent, PedidoDetalleModalComponent, NuevaIncidenciaModalComponent],
   template: `
     <div class="bg-white rounded shadow-sm">
       <div class="bg-brand-600 text-white px-4 py-3 rounded-t flex items-center justify-between">
@@ -491,490 +489,8 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
       </div>
     }
 
-    @if (pedidoDetalle(); as p) {
-      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cerrarModalDetalle()">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden" (click)="$event.stopPropagation()">
-          <div class="bg-brand-600 text-white px-5 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <h2 class="font-semibold text-base">Pedido #{{ p.numero }}</h2>
-              <span class="px-2 py-0.5 rounded text-xs font-medium" [class]="claseEstado(p)">{{ p.estado.nombre }}</span>
-            </div>
-            <button type="button" class="text-white/80 hover:text-white text-lg leading-none" (click)="cerrarModalDetalle()">
-              ✕
-            </button>
-          </div>
-
-          <div class="p-4 flex flex-col gap-3 text-sm max-h-[75vh] overflow-y-auto bg-gray-50">
-            @if (p.smsFallido) {
-              <div class="rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2">
-                📵 No se le pudo avisar por SMS al cliente (se agotaron los reintentos).
-              </div>
-            }
-
-            <section class="bg-white rounded-lg border border-gray-200 p-3">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Cliente</h3>
-              <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <div>
-                  <div class="text-xs text-gray-400">Nombre</div>
-                  <div class="font-medium text-gray-800">{{ p.clienteNombre }}</div>
-                </div>
-                <div>
-                  <div class="text-xs text-gray-400">Teléfono</div>
-                  <div class="font-medium text-gray-800">{{ p.clienteTelefono }}</div>
-                </div>
-              </div>
-            </section>
-
-            <section class="bg-white rounded-lg border border-gray-200 p-3">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Envío</h3>
-              <div class="flex flex-col gap-2.5">
-                <div>
-                  <div class="text-xs text-gray-400">Origen</div>
-                  <div class="font-medium text-gray-800">{{ p.origenDireccion }}</div>
-                  @if (p.origenPiso || p.origenDepto) {
-                    <div class="text-gray-700">
-                      @if (p.origenPiso) { Piso {{ p.origenPiso }} }
-                      @if (p.origenPiso && p.origenDepto) { · }
-                      @if (p.origenDepto) { Depto {{ p.origenDepto }} }
-                    </div>
-                  }
-                  @if (p.origenObservaciones) {
-                    <div class="text-xs text-gray-500">📝 {{ p.origenObservaciones }}</div>
-                  }
-                </div>
-                @for (parada of p.paradas; track parada.id) {
-                  <div>
-                    <div class="text-xs text-gray-400">Parada {{ parada.orden }}</div>
-                    <div class="flex items-center gap-1.5">
-                      <span class="font-medium text-gray-800">{{ parada.direccion }}</span>
-                      @if (parada.entregadoEn) {
-                        <span class="text-emerald-600 text-xs" [title]="'Entregada ' + (parada.entregadoEn | date: 'dd/MM/yyyy HH:mm')">✓</span>
-                      } @else {
-                        <span class="text-amber-600 text-xs">pendiente</span>
-                      }
-                    </div>
-                  </div>
-                }
-                <div>
-                  <div class="text-xs text-gray-400">Destino</div>
-                  <div class="font-medium text-gray-800">{{ p.destinoDireccion }}</div>
-                  @if (p.destinoPiso || p.destinoDepto) {
-                    <div class="text-gray-700">
-                      @if (p.destinoPiso) { Piso {{ p.destinoPiso }} }
-                      @if (p.destinoPiso && p.destinoDepto) { · }
-                      @if (p.destinoDepto) { Depto {{ p.destinoDepto }} }
-                    </div>
-                  }
-                  @if (p.destinoObservaciones) {
-                    <div class="text-xs text-gray-500">📝 {{ p.destinoObservaciones }}</div>
-                  }
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-x-4 gap-y-2.5 mt-2.5 pt-2.5 border-t border-gray-100">
-                <div>
-                  <div class="text-xs text-gray-400">Vehículo</div>
-                  <div class="font-medium text-gray-800">{{ p.requiereMoto ? 'Requiere moto' : 'Cualquier vehículo' }}</div>
-                </div>
-                @if (p.origenCarga) {
-                  <div>
-                    <div class="text-xs text-gray-400">Cargado</div>
-                    <div class="font-medium text-gray-800">
-                      {{ p.origenCarga === 'WEB' ? 'Online (cliente)' : 'Panel' + (p.creadoPorUsername ? ' — ' + p.creadoPorUsername : '') }}
-                    </div>
-                  </div>
-                }
-                @if (p.detalle) {
-                  <div class="col-span-2">
-                    <div class="text-xs text-gray-400">Detalle del pedido</div>
-                    <div class="font-medium text-gray-800">{{ p.detalle }}</div>
-                  </div>
-                }
-              </div>
-            </section>
-
-            <section class="bg-white rounded-lg border border-gray-200 p-3">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Importes</h3>
-              <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <div>
-                  <div class="text-xs text-gray-400">Valor trámite</div>
-                  @if (editandoPrecio()) {
-                    <div class="flex items-center gap-1">
-                      <input type="number" min="0" step="0.01" class="input !py-1 !text-sm w-24" [(ngModel)]="precioEditado" name="precioEditado" />
-                      <button type="button" class="btn-mini bg-emerald-600 hover:bg-emerald-700" (click)="guardarPrecio(p.id)">✔</button>
-                      <button type="button" class="btn-mini bg-gray-400 hover:bg-gray-500" (click)="editandoPrecio.set(false)">✕</button>
-                    </div>
-                  } @else {
-                    <div class="font-medium text-gray-800 flex items-center gap-1.5">
-                      $ {{ p.precio }}
-                      @if (p.estado.id !== 'FINALIZADO' && p.estado.id !== 'CANCELADO') {
-                        <button type="button" class="text-xs text-brand-600 hover:underline" (click)="empezarEditarPrecio(p.precio)">✏️</button>
-                      }
-                    </div>
-                  }
-                </div>
-                <div>
-                  <div class="text-xs text-gray-400">Dinero</div>
-                  <div class="font-medium text-gray-800">$ {{ p.montoDeclarado }}</div>
-                </div>
-                @if (p.montoDisponer) {
-                  <div>
-                    <div class="text-xs text-gray-400">El cadete debe disponer de</div>
-                    <div class="font-medium text-gray-800">$ {{ p.montoDisponer }}</div>
-                  </div>
-                }
-              </div>
-              <button type="button" class="text-xs text-gray-400 hover:underline mt-2" (click)="verHistorialPrecio(p.id)">
-                {{ historialPrecioAbierto() ? '▲ Ocultar historial de precio' : '▼ Ver historial de precio' }}
-              </button>
-              @if (historialPrecioAbierto()) {
-                @if (historialPrecio().length === 0) {
-                  <p class="text-xs text-gray-400 mt-1">Sin cambios de precio.</p>
-                } @else {
-                  <div class="flex flex-col gap-1 mt-1.5">
-                    @for (h of historialPrecio(); track h.id) {
-                      <div class="text-xs text-gray-500">
-                        $ {{ h.precioAnterior }} → $ {{ h.precioNuevo }} — {{ h.cambiadoPorUsername }} ({{ h.cambiadoEn | date: 'dd/MM/yyyy HH:mm' }})
-                      </div>
-                    }
-                  </div>
-                }
-              }
-            </section>
-
-            @if (p.cadeteAsignado) {
-              <section class="bg-white rounded-lg border border-gray-200 p-3">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Cadete asignado</h3>
-                <div class="font-medium text-gray-800">
-                  {{ p.cadeteAsignado.nombre }} {{ p.cadeteAsignado.apellido }}
-                </div>
-                <div class="text-xs text-gray-400">{{ p.cadeteAsignado.tipoVehiculo.nombre }}</div>
-              </section>
-            }
-
-            <section class="bg-white rounded-lg border border-gray-200 p-3">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2.5">Timeline</h3>
-              <!-- Datos del pedido, no de un paso: el intento pudo ser en el Retirado, una parada o la entrega. -->
-              @if (p.ubicacionSimulada) {
-                <div class="text-xs text-red-600 font-medium mb-2">
-                  🚫 En este pedido el cadete intentó marcar con una app de ubicación simulada (GPS falso): no lo dejó.
-                </div>
-              }
-              @if (p.ubicacionImprecisa) {
-                <div class="text-xs text-amber-700 mb-2">📡 En este pedido marcó con la ubicación imprecisa (GPS con mucho error).</div>
-              }
-              <div class="flex flex-col">
-                <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
-                  <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
-                  <span class="text-gray-500">Creado</span>
-                  <span class="ml-auto text-gray-800">{{ p.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
-                </div>
-                @if (p.asignadoEn) {
-                  <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
-                    <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
-                    <span class="text-gray-500">
-                      Asignado
-                      @if (p.asignadoPorUsername) {
-                        <span class="text-gray-400">por {{ p.asignadoPorUsername }}</span>
-                      }
-                    </span>
-                    <span class="ml-auto text-gray-800">{{ p.asignadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
-                  </div>
-                }
-                @if (p.vistoEn) {
-                  <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
-                    <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-amber-500"></span>
-                    <span class="text-gray-500">
-                      👁 Visto
-                      @if (!p.aceptadoEn && p.estado.id === 'PENDIENTE') {
-                        <span class="text-amber-600">— todavía no lo aceptó</span>
-                      }
-                    </span>
-                    <span class="ml-auto text-gray-800">{{ p.vistoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
-                  </div>
-                }
-                @if (p.aceptadoEn) {
-                  <div class="flex gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
-                    <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
-                    <span class="text-gray-500">Aceptado</span>
-                    <span class="ml-auto text-gray-800">{{ p.aceptadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
-                  </div>
-                }
-                @if (p.retiradoEn) {
-                  <div class="flex items-center gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
-                    <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-brand-500"></span>
-                    <span class="text-gray-500">Retirado</span>
-                    <span class="ml-auto text-gray-800">{{ p.retiradoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
-                    @if (p.retiroLat != null && p.retiroLng != null) {
-                      <a
-                        [routerLink]="['/mapa']"
-                        [queryParams]="{ lat: p.retiroLat, lng: p.retiroLng, label: 'Retiro pedido ' + p.numero }"
-                        target="_blank"
-                        class="btn-mini bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        🗺
-                      </a>
-                    }
-                  </div>
-                  @if (p.retiroFueraZona) {
-                    <div class="text-xs text-red-600 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3 -mt-2">
-                      ⚠️ Fuera de zona: marcó con "Estoy en el lugar"{{ p.retiroDistanciaM != null ? ' a ' + distanciaLegible(p.retiroDistanciaM) + ' del retiro' : ' sin ubicación' }} (con foto)
-                    </div>
-                  }
-                }
-                @for (pa of p.paradas; track pa.id) {
-                  @if (pa.fueraZona) {
-                    <div class="text-xs text-red-600 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3">
-                      ⚠️ Parada {{ pa.orden }} fuera de zona{{ pa.distanciaM != null ? ': a ' + distanciaLegible(pa.distanciaM) : '' }}
-                      @if (pa.fotoUrl) {
-                        <button type="button" class="underline" (click)="lightbox.abrir(pa.fotoUrl!)">ver foto</button>
-                      }
-                    </div>
-                  }
-                }
-                @if (p.finalizadoEn) {
-                  <div class="flex items-center gap-2.5 pb-3 border-l-2 border-gray-200 pl-3 -ml-px relative">
-                    <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span class="text-gray-500">Entregado</span>
-                    <span class="ml-auto text-gray-800">{{ p.finalizadoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
-                    @if (p.entregaLat != null && p.entregaLng != null) {
-                      <a
-                        [routerLink]="['/mapa']"
-                        [queryParams]="{ lat: p.entregaLat, lng: p.entregaLng, label: 'Entrega pedido ' + p.numero }"
-                        target="_blank"
-                        class="btn-mini bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        🗺
-                      </a>
-                    }
-                  </div>
-                  @if (p.entregaFueraZona) {
-                    <div class="text-xs text-red-600 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3 -mt-2">
-                      ⚠️ Fuera de zona: marcó con "Estoy en el lugar"{{ p.entregaDistanciaM != null ? ' a ' + distanciaLegible(p.entregaDistanciaM) + ' del destino' : ' sin ubicación' }} (con foto)
-                    </div>
-                  }
-                  @if (p.finalizadoPorAdmin) {
-                    <div class="text-xs text-amber-700 font-medium border-l-2 border-gray-200 pl-3 -ml-px pb-3 -mt-2">
-                      🛠 Finalizado por el admin ({{ p.finalizadoPorAdmin }}): {{ p.finalizadoAdminMotivo }}
-                    </div>
-                  }
-                }
-                @if (p.canceladoEn) {
-                  <div class="flex gap-2.5 pl-3 -ml-px relative">
-                    <span class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-red-500"></span>
-                    <span class="text-gray-500">
-                      Cancelado
-                      @if (p.canceladoPorUsername) {
-                        <span class="text-gray-400">por {{ p.canceladoPorUsername }}</span>
-                      }
-                    </span>
-                    <span class="ml-auto text-gray-800">{{ p.canceladoEn | date: 'dd/MM/yyyy HH:mm' }}</span>
-                  </div>
-                }
-              </div>
-              @if (p.retiradoEn) {
-                <a
-                  [routerLink]="['/mapa']"
-                  [queryParams]="{ pedidoId: p.id }"
-                  target="_blank"
-                  class="btn-mini bg-purple-600 hover:bg-purple-700 inline-block mt-1"
-                >
-                  🛣 Ver recorrido real en el mapa
-                </a>
-              }
-            </section>
-
-            @if (p.estado.id === 'FINALIZADO') {
-              <section class="bg-white rounded-lg border border-gray-200 p-3">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Entrega</h3>
-                <div>
-                  <div class="text-xs text-gray-400">Recibió</div>
-                  <div class="font-medium text-gray-800">{{ p.entregaReceptorNombre || '—' }}</div>
-                </div>
-                @if (p.fotoRecepcionUrl || p.entregaFotoUrl || p.firmaReceptorUrl) {
-                  <div class="flex gap-2 mt-2.5 flex-wrap">
-                    @if (p.fotoRecepcionUrl) {
-                      <button type="button" (click)="lightbox.abrir(p.fotoRecepcionUrl!)" class="btn-mini bg-gray-500 hover:bg-gray-600">
-                        👁 Foto de retiro
-                      </button>
-                    }
-                    @if (p.entregaFotoUrl) {
-                      <button type="button" (click)="lightbox.abrir(p.entregaFotoUrl!)" class="btn-mini bg-gray-500 hover:bg-gray-600">
-                        👁 Foto de entrega
-                      </button>
-                    }
-                    @if (p.firmaReceptorUrl) {
-                      <button type="button" (click)="lightbox.abrir(p.firmaReceptorUrl!)" class="btn-mini bg-gray-500 hover:bg-gray-600">
-                        ✍️ Firma del receptor
-                      </button>
-                    }
-                  </div>
-                } @else {
-                  <div class="text-xs text-gray-400 mt-2">Sin fotos.</div>
-                }
-                <div class="mt-2.5 pt-2.5 border-t border-gray-100">
-                  @if (p.calificacionEstrellas != null) {
-                    <div class="text-xs text-gray-400">Calificación del cliente</div>
-                    <div class="font-medium text-gray-800">
-                      {{ '⭐'.repeat(p.calificacionEstrellas) }} ({{ p.calificacionEstrellas }}/5)
-                    </div>
-                    @if (p.calificacionComentario) {
-                      <div class="text-gray-600 italic mt-0.5">"{{ p.calificacionComentario }}"</div>
-                    }
-                  } @else {
-                    <div class="text-xs text-gray-400">El cliente todavía no calificó este pedido.</div>
-                  }
-                </div>
-              </section>
-            }
-
-            @if (p.estado.id === 'CANCELADO') {
-              <section class="bg-white rounded-lg border border-gray-200 p-3">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Motivo de cancelación</h3>
-                <div class="font-medium text-gray-800">
-                  {{ p.motivoCancelacion === 'CLIENTE' ? 'El cliente canceló' : p.motivoCancelacion === 'OTRO' ? 'Otro motivo' : 'Sin especificar' }}
-                </div>
-              </section>
-            }
-
-            @if (p.estado.id === 'NO_ENTREGADO') {
-              <section class="bg-white rounded-lg border border-orange-200 bg-orange-50 p-3">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-orange-600 mb-2">No se pudo entregar</h3>
-                <div class="font-medium text-gray-800">{{ p.motivoNoEntrega || 'Sin motivo especificado.' }}</div>
-                @if (p.noEntregadoEn) {
-                  <div class="text-xs text-gray-500 mt-1">{{ p.noEntregadoEn | date: 'dd/MM/yyyy HH:mm' }}</div>
-                }
-                <p class="text-xs text-gray-500 mt-2">
-                  El pedido sigue activo — usá "Reintentar entrega" en el dashboard para volver a ofrecerlo sin
-                  cargarlo de cero.
-                </p>
-              </section>
-            }
-
-            <section class="bg-white rounded-lg border border-gray-200 p-3">
-              <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Comentarios</h3>
-              @if (comentariosDetalle().length === 0) {
-                <div class="text-xs text-gray-400">Todavía no hay comentarios.</div>
-              } @else {
-                <div class="flex flex-col gap-2">
-                  @for (c of comentariosDetalle(); track c.id) {
-                    <div class="rounded-md px-2.5 py-1.5" [class.bg-gray-50]="!c.esAdmin" [class.bg-indigo-50]="c.esAdmin">
-                      <div class="text-gray-700">{{ c.texto }}</div>
-                      <div class="text-xs text-gray-400 mt-0.5">{{ c.cadeteNombre }} · {{ c.creadoEn | date: 'dd/MM/yyyy HH:mm' }}</div>
-                    </div>
-                  }
-                </div>
-              }
-              <div class="flex gap-2 mt-2.5">
-                <input
-                  class="input flex-1"
-                  placeholder="Agregar un comentario…"
-                  [(ngModel)]="nuevoComentarioTexto"
-                  name="nuevoComentarioTexto"
-                  (keydown.enter)="agregarComentario(p.id)"
-                />
-                <button
-                  type="button"
-                  class="btn-mini bg-indigo-600 hover:bg-indigo-700"
-                  [disabled]="!nuevoComentarioTexto.trim()"
-                  (click)="agregarComentario(p.id)"
-                >
-                  Agregar
-                </button>
-              </div>
-            </section>
-
-            <section class="bg-white rounded-lg border border-gray-200 p-3">
-              <div class="flex items-center justify-between mb-2">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-400">Incidencias</h3>
-                <button type="button" class="btn-mini bg-amber-600 hover:bg-amber-700" (click)="abrirNuevaIncidenciaDePedido(p.id)">
-                  🎫 Crear incidencia
-                </button>
-              </div>
-              @if (incidenciasDelPedido().length === 0) {
-                <div class="text-xs text-gray-400">Sin incidencias cargadas para este pedido.</div>
-              } @else {
-                <div class="flex flex-col gap-2">
-                  @for (inc of incidenciasDelPedido(); track inc.id) {
-                    <div class="bg-gray-50 rounded-md px-2.5 py-1.5">
-                      <div class="flex items-center gap-2">
-                        <span
-                          class="px-1.5 py-0.5 rounded text-xs font-medium"
-                          [class]="inc.estado === 'ABIERTA' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'"
-                        >
-                          {{ inc.estado === 'ABIERTA' ? 'Abierta' : 'Cerrada' }}
-                        </span>
-                        <span class="text-gray-700 font-medium">{{ inc.titulo }}</span>
-                      </div>
-                      @if (inc.descripcion) {
-                        <div class="text-gray-600 mt-1">{{ inc.descripcion }}</div>
-                      }
-                      <div class="text-xs text-gray-400 mt-0.5">{{ inc.creadaEn | date: 'dd/MM/yyyy HH:mm' }}</div>
-                    </div>
-                  }
-                </div>
-              }
-            </section>
-          </div>
-
-          <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-white flex-wrap">
-            @if (p.estado.id === 'FINALIZADO') {
-              <button type="button" class="btn bg-emerald-600 hover:bg-emerald-700" [disabled]="compartiendoComprobante()" (click)="compartirComprobantePorWhatsapp(p)">
-                {{ compartiendoComprobante() ? 'Preparando…' : '📤 Compartir comprobante' }}
-              </button>
-            }
-            <button
-              type="button"
-              class="btn bg-sky-600 hover:bg-sky-700"
-              [disabled]="smsReenviado()"
-              (click)="reenviarSms(p.id)"
-            >
-              {{ smsReenviado() ? '✓ SMS reenviado' : '✉️ Reenviar SMS de seguimiento' }}
-            </button>
-            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cerrarModalDetalle()">Cerrar</button>
-          </div>
-        </div>
-      </div>
-    }
-
-    @if (pedidoParaIncidencia(); as pedidoId) {
-      <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" (click)="cerrarNuevaIncidencia()">
-        <div class="bg-white rounded shadow-lg w-full max-w-md" (click)="$event.stopPropagation()">
-          <div class="bg-brand-600 text-white px-4 py-3 rounded-t flex items-center justify-between">
-            <h2 class="font-semibold">Nueva incidencia</h2>
-            <button type="button" class="text-white/80 hover:text-white text-lg leading-none" (click)="cerrarNuevaIncidencia()">✕</button>
-          </div>
-          <div class="p-4 flex flex-col gap-3">
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Título</span>
-              <input class="input" [(ngModel)]="tituloIncidenciaModal" name="tituloIncidenciaModal" placeholder="Ej: Reclamo del cliente" />
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Prioridad</span>
-              <select class="input" [(ngModel)]="prioridadIncidenciaModal" name="prioridadIncidenciaModal">
-                <option value="BAJA">Baja</option>
-                <option value="NORMAL">Normal</option>
-                <option value="GRAVE">Grave</option>
-              </select>
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium text-gray-700">Observación</span>
-              <textarea class="input" rows="3" [(ngModel)]="descripcionIncidenciaModal" name="descripcionIncidenciaModal"></textarea>
-            </label>
-          </div>
-          <div class="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
-            <button type="button" class="btn bg-gray-400 hover:bg-gray-500" (click)="cerrarNuevaIncidencia()">Cancelar</button>
-            <button
-              type="button"
-              class="btn bg-amber-600 hover:bg-amber-700"
-              [disabled]="!tituloIncidenciaModal.trim()"
-              (click)="confirmarNuevaIncidencia()"
-            >
-              Crear
-            </button>
-          </div>
-        </div>
-      </div>
-    }
+    <app-pedido-detalle-modal [pedidoId]="pedidoDetalleId()" (cerrar)="pedidoDetalleId.set(null)" />
+    <app-nueva-incidencia-modal [pedidoId]="pedidoParaIncidencia()" (cerrar)="pedidoParaIncidencia.set(null)" />
 
     @if (pedidoAFinalizar(); as p) {
       <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" (click)="cerrarModalFinalizar()">
@@ -1073,10 +589,8 @@ function leerGuardado<T extends string>(key: string, valoresValidos: readonly T[
 export class DashboardComponent implements OnInit, OnDestroy {
   readonly pedidos = inject(PedidoService);
   readonly cadetesSvc = inject(CadeteService);
-  private readonly incidencias = inject(IncidenciaService);
   private readonly realtime = inject(RealtimeService);
   private readonly toast = inject(ToastService);
-  readonly lightbox = inject(LightboxService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly config = inject(ConfiguracionService);
@@ -1295,19 +809,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly pedidoAQuitar = signal<Pedido | null>(null);
   devolverComisionModal = true;
 
-  readonly pedidoDetalle = signal<Pedido | null>(null);
-  readonly smsReenviado = signal(false);
-  readonly comentariosDetalle = signal<Comentario[]>([]);
-  nuevoComentarioTexto = '';
-  readonly editandoPrecio = signal(false);
-  precioEditado: number | null = null;
-  readonly historialPrecioAbierto = signal(false);
-  readonly historialPrecio = signal<PrecioLog[]>([]);
-  readonly incidenciasDelPedido = signal<Incidencia[]>([]);
+  /** Detalle del pedido abierto (componente compartido con la pantalla "Pedidos", 2026-11-11). */
+  readonly pedidoDetalleId = signal<string | null>(null);
   readonly pedidoParaIncidencia = signal<string | null>(null);
-  tituloIncidenciaModal = '';
-  descripcionIncidenciaModal = '';
-  prioridadIncidenciaModal: PrioridadIncidencia = 'NORMAL';
 
   /** Pedidos entregados con un reclamo sin cerrar (2026-09-26). */
   readonly reclamosAbiertos = signal<Pedido[]>([]);
@@ -1499,12 +1003,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.toast.conDeshacer(aviso, () => this.pedidos.quitar(p.id, devolverComision));
   }
 
-  reenviarSms(id: string): void {
-    this.pedidos.reenviarSms(id, () => this.smsReenviado.set(true));
-  }
-
-  readonly compartiendoComprobante = signal(false);
-
   /** Mejora 71 — share sheet nativo si el navegador lo soporta (Chrome/Edge en Android y desktops recientes); si no, descarga el PDF para adjuntarlo a mano. */
   /**
    * "Avisar al cliente" (2026-09-26): abre la app de escritorio de WhatsApp (la cuenta de la
@@ -1523,107 +1021,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  compartirComprobantePorWhatsapp(p: Pedido): void {
-    this.compartiendoComprobante.set(true);
-    this.pedidos.comprobante(p.id).subscribe({
-      next: (blob) => {
-        this.compartiendoComprobante.set(false);
-        const archivo = new File([blob], `comprobante-pedido-${p.numero}.pdf`, { type: 'application/pdf' });
-        const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean; share?: (data: ShareData) => Promise<void> };
-        if (nav.canShare?.({ files: [archivo] }) && nav.share) {
-          nav.share({ files: [archivo], title: `Comprobante pedido #${p.numero}` }).catch(() => {});
-        } else {
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 60_000);
-          this.toast.info('Tu navegador no soporta compartir archivos directo — se abrió el PDF para que lo adjuntes a mano.');
-        }
-      },
-      error: () => this.compartiendoComprobante.set(false),
-    });
-  }
-
   private abrirModalDetalle(id: string): void {
-    this.smsReenviado.set(false);
-    this.pedidos.detalle(id).subscribe((p) => this.pedidoDetalle.set(p));
-    this.comentariosDetalle.set([]);
-    this.pedidos.comentarios(id).subscribe((c) => this.comentariosDetalle.set(c));
-    this.incidenciasDelPedido.set([]);
-    this.incidencias.porPedido(id).subscribe((inc) => this.incidenciasDelPedido.set(inc));
-    this.editandoPrecio.set(false);
-    this.historialPrecioAbierto.set(false);
-    this.historialPrecio.set([]);
-  }
-
-  cerrarModalDetalle(): void {
-    this.pedidoDetalle.set(null);
-  }
-
-  empezarEditarPrecio(precioActual: number): void {
-    this.precioEditado = precioActual;
-    this.editandoPrecio.set(true);
-  }
-
-  guardarPrecio(pedidoId: string): void {
-    if (this.precioEditado == null || this.precioEditado < 0) return;
-    this.pedidos.editarPrecio(pedidoId, this.precioEditado).subscribe((p) => {
-      this.pedidoDetalle.set(p);
-      this.editandoPrecio.set(false);
-      if (this.historialPrecioAbierto()) this.cargarHistorialPrecio(pedidoId);
-    });
-  }
-
-  verHistorialPrecio(pedidoId: string): void {
-    if (this.historialPrecioAbierto()) {
-      this.historialPrecioAbierto.set(false);
-      return;
-    }
-    this.historialPrecioAbierto.set(true);
-    this.cargarHistorialPrecio(pedidoId);
-  }
-
-  private cargarHistorialPrecio(pedidoId: string): void {
-    this.pedidos.historialPrecios(pedidoId).subscribe((h) => this.historialPrecio.set(h));
-  }
-
-  agregarComentario(pedidoId: string): void {
-    const texto = this.nuevoComentarioTexto.trim();
-    if (!texto) return;
-    this.pedidos.agregarComentario(pedidoId, texto).subscribe((c) => {
-      this.comentariosDetalle.update((lista) => [...lista, c]);
-      this.nuevoComentarioTexto = '';
-    });
+    this.pedidoDetalleId.set(id);
   }
 
   abrirNuevaIncidenciaDePedido(pedidoId: string): void {
-    this.tituloIncidenciaModal = '';
-    this.descripcionIncidenciaModal = '';
-    this.prioridadIncidenciaModal = 'NORMAL';
     this.pedidoParaIncidencia.set(pedidoId);
-  }
-
-  cerrarNuevaIncidencia(): void {
-    this.pedidoParaIncidencia.set(null);
-  }
-
-  confirmarNuevaIncidencia(): void {
-    const pedidoId = this.pedidoParaIncidencia();
-    const titulo = this.tituloIncidenciaModal.trim();
-    if (!pedidoId || !titulo) return;
-    this.incidencias.crear(
-      { titulo, descripcion: this.descripcionIncidenciaModal.trim() || null, pedidoId, prioridad: this.prioridadIncidenciaModal },
-      () => {
-      this.pedidoParaIncidencia.set(null);
-      this.incidencias.porPedido(pedidoId).subscribe((inc) => this.incidenciasDelPedido.set(inc));
-    });
-  }
-
-  claseEstado(p: Pedido): string {
-    return claseEstadoPedido(p.estado.id);
-  }
-
-  distanciaLegible(metros: number): string {
-    return metros < 1000 ? `${metros} m` : `${(metros / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`;
   }
 
   cerrarModalFinalizar(): void {

@@ -52,4 +52,13 @@ export interface Seguimiento {
   whatsappAtencion: string;
   /** Cuándo se cierra solo el reclamo si no responde — null si no se cierra solo. */
   reclamoCierraEn: string | null;
+  /** Piso y depto (2026-11-11). Observaciones solo si las cargó el cliente desde la web; si no, null. */
+  origenPiso: string | null;
+  origenDepto: string | null;
+  origenObservaciones: string | null;
+  destinoPiso: string | null;
+  destinoDepto: string | null;
+  destinoObservaciones: string | null;
+  /** Paradas intermedias en orden. */
+  paradas: { orden: number; direccion: string; entregada: boolean }[];
 }

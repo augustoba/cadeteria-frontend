@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { apiUrl } from '../config/site-config';
-import { Cliente, ClienteAviso, ClienteFicha, ClienteInput, ClientesPagina, TelefonoCambio } from '../models/cliente.model';
+import { Cliente, ClienteAviso, ClienteFicha, ClienteInput, ClientesPagina, ReporteCliente, TelefonoCambio } from '../models/cliente.model';
 
 const TAMANO_PAGINA = 20;
 
@@ -74,6 +74,11 @@ export class ClienteService {
   /** Corregir un teléfono mal cargado (2026-10-24): la ficha, los pedidos y los reportes pasan al número nuevo. */
   cambiarTelefono(telefono: string, telefonoNuevo: string) {
     return this.http.post<Cliente>(apiUrl(`/admin/clientes/${telefono}/cambiar-telefono`), { telefonoNuevo });
+  }
+
+  /** Reportes de los cadetes sobre este teléfono, del más nuevo al más viejo. */
+  reportes(telefono: string) {
+    return this.http.get<ReporteCliente[]>(apiUrl(`/admin/clientes/${telefono}/reportes`));
   }
 
   cambiosTelefono(telefono: string) {

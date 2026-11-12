@@ -6,6 +6,23 @@ import { Comentario, PaginaPedidos, Pedido, PedidoInput, PrecioLog, PuntoTrayect
 import { Cadete } from '../models/cadete.model';
 import { CollectionStore } from '../state/collection-store';
 
+/** Filtros de la pantalla "Pedidos" (2026-11-11). */
+export interface FiltroPedidos {
+  numero?: number | null;
+  telefono?: string | null;
+  cadeteId?: string | null;
+  estado?: string | null;
+  desde?: string | null;
+  hasta?: string | null;
+  horaDesde?: string | null;
+  horaHasta?: string | null;
+}
+
+export interface ClienteSugerido {
+  telefono: string;
+  nombre: string | null;
+}
+
 /** "finalizados" ya no pasa por acá — tiene su propio endpoint paginado, ver `finalizadosPagina()`. */
 export type TipoListaPedidos = 'activos' | 'programados';
 
@@ -77,6 +94,24 @@ export class PedidoService {
     if (opciones.cadeteId) params = params.set('cadeteId', opciones.cadeteId);
     if (opciones.tipoEstado) params = params.set('tipoEstado', opciones.tipoEstado);
     return this.http.get<PaginaPedidos>(apiUrl('/admin/pedidos/finalizados-pagina'), { params });
+  }
+
+  /**
+   * Pantalla "Pedidos" (2026-11-11): historial completo con filtros, todos opcionales. `estado`:
+   * SIN_ASIGNAR, PROGRAMADO, PENDIENTE, EN_CURSO (aceptado sin retirar), RETIRADO, FINALIZADO,
+   * CANCELADO o NO_ENTREGADO. Fechas ISO sobre la creación (hasta exclusivo); horas "HH:mm".
+   */
+  buscar(f: FiltroPedidos, pagina: number, tamano: number) {
+    let params = new HttpParams().set('pagina', pagina).set('tamano', tamano);
+    for (const [clave, valor] of Object.entries(f)) {
+      if (valor !== null && valor !== undefined && valor !== '') params = params.set(clave, String(valor));
+    }
+    return this.http.get<PaginaPedidos>(apiUrl('/admin/pedidos/buscar'), { params });
+  }
+
+  /** Campo "Cliente" de la pantalla "Pedidos": nombre o teléfono → "Nombre (teléfono)", uno por teléfono. */
+  clientesSugeridos(q: string) {
+    return this.http.get<ClienteSugerido[]>(apiUrl('/admin/pedidos/clientes-sugeridos'), { params: { q } });
   }
 
   reload(): void {

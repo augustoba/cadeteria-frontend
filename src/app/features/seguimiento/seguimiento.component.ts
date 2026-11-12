@@ -122,8 +122,32 @@ function base64UrlAUint8Array(base64Url: string): Uint8Array {
             }
 
             <div class="text-sm flex flex-col gap-1">
-              <div><span class="text-green-600">●</span> <span class="text-gray-500">Origen:</span> {{ s.origenDireccion }}</div>
-              <div><span class="text-red-600">●</span> <span class="text-gray-500">Destino:</span> {{ s.destinoDireccion }}</div>
+              <div>
+                <span class="text-green-600">●</span> <span class="text-gray-500">Origen:</span> {{ s.origenDireccion }}
+                @if (pisoDepto(s.origenPiso, s.origenDepto); as pd) {
+                  <div class="pl-4 text-gray-700">{{ pd }}</div>
+                }
+                @if (s.origenObservaciones) {
+                  <div class="pl-4 text-xs text-gray-500">📝 {{ s.origenObservaciones }}</div>
+                }
+              </div>
+              @for (pa of s.paradas; track pa.orden) {
+                <div>
+                  <span class="text-amber-500">●</span> <span class="text-gray-500">Parada {{ pa.orden }}:</span> {{ pa.direccion }}
+                  @if (pa.entregada) {
+                    <span class="text-emerald-600 text-xs">✓ entregada</span>
+                  }
+                </div>
+              }
+              <div>
+                <span class="text-red-600">●</span> <span class="text-gray-500">Destino:</span> {{ s.destinoDireccion }}
+                @if (pisoDepto(s.destinoPiso, s.destinoDepto); as pd) {
+                  <div class="pl-4 text-gray-700">{{ pd }}</div>
+                }
+                @if (s.destinoObservaciones) {
+                  <div class="pl-4 text-xs text-gray-500">📝 {{ s.destinoObservaciones }}</div>
+                }
+              </div>
               <div><span class="text-gray-500">Vuelve al origen:</span> {{ s.retornaAlOrigen ? 'Sí' : 'No' }}</div>
               @if (s.detalle) {
                 <div class="whitespace-pre-line"><span class="text-gray-500">Detalle:</span> {{ s.detalle }}</div>
@@ -494,6 +518,12 @@ export class SeguimientoComponent implements OnInit, OnChanges, OnDestroy {
         ventana?.close();
       },
     });
+  }
+
+  /** "Piso 3 · Depto B" (o solo uno de los dos); null si no hay ninguno. */
+  pisoDepto(piso: string | null, depto: string | null): string | null {
+    const partes = [piso ? `Piso ${piso}` : '', depto ? `Depto ${depto}` : ''].filter(Boolean);
+    return partes.length ? partes.join(' · ') : null;
   }
 
   linkWhatsappAtencion(numero: string): string {
