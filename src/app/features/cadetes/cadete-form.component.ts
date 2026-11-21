@@ -90,6 +90,12 @@ import * as V from '../../core/utils/validaciones';
               }
             </select>
           </label>
+          @if (editId && !esMoto() && (vehiculoPatente || vehiculoMarca)) {
+            <p class="sm:col-span-2 self-end text-xs text-gray-500">
+              Los datos de la moto ({{ vehiculoMarca }} {{ vehiculoModelo }} {{ vehiculoPatente }}) quedan guardados:
+              si vuelve a la moto, pasalo a Moto y aparecen como estaban.
+            </p>
+          }
           @if (esMoto()) {
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium text-gray-700">Marca</span>

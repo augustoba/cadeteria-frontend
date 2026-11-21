@@ -71,6 +71,11 @@ export class CadeteService {
     this.store.mutate(this.http.post(apiUrl(`/admin/cadetes/${id}/desconectar`), {}));
   }
 
+  /** Moto ↔ bici sin abrir el formulario; los datos de la moto quedan guardados en el backend. */
+  cambiarTipoVehiculo(id: string, tipoVehiculoId: 'MOTO' | 'BICI'): void {
+    this.store.mutate(this.http.patch(apiUrl(`/admin/cadetes/${id}/tipo-vehiculo`), { tipoVehiculoId }));
+  }
+
   /** Aviso operativo a todos los cadetes conectados ahora (ej. "cerramos temprano"). */
   avisoGeneral(mensaje: string, onSuccess?: () => void) {
     return this.http.post(apiUrl('/admin/cadetes/aviso'), { mensaje }).subscribe(() => onSuccess?.());

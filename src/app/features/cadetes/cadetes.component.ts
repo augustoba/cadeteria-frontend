@@ -112,7 +112,20 @@ const TABS: Array<{ tipo: TabCadetes; label: string }> = [
                       <span class="text-xs text-gray-400">—</span>
                     }
                   </td>
-                  <td class="py-2 pr-3 whitespace-nowrap">{{ c.tipoVehiculo.nombre }}</td>
+                  <td class="py-2 pr-3 whitespace-nowrap">
+                    <div class="flex items-center gap-1">
+                      <span>{{ c.tipoVehiculo.nombre }}</span>
+                      <!-- Cadetes que alternan moto y bici por semana: los datos de la moto quedan guardados. -->
+                      <button
+                        type="button"
+                        class="btn-mini bg-sky-600 hover:bg-sky-700"
+                        [title]="c.tipoVehiculo.id === 'MOTO' ? 'Pasarlo a bici (los datos de la moto quedan guardados)' : 'Pasarlo a moto (con los datos que ya tenía)'"
+                        (click)="cadetes.cambiarTipoVehiculo(c.id, c.tipoVehiculo.id === 'MOTO' ? 'BICI' : 'MOTO')"
+                      >
+                        ⇄ {{ c.tipoVehiculo.id === 'MOTO' ? 'Bici' : 'Moto' }}
+                      </button>
+                    </div>
+                  </td>
                   <td class="py-2 pr-3 whitespace-nowrap">
                     @if (c.calificacionPromedio != null) {
                       <span title="{{ c.calificacionCantidad }} calificación(es)">
